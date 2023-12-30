@@ -4,19 +4,19 @@ use std::{
 };
 
 use futures_util::{
-    stream::{Fuse, FuturesUnordered},
-    Future, Stream, StreamExt,
+    stream::{FusedStream, FuturesUnordered},
+    Future, Stream,
 };
 
 #[pin_project::pin_project]
 pub struct Concurrent<R, Fut> {
     #[pin]
-    stream: Fuse<R>,
+    stream: R,
     #[pin]
     futures: FuturesUnordered<Fut>,
 }
 
-impl<Fut: Future, R: Stream<Item = Fut>> Stream for Concurrent<R, Fut> {
+impl<Fut: Future, R: FusedStream<Item = Fut>> Stream for Concurrent<R, Fut> {
     type Item = Fut::Output;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -25,7 +25,7 @@ impl<Fut: Future, R: Stream<Item = Fut>> Stream for Concurrent<R, Fut> {
             this.futures.push(future)
         }
         match this.futures.poll_next(cx) {
-            Poll::Ready(None) if !this.stream.is_done() => Poll::Pending,
+            Poll::Ready(None) if !this.stream.is_terminated() => Poll::Pending,
             poll => poll,
         }
     }
@@ -40,10 +40,16 @@ impl<Fut: Future, R: Stream<Item = Fut>> Stream for Concurrent<R, Fut> {
     }
 }
 
-impl<Fut, R: Stream<Item = Fut>> From<R> for Concurrent<R, Fut> {
-    fn from(streams: R) -> Self {
+impl<Fut: Future, R: FusedStream<Item = Fut>> FusedStream for Concurrent<R, Fut> {
+    fn is_terminated(&self) -> bool {
+        self.stream.is_terminated() && self.futures.is_terminated()
+    }
+}
+
+impl<Fut, R> From<R> for Concurrent<R, Fut> {
+    fn from(stream: R) -> Self {
         Self {
-            stream: streams.fuse(),
+            stream,
             futures: Default::default(),
         }
     }
