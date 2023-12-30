@@ -1,8 +1,8 @@
-pub trait Callback<E>: Clone {
+pub trait OnClose<E>: Clone {
     fn on_close(&self, error: Option<E>);
 }
 
-impl<E, F: Clone + Fn(Option<E>)> Callback<E> for F {
+impl<E, F: Clone + Fn(Option<E>)> OnClose<E> for F {
     fn on_close(&self, error: Option<E>) {
         self(error)
     }
