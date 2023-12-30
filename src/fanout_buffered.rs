@@ -67,6 +67,10 @@ struct Unicast<S, Out, F> {
 impl<In, Out: Clone, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>, F: OnClose<E>>
     Unicast<S, Out, F>
 {
+    fn state(self: Pin<&mut Self>) -> &mut State<Out> {
+        self.project().state
+    }
+
     fn poll_list(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
         let mut this = self.project();
         if !this.list.is_terminated() {
@@ -106,10 +110,6 @@ impl<In, Out: Clone, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>, 
         }
     }
 
-    fn state(self: Pin<&mut Self>) -> &mut State<Out> {
-        self.project().state
-    }
-
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>, done: Done) -> Poll<Result<(), E>> {
         let this = self.project();
         match this.stream.poll_flush(cx)? {
@@ -121,7 +121,7 @@ impl<In, Out: Clone, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>, 
         }
     }
 
-    fn pre_poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), E>> {
+    fn pre_poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<Infallible, E>> {
         loop {
             match self.as_mut().state().take() {
                 State::Flushed => ready!(self.as_mut().poll_list(cx)),
