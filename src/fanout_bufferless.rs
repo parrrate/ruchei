@@ -5,8 +5,8 @@ use std::{
 };
 
 use futures_util::{
-    stream::{Fuse, FuturesUnordered, SelectAll},
-    Future, Sink, Stream, StreamExt,
+    stream::{FusedStream, FuturesUnordered, SelectAll},
+    Future, Sink, Stream,
 };
 use pin_project::pin_project;
 
@@ -97,7 +97,7 @@ impl<In, Out, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>, F: OnCl
 #[pin_project]
 pub struct Multicast<S, Out, F, R> {
     #[pin]
-    streams: Fuse<R>,
+    streams: R,
     #[pin]
     select: SelectAll<Unicast<S, Out, F>>,
     #[pin]
@@ -117,24 +117,26 @@ impl<
         E,
         S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
         F: OnClose<E>,
-        R: Stream<Item = S>,
+        R: FusedStream<Item = S>,
     > Multicast<S, Out, F, R>
 {
     fn poll_next_infallible(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<In>> {
         let mut this = self.project();
-        while let Poll::Ready(Some(stream)) = this.streams.as_mut().poll_next(cx) {
-            this.select.push(Unicast {
-                stream,
-                waker: None,
-                readying: Default::default(),
-                flushing: Default::default(),
-                ready: false,
-                started: None,
-                callback: this.callback.clone(),
-            });
+        if !this.streams.is_terminated() {
+            while let Poll::Ready(Some(stream)) = this.streams.as_mut().poll_next(cx) {
+                this.select.push(Unicast {
+                    stream,
+                    waker: None,
+                    readying: Default::default(),
+                    flushing: Default::default(),
+                    ready: false,
+                    started: None,
+                    callback: this.callback.clone(),
+                });
+            }
         }
         match this.select.poll_next(cx) {
-            Poll::Ready(None) if !this.streams.is_done() => Poll::Pending,
+            Poll::Ready(None) if !this.streams.is_terminated() => Poll::Pending,
             poll => poll,
         }
     }
@@ -146,13 +148,27 @@ impl<
         E,
         S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
         F: OnClose<E>,
-        R: Stream<Item = S>,
+        R: FusedStream<Item = S>,
     > Stream for Multicast<S, Out, F, R>
 {
     type Item = Result<In, Infallible>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.poll_next_infallible(cx).map(|o| o.map(Ok))
+    }
+}
+
+impl<
+        In,
+        Out,
+        E,
+        S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
+        F: OnClose<E>,
+        R: FusedStream<Item = S>,
+    > FusedStream for Multicast<S, Out, F, R>
+{
+    fn is_terminated(&self) -> bool {
+        self.streams.is_terminated() && self.select.is_terminated()
     }
 }
 
@@ -248,12 +264,12 @@ impl<
         E,
         S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
         F: OnClose<E>,
-        R: Stream<Item = S>,
+        R,
     > Multicast<S, Out, F, R>
 {
     pub fn new(streams: R, callback: F) -> Self {
         Self {
-            streams: streams.fuse(),
+            streams,
             select: Default::default(),
             readying: Default::default(),
             flushing: Default::default(),
