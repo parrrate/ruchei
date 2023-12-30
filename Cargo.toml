@@ -1,0 +1,12 @@
+[package]
+name = "ruchei"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+futures-util = { version = "0.3.30", features = ["sink"] }
+pin-project = "1"
+
+[dev-dependencies]
+async-std = { version = "1.12.0", features = ["attributes"] }
+async-tungstenite = { version = "0.24.0", features = ["async-std-runtime"] }
