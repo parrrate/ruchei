@@ -17,6 +17,7 @@ async fn main() {
         .concurrent()
         .filter_map(|r| async { r.ok() })
         .multicast_buffered(|_| {})
+        .fuse()
         .read_callback(|message| print!("{message}")));
     loop {
         sink.send("ping".into()).await.unwrap();
