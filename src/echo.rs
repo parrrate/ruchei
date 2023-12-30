@@ -4,25 +4,27 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures_util::{stream::Fuse, Future, Sink, Stream, StreamExt};
+use futures_util::{stream::FusedStream, Future, Sink, Stream};
 use pin_project::pin_project;
 
 #[pin_project]
 pub struct Echo<T, S> {
     #[pin]
-    stream: Fuse<S>,
+    stream: S,
     queue: VecDeque<T>,
     item: Option<T>,
     started: bool,
 }
 
-impl<T, E, S: Stream<Item = Result<T, E>> + Sink<T, Error = E>> Future for Echo<T, S> {
+impl<T, E, S: FusedStream<Item = Result<T, E>> + Sink<T, Error = E>> Future for Echo<T, S> {
     type Output = Result<(), E>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let mut this = self.project();
-        while let Poll::Ready(Some(t)) = this.stream.as_mut().poll_next(cx)? {
-            this.queue.push_back(t);
+        if !this.stream.is_terminated() {
+            while let Poll::Ready(Some(t)) = this.stream.as_mut().poll_next(cx)? {
+                this.queue.push_back(t);
+            }
         }
         loop {
             match this.item.take() {
@@ -54,7 +56,7 @@ impl<T, E, S: Stream<Item = Result<T, E>> + Sink<T, Error = E>> Future for Echo<
 impl<T, E, S: Stream<Item = Result<T, E>>> From<S> for Echo<T, S> {
     fn from(stream: S) -> Self {
         Self {
-            stream: stream.fuse(),
+            stream,
             queue: Default::default(),
             item: None,
             started: false,
