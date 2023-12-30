@@ -4,8 +4,9 @@ use ruchei::{concurrent::ConcurrentExt, echo::EchoExt, fanout_bufferless::Multic
 
 #[async_std::main]
 async fn main() {
-    let streams = TcpListener::bind("127.0.0.1:8080").await.unwrap();
-    streams
+    TcpListener::bind("127.0.0.1:8080")
+        .await
+        .unwrap()
         .incoming()
         .filter_map(|r| async { r.ok() })
         .map(async_tungstenite::accept_async)
