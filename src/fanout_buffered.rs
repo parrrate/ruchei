@@ -21,21 +21,18 @@ struct Done(Arc<OwnedMutexGuard<()>>);
 
 struct Node<Out>(Out, Done, List<Out>);
 
-struct List<Out>(Arc<Mutex<Option<Node<Out>>>>);
+struct List<Out>(Option<Arc<Mutex<Option<Node<Out>>>>>);
+
+impl<Out> List<Out> {
+    fn take(&mut self) -> Option<Self> {
+        Some(Arc::into_inner(self.0.take()?)?.try_lock()?.take()?.2)
+    }
+}
 
 impl<Out> Drop for List<Out> {
     fn drop(&mut self) {
-        loop {
-            let node = {
-                let Some(mut guard) = self.0.try_lock() else {
-                    break;
-                };
-                let Some(node) = guard.take() else {
-                    break;
-                };
-                node
-            };
-            *self = node.2;
+        while let Some(list) = self.take() {
+            *self = list;
         }
     }
 }
@@ -78,7 +75,7 @@ impl<In, Out: Clone, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>, 
                 Poll::Ready(guard) => match guard.as_ref() {
                     Some(Node(out, done, list)) => {
                         *this.state = State::Readying(out.clone(), done.clone());
-                        *this.list = list.0.clone().lock_owned();
+                        *this.list = list.0.as_ref().unwrap().clone().lock_owned();
                         Poll::Ready(())
                     }
                     None => Poll::Pending,
@@ -249,7 +246,7 @@ impl<
     fn start_send(self: Pin<&mut Self>, item: Out) -> Result<(), Self::Error> {
         let mut this = self.project();
         let list_mutex = Arc::new(Mutex::new(None));
-        let list = List(list_mutex.clone());
+        let list = List(Some(list_mutex.clone()));
         let done_mutex = Arc::new(Mutex::new(()));
         let list_guard = list_mutex.clone().try_lock_owned().unwrap();
         **this.list_guard = Some(Node(
