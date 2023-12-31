@@ -58,6 +58,7 @@ pub struct WaitMany {
 impl WaitMany {
     pub fn completable(&mut self, completable: Completable) {
         self.waker = Arc::downgrade(&completable.waker);
+        completable.complete();
     }
 }
 

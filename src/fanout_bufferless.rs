@@ -43,6 +43,17 @@ impl<In, Out, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>, F: OnCl
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
+        if *this.ready {
+            if let Some(out) = this.started.take() {
+                match this.stream.as_mut().start_send(out) {
+                    Ok(()) => *this.ready = false,
+                    Err(e) => {
+                        this.callback.on_close(Some(e));
+                        return Poll::Ready(None);
+                    }
+                }
+            }
+        }
         if this.readying.pending() {
             match this.stream.as_mut().poll_ready(cx) {
                 Poll::Ready(Ok(())) => {
@@ -106,7 +117,7 @@ pub struct Multicast<S, Out, F, R> {
     flushing: WaitMany,
     #[pin]
     closing: FuturesUnordered<OwnedClose<S, Out>>,
-    ready: bool,
+    polled_for_ready: bool,
     flushed: bool,
     callback: F,
 }
@@ -185,24 +196,21 @@ impl<
 
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let mut this = self.project();
-        loop {
-            match this.readying.as_mut().poll(cx) {
-                Poll::Ready(()) => {
-                    if *this.ready {
-                        *this.ready = false;
-                        break Poll::Ready(Ok(()));
-                    } else {
-                        *this.ready = true;
-                        let completable = Completable::default();
-                        for unicast in this.select.iter_mut() {
-                            unicast.readying.completable(completable.clone());
-                            unicast.wake();
-                        }
-                        this.readying.completable(completable);
-                    }
-                }
-                Poll::Pending => break Poll::Pending,
+        if !*this.polled_for_ready {
+            *this.polled_for_ready = true;
+            let completable = Completable::default();
+            for unicast in this.select.iter_mut() {
+                unicast.readying.completable(completable.clone());
+                unicast.wake();
             }
+            this.readying.completable(completable);
+        }
+        match this.readying.as_mut().poll(cx) {
+            Poll::Ready(()) => {
+                *this.polled_for_ready = false;
+                Poll::Ready(Ok(()))
+            }
+            Poll::Pending => Poll::Pending,
         }
     }
 
@@ -274,7 +282,7 @@ impl<
             readying: Default::default(),
             flushing: Default::default(),
             closing: Default::default(),
-            ready: false,
+            polled_for_ready: false,
             flushed: false,
             callback,
         }
