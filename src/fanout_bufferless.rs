@@ -118,7 +118,7 @@ pub struct Multicast<S, Out, F, R> {
     #[pin]
     closing: FuturesUnordered<OwnedClose<S, Out>>,
     polled_for_ready: bool,
-    flushed: bool,
+    polled_for_flush: bool,
     callback: F,
 }
 
@@ -227,24 +227,21 @@ impl<
 
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let mut this = self.project();
-        loop {
-            match this.flushing.as_mut().poll(cx) {
-                Poll::Ready(()) => {
-                    if *this.flushed {
-                        *this.flushed = false;
-                        break Poll::Ready(Ok(()));
-                    } else {
-                        *this.flushed = true;
-                        let completable = Completable::default();
-                        for unicast in this.select.iter_mut() {
-                            unicast.flushing.completable(completable.clone());
-                            unicast.wake();
-                        }
-                        this.flushing.completable(completable);
-                    }
-                }
-                Poll::Pending => break Poll::Pending,
+        if !*this.polled_for_flush {
+            *this.polled_for_flush = true;
+            let completable = Completable::default();
+            for unicast in this.select.iter_mut() {
+                unicast.flushing.completable(completable.clone());
+                unicast.wake();
             }
+            this.flushing.completable(completable);
+        }
+        match this.flushing.as_mut().poll(cx) {
+            Poll::Ready(()) => {
+                *this.polled_for_flush = false;
+                Poll::Ready(Ok(()))
+            }
+            Poll::Pending => Poll::Pending,
         }
     }
 
@@ -283,7 +280,7 @@ impl<
             flushing: Default::default(),
             closing: Default::default(),
             polled_for_ready: false,
-            flushed: false,
+            polled_for_flush: false,
             callback,
         }
     }
