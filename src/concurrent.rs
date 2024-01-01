@@ -21,8 +21,10 @@ impl<Fut: Future, R: FusedStream<Item = Fut>> Stream for Concurrent<R, Fut> {
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
-        while let Poll::Ready(Some(future)) = this.stream.as_mut().poll_next(cx) {
-            this.futures.push(future)
+        if !this.stream.is_terminated() {
+            while let Poll::Ready(Some(future)) = this.stream.as_mut().poll_next(cx) {
+                this.futures.push(future)
+            }
         }
         match this.futures.poll_next(cx) {
             Poll::Ready(None) if !this.stream.is_terminated() => Poll::Pending,
