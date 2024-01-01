@@ -2,7 +2,7 @@ use async_std::net::TcpListener;
 use futures_util::StreamExt;
 use ruchei::{
     concurrent::ConcurrentExt,
-    echo_simple::EchoSimple,
+    echo_bufferless::EchoBufferless,
     fanout_bufferless::MulticastBufferless,
     poll_on_wake::PollOnWakeExt,
     rw_isolation::{isolation, IsolateInner, IsolateOuter},
@@ -21,10 +21,10 @@ async fn main() {
         .fuse()
         .concurrent()
         .filter_map(|r| async { r.ok() })
-        .map(|s| s.isolate_inner(inner.clone()))
+        .map(|s| s.isolate_inner(inner.clone()).poll_on_wake())
         .multicast_bufferless(|_| {})
         .isolate_outer(outer)
-        .echo_simple()
+        .echo_bufferless()
         .await
         .unwrap();
 }
