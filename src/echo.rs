@@ -22,8 +22,11 @@ impl<T, E, S: FusedStream<Item = Result<T, E>> + Sink<T, Error = E>> Future for 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let mut this = self.project();
         if !this.stream.is_terminated() {
-            while let Poll::Ready(Some(t)) = this.stream.as_mut().poll_next(cx)? {
-                this.queue.push_back(t);
+            while let Poll::Ready(ready) = this.stream.as_mut().poll_next(cx)? {
+                match ready {
+                    Some(t) => this.queue.push_back(t),
+                    None => return Poll::Ready(Ok(())),
+                }
             }
         }
         loop {
