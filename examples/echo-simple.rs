@@ -4,8 +4,8 @@ use ruchei::{
     concurrent::ConcurrentExt,
     echo_simple::EchoSimple,
     fanout_bufferless::MulticastBufferless,
+    poll_on_wake::PollOnWakeExt,
     rw_isolation::{isolation, IsolateInner, IsolateOuter},
-    select_one::SelectOne,
 };
 
 #[async_std::main]
@@ -15,7 +15,7 @@ async fn main() {
         .await
         .unwrap()
         .incoming()
-        .select_one()
+        .poll_on_wake()
         .filter_map(|r| async { r.ok() })
         .map(async_tungstenite::accept_async)
         .fuse()
