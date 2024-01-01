@@ -107,13 +107,22 @@ impl<In, Out: Clone, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>, 
         }
     }
 
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>, done: Done) -> Poll<Result<(), E>> {
-        let this = self.project();
-        match this.stream.poll_flush(cx)? {
+    fn poll_flush(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        done: Done,
+    ) -> Poll<Result<(), E>> {
+        match self.as_mut().poll_list(cx) {
             Poll::Ready(()) => Poll::Ready(Ok(())),
             Poll::Pending => {
-                *this.state = State::Started(done);
-                Poll::Pending
+                let this = self.project();
+                match this.stream.poll_flush(cx)? {
+                    Poll::Ready(()) => Poll::Pending,
+                    Poll::Pending => {
+                        *this.state = State::Started(done);
+                        Poll::Pending
+                    }
+                }
             }
         }
     }
