@@ -35,7 +35,7 @@ impl<T, E, S: FusedStream<Item = Result<T, E>> + Sink<T, Error = E>> Future for 
                     }
                     Poll::Pending => {
                         *this.item = Some(item);
-                        break;
+                        return Poll::Pending;
                     }
                 },
                 None => match this.queue.pop_front() {
