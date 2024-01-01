@@ -1,6 +1,9 @@
 use async_std::net::TcpListener;
 use futures_util::StreamExt;
-use ruchei::{concurrent::ConcurrentExt, echo::EchoExt, fanout_buffered::MulticastBuffered};
+use ruchei::{
+    concurrent::ConcurrentExt, echo::EchoExt, fanout_buffered::MulticastBuffered,
+    select_one::SelectOne,
+};
 
 #[async_std::main]
 async fn main() {
@@ -8,6 +11,7 @@ async fn main() {
         .await
         .unwrap()
         .incoming()
+        .select_one()
         .filter_map(|r| async { r.ok() })
         .map(async_tungstenite::accept_async)
         .fuse()
