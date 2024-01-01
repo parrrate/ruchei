@@ -290,7 +290,10 @@ impl<
                 });
             }
         }
-        this.select.as_mut().poll_next(cx)
+        match this.select.poll_next(cx) {
+            Poll::Ready(None) if !this.streams.is_terminated() => Poll::Pending,
+            poll => poll,
+        }
     }
 }
 
