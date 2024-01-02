@@ -17,3 +17,17 @@ impl<T, F: Fn(T)> OnItem<T> for F {
         self(message)
     }
 }
+
+pub trait FutureFactory {
+    type Fut;
+
+    fn make(&mut self) -> Self::Fut;
+}
+
+impl<Fut, F: ?Sized + FnMut() -> Fut> FutureFactory for F {
+    type Fut = Fut;
+
+    fn make(&mut self) -> Self::Fut {
+        self()
+    }
+}
