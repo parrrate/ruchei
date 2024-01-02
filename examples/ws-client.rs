@@ -1,4 +1,4 @@
-use ruchei::echo::EchoExt;
+use ruchei::echo_buffered::EchoBuffered;
 
 #[async_std::main]
 async fn main() {
@@ -6,7 +6,7 @@ async fn main() {
         .await
         .unwrap()
         .0
-        .echo()
+        .echo_buffered()
         .await
         .unwrap();
 }
