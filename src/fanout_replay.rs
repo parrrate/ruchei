@@ -184,6 +184,13 @@ impl<In, Out: Clone, E, S: Sink<Out, Error = E> + Stream<Item = Result<In, E>>, 
     fn is_terminated(&self) -> bool {
         self.stale && self.state.is_empty()
     }
+
+    fn on_close(&self, error: Option<E>) {
+        let mut shared = self.shared.try_lock().unwrap();
+        shared.stale.remove(&self.key);
+        shared.fstale.remove(&self.key);
+        self.callback.on_close(error);
+    }
 }
 
 impl<In, Out: Clone, E, S: Sink<Out, Error = E> + Stream<Item = Result<In, E>>, F: OnClose<E>>
@@ -195,11 +202,11 @@ impl<In, Out: Clone, E, S: Sink<Out, Error = E> + Stream<Item = Result<In, E>>, 
         self.as_mut().poll_inner(cx).map(|o| match o {
             Some(Ok(out)) => Some(out),
             Some(Err(e)) => {
-                self.callback.on_close(Some(e));
+                self.on_close(Some(e));
                 None
             }
             None => {
-                self.callback.on_close(None);
+                self.on_close(None);
                 None
             }
         })
