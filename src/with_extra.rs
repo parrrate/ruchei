@@ -17,6 +17,10 @@ impl<T, Ex> WithExtra<T, Ex> {
     pub fn new(inner: T, extra: Ex) -> Self {
         Self { inner, extra }
     }
+
+    pub fn as_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T> {
+        self.project().inner
+    }
 }
 
 impl<T: Future, Ex> Future for WithExtra<T, Ex> {
