@@ -38,12 +38,14 @@ async fn main() {
         .incoming()
         .poll_on_wake()
         .filter_map(|r| async { r.ok() })
-        .map(async_tungstenite::accept_async)
+        .map(|stream| async move {
+            let mut stream = async_tungstenite::accept_async(stream).await.ok()?;
+            let group = stream.next().await?.ok()?;
+            Some((group, stream))
+        })
         .fuse()
         .concurrent()
-        .filter_map(|r| async { r.ok() })
-        .map(|s| s.poll_on_wake())
-        .map(|s| ("group", s))
+        .filter_map(|o| async move { o.map(|(group, s)| (group.into_data(), s.poll_on_wake())) })
         .group_by_key(ChannelGroup(PhantomData))
         .for_each_concurrent(None, |(receiver, guard)| async move {
             let _guard = guard;
