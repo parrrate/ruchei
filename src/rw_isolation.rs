@@ -1,16 +1,34 @@
 use std::{
     pin::Pin,
-    sync::Arc,
-    task::{Context, Poll, Waker},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    task::{Context, Poll},
 };
 
 use futures_util::{
     lock::{Mutex, OwnedMutexGuard, OwnedMutexLockFuture},
     ready,
     stream::FusedStream,
+    task::{waker, ArcWake, AtomicWaker},
     Future, Sink, Stream,
 };
 use pin_project::pin_project;
+
+#[derive(Default)]
+struct MutexWaker {
+    pending: Arc<AtomicBool>,
+    waker: AtomicWaker,
+}
+
+impl ArcWake for MutexWaker {
+    fn wake_by_ref(arc_self: &Arc<Self>) {
+        if !arc_self.pending.load(Ordering::Acquire) {
+            arc_self.waker.wake();
+        }
+    }
+}
 
 struct AllowRead;
 
@@ -21,6 +39,7 @@ pub struct RwInner<S> {
     #[pin]
     read_future: OwnedMutexLockFuture<AllowRead>,
     read_mutex: Arc<Mutex<AllowRead>>,
+    waker: Arc<MutexWaker>,
 }
 
 impl<S: Stream> Stream for RwInner<S> {
@@ -28,9 +47,17 @@ impl<S: Stream> Stream for RwInner<S> {
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
-        ready!(this.read_future.as_mut().poll(cx));
+        this.waker.waker.register(cx.waker());
+        ready!(this
+            .read_future
+            .as_mut()
+            .poll(&mut Context::from_waker(&waker(this.waker.clone()))));
         *this.read_future = this.read_mutex.clone().lock_owned();
-        this.stream.poll_next(cx)
+        let poll = this.stream.poll_next(cx);
+        this.waker
+            .pending
+            .store(poll.is_pending(), Ordering::Release);
+        poll
     }
 }
 
@@ -64,7 +91,6 @@ impl<Out, S: Sink<Out>> Sink<Out> for RwInner<S> {
 pub struct RwOuter<S> {
     #[pin]
     stream: S,
-    read_waker: Option<Waker>,
     read_guard: Option<OwnedMutexGuard<AllowRead>>,
     read_mutex: Arc<Mutex<AllowRead>>,
 }
@@ -75,13 +101,7 @@ impl<S: Stream> Stream for RwOuter<S> {
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.project();
         this.read_guard.take();
-        match this.stream.poll_next(cx) {
-            poll @ Poll::Ready(_) => poll,
-            Poll::Pending => {
-                *this.read_waker = Some(cx.waker().clone());
-                Poll::Pending
-            }
-        }
+        this.stream.poll_next(cx)
     }
 }
 
@@ -92,16 +112,16 @@ impl<S: FusedStream> FusedStream for RwOuter<S> {
 }
 
 impl<S: Stream> RwOuter<S> {
-    fn poll_inner(self: Pin<&mut Self>, cx: &mut Context<'_>) {
+    fn prepare(self: Pin<&mut Self>) {
         let this = self.project();
         if this.read_guard.is_none() {
             *this.read_guard = Some(this.read_mutex.clone().try_lock_owned().unwrap());
         }
-        if let Poll::Ready(Some(_)) = this.stream.poll_next(cx) {
+    }
+
+    fn poll_inner(self: Pin<&mut Self>, cx: &mut Context<'_>) {
+        if let Poll::Ready(Some(_)) = self.project().stream.poll_next(cx) {
             panic!("item in write context")
-        }
-        if let Some(waker) = this.read_waker.take() {
-            waker.wake();
         }
     }
 }
@@ -112,6 +132,10 @@ impl<Out, S: FusedStream + Sink<Out>> Sink<Out> for RwOuter<S> {
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         if self.stream.is_terminated() {
             return Poll::Pending;
+        }
+        self.as_mut().prepare();
+        if let poll @ Poll::Ready(_) = self.as_mut().project().stream.poll_ready(cx) {
+            return poll;
         }
         self.as_mut().poll_inner(cx);
         self.project().stream.poll_ready(cx)
@@ -125,6 +149,10 @@ impl<Out, S: FusedStream + Sink<Out>> Sink<Out> for RwOuter<S> {
         if self.stream.is_terminated() {
             return Poll::Pending;
         }
+        self.as_mut().prepare();
+        if let poll @ Poll::Ready(_) = self.as_mut().project().stream.poll_flush(cx) {
+            return poll;
+        }
         self.as_mut().poll_inner(cx);
         self.project().stream.poll_flush(cx)
     }
@@ -132,6 +160,10 @@ impl<Out, S: FusedStream + Sink<Out>> Sink<Out> for RwOuter<S> {
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         if self.stream.is_terminated() {
             return Poll::Ready(Ok(()));
+        }
+        self.as_mut().prepare();
+        if let poll @ Poll::Ready(_) = self.as_mut().project().stream.poll_close(cx) {
+            return poll;
         }
         self.as_mut().poll_inner(cx);
         self.project().stream.poll_close(cx)
@@ -158,6 +190,7 @@ impl<S> IsolateInner for S {
             stream: self,
             read_future: inner.0.clone().lock_owned(),
             read_mutex: inner.0,
+            waker: Default::default(),
         }
     }
 }
@@ -170,7 +203,6 @@ impl<S> IsolateOuter for S {
     fn isolate_outer(self, outer: CtxOuter) -> RwOuter<Self> {
         RwOuter {
             stream: self,
-            read_waker: None,
             read_guard: None,
             read_mutex: outer.0,
         }
