@@ -3,7 +3,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures_util::{stream::FusedStream, Sink, Stream};
+use futures_util::{ready, stream::FusedStream, Sink, Stream};
 use pin_project::pin_project;
 
 use crate::callback::OnItem;
@@ -22,12 +22,12 @@ impl<In, E, S: FusedStream<Item = Result<In, E>>, F: OnItem<In>> ReadCallback<S,
             loop {
                 match this.stream.as_mut().poll_next(cx)? {
                     Poll::Ready(Some(item)) => this.callback.on_item(item),
-                    Poll::Ready(None) => break Poll::Ready(Ok(())),
-                    Poll::Pending => break Poll::Pending,
+                    Poll::Ready(None) => break Poll::Pending,
+                    Poll::Pending => break Poll::Ready(Ok(())),
                 }
             }
         } else {
-            Poll::Ready(Ok(()))
+            Poll::Pending
         }
     }
 }
@@ -58,7 +58,11 @@ impl<In, Out, E, S: FusedStream<Item = Result<In, E>> + Sink<Out, Error = E>, F:
     type Error = E;
 
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let _ = self.as_mut().poll_inner(cx);
+        ready!(self.as_mut().poll_inner(cx))?;
+        if let poll @ Poll::Ready(_) = self.as_mut().project().stream.poll_ready(cx) {
+            return poll;
+        }
+        ready!(self.as_mut().poll_inner(cx))?;
         self.project().stream.poll_ready(cx)
     }
 
@@ -67,12 +71,20 @@ impl<In, Out, E, S: FusedStream<Item = Result<In, E>> + Sink<Out, Error = E>, F:
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let _ = self.as_mut().poll_inner(cx);
+        ready!(self.as_mut().poll_inner(cx))?;
+        if let poll @ Poll::Ready(_) = self.as_mut().project().stream.poll_flush(cx) {
+            return poll;
+        }
+        ready!(self.as_mut().poll_inner(cx))?;
         self.project().stream.poll_flush(cx)
     }
 
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let _ = self.as_mut().poll_inner(cx);
+        ready!(self.as_mut().poll_inner(cx))?;
+        if let poll @ Poll::Ready(_) = self.as_mut().project().stream.poll_close(cx) {
+            return poll;
+        }
+        ready!(self.as_mut().poll_inner(cx))?;
         self.project().stream.poll_close(cx)
     }
 }
