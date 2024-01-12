@@ -14,7 +14,11 @@ use futures_util::{
 };
 use pin_project::pin_project;
 
-use crate::{callback::OnClose, owned_close::OwnedClose};
+use crate::{
+    callback::OnClose,
+    owned_close::OwnedClose,
+    pinned_extend::{AutoPinnedExtend, Extending, ExteningExt},
+};
 
 #[derive(Clone)]
 struct Done(Arc<OwnedMutexGuard<()>>);
@@ -165,9 +169,7 @@ impl<In, Out: Clone, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>, 
 }
 
 #[pin_project]
-pub struct Multicast<S, Out, F, R> {
-    #[pin]
-    streams: R,
+pub struct Multicast<S, Out, F> {
     #[pin]
     select: SelectAll<Unicast<S, Out, F>>,
     #[pin]
@@ -185,19 +187,10 @@ impl<
         E,
         S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
         F: OnClose<E>,
-        R: FusedStream<Item = S>,
-    > Multicast<S, Out, F, R>
+    > Multicast<S, Out, F>
 {
     fn poll_next_infallible(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<In>> {
-        if !self.streams.is_terminated() {
-            while let Poll::Ready(Some(stream)) = self.as_mut().project().streams.poll_next(cx) {
-                self.as_mut().push(stream);
-            }
-        }
-        match self.as_mut().project().select.poll_next(cx) {
-            Poll::Ready(None) if !self.streams.is_terminated() => Poll::Pending,
-            poll => poll,
-        }
+        self.as_mut().project().select.poll_next(cx)
     }
 }
 
@@ -207,8 +200,7 @@ impl<
         E,
         S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
         F: OnClose<E>,
-        R: FusedStream<Item = S>,
-    > Stream for Multicast<S, Out, F, R>
+    > Stream for Multicast<S, Out, F>
 {
     type Item = Result<In, Infallible>;
 
@@ -223,11 +215,10 @@ impl<
         E,
         S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
         F: OnClose<E>,
-        R: FusedStream<Item = S>,
-    > FusedStream for Multicast<S, Out, F, R>
+    > FusedStream for Multicast<S, Out, F>
 {
     fn is_terminated(&self) -> bool {
-        self.streams.is_terminated() && self.select.is_terminated()
+        self.select.is_terminated()
     }
 }
 
@@ -237,8 +228,7 @@ impl<
         E,
         S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
         F: OnClose<E>,
-        R: Stream<Item = S>,
-    > Sink<Out> for Multicast<S, Out, F, R>
+    > Sink<Out> for Multicast<S, Out, F>
 {
     type Error = Infallible;
 
@@ -296,14 +286,12 @@ impl<
         E,
         S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
         F: OnClose<E>,
-        R,
-    > Multicast<S, Out, F, R>
+    > Multicast<S, Out, F>
 {
-    pub fn new(streams: R, callback: F) -> Self {
+    pub fn new(callback: F) -> Self {
         let list_mutex = Arc::new(Mutex::new(None));
         let list_guard = list_mutex.clone().try_lock_owned().unwrap();
         Self {
-            streams,
             select: Default::default(),
             closing: Default::default(),
             done: Arc::new(Mutex::new(())).lock_owned(),
@@ -313,16 +301,32 @@ impl<
         }
     }
 
-    pub fn push(self: Pin<&mut Self>, stream: S) {
-        let mut this = self.project();
-        this.select.push(Unicast {
+    pub fn push(&mut self, stream: S) {
+        self.select.push(Unicast {
             stream,
-            list: this.list_mutex.clone().lock_owned(),
+            list: self.list_mutex.clone().lock_owned(),
             state: Default::default(),
-            callback: this.callback.clone(),
+            callback: self.callback.clone(),
         });
     }
 }
+
+impl<
+        In,
+        Out: Clone,
+        E,
+        S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
+        F: OnClose<E>,
+    > Extend<S> for Multicast<S, Out, F>
+{
+    fn extend<T: IntoIterator<Item = S>>(&mut self, iter: T) {
+        for stream in iter {
+            self.push(stream)
+        }
+    }
+}
+
+impl<S, Out, F> AutoPinnedExtend for Multicast<S, Out, F> {}
 
 pub trait MulticastBuffered<Out>: Sized {
     type S;
@@ -332,7 +336,7 @@ pub trait MulticastBuffered<Out>: Sized {
     fn multicast_buffered<F: OnClose<Self::E>>(
         self,
         callback: F,
-    ) -> Multicast<Self::S, Out, F, Self>;
+    ) -> Extending<Multicast<Self::S, Out, F>, Self>;
 }
 
 impl<
@@ -350,7 +354,7 @@ impl<
     fn multicast_buffered<F: OnClose<Self::E>>(
         self,
         callback: F,
-    ) -> Multicast<Self::S, Out, F, Self> {
-        Multicast::new(self, callback)
+    ) -> Extending<Multicast<Self::S, Out, F>, Self> {
+        self.extending(Multicast::new(callback))
     }
 }

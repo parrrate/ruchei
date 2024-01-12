@@ -24,6 +24,7 @@ use ruchei::{
     callback::{FutureFactory, OnClose},
     concurrent::ConcurrentExt,
     fanout_buffered::{Multicast, MulticastBuffered},
+    pinned_extend::Extending,
     poll_on_wake::PollOnWakeExt,
     timeout_unused::{KeepAlive, TimeoutUnused, WithTimeout},
     with_extra::WithExtra,
@@ -186,7 +187,7 @@ impl FutureFactory for ReadyFactory {
 type ActiveReceiver<S> = WithTimeout<Receiver<Active<S>>, Ready<()>, ReadyFactory>;
 
 type ActiveMulticast<S, K, T> =
-    Multicast<WithExtra<Active<S>, KeepAlive>, (K, T), Ignore, ActiveReceiver<S>>;
+    Extending<Multicast<WithExtra<Active<S>, KeepAlive>, (K, T), Ignore>, ActiveReceiver<S>>;
 
 #[pin_project]
 struct Finalize<S, K, T>(#[pin] SplitStream<ActiveMulticast<S, K, T>>, Option<K>);
