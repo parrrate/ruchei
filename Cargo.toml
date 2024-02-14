@@ -5,6 +5,7 @@ members = ["internal/ruchei-sample"]
 version = "0.0.44" # ad7038ef3b571dc133c108e14e6bb0f8cdcd812d and earlier have invalid versions
 edition = "2021"
 publish = false
+license = "MIT OR Apache-2.0"
 
 [package]
 name = "ruchei"
