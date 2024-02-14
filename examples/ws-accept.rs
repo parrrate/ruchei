@@ -1,5 +1,5 @@
 use async_std::{net::TcpListener, task};
-use ruchei::echo_buffered::EchoBuffered;
+use ruchei::echo::buffered::EchoBuffered;
 
 #[async_std::main]
 async fn main() {

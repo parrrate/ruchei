@@ -1,8 +1,6 @@
 pub mod callback;
 pub mod concurrent;
-pub mod echo_buffered;
-pub mod echo_bufferless;
-pub mod echo_interleaved;
+pub mod echo;
 pub mod fanout_buffered;
 pub mod fanout_bufferless;
 pub mod fanout_replay;

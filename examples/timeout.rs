@@ -3,7 +3,7 @@ use std::time::Duration;
 use async_std::{net::TcpListener, task};
 use futures_util::StreamExt;
 use ruchei::{
-    concurrent::ConcurrentExt, echo_buffered::EchoBuffered, fanout_replay::MulticastReplay,
+    concurrent::ConcurrentExt, echo::buffered::EchoBuffered, fanout_replay::MulticastReplay,
     poll_on_wake::PollOnWakeExt, timeout_unused::TimeoutUnused,
 };
 
