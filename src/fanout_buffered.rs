@@ -321,6 +321,19 @@ impl<
         E,
         S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
         F: OnClose<E>,
+    > From<F> for Multicast<S, Out, F>
+{
+    fn from(callback: F) -> Self {
+        Self::new(callback)
+    }
+}
+
+impl<
+        In,
+        Out: Clone,
+        E,
+        S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
+        F: OnClose<E>,
     > Extend<S> for Multicast<S, Out, F>
 {
     fn extend<T: IntoIterator<Item = S>>(&mut self, iter: T) {

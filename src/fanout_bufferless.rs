@@ -255,6 +255,14 @@ impl<In, Out, E, S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
     }
 }
 
+impl<In, Out, E, S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>, F: OnClose<E>>
+    From<F> for Multicast<S, Out, F>
+{
+    fn from(callback: F) -> Self {
+        Self::new(callback)
+    }
+}
+
 impl<
         In,
         Out: Clone,
