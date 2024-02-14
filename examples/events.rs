@@ -23,7 +23,7 @@ use pin_project::pin_project;
 use ruchei::{
     callback::{OnClose, Start},
     concurrent::ConcurrentExt,
-    fanout_buffered::{Multicast, MulticastBuffered},
+    fanout::buffered::{Multicast, MulticastBuffered},
     pinned_extend::Extending,
     poll_on_wake::PollOnWakeExt,
     timeout_unused::{KeepAlive, TimeoutUnused, WithTimeout},
