@@ -24,17 +24,14 @@ use std::{
 };
 
 use futures_util::{
-    future::FusedFuture,
-    stream::FusedStream,
+    future::{FusedFuture, Future},
+    sink::Sink,
+    stream::{FusedStream, Stream},
     task::{waker, ArcWake, AtomicWaker},
-    Future, Sink, Stream,
 };
 use pin_project::pin_project;
 
 /// Adapter to reduce polling of [`Future`]s, [`Stream`]s and [`Sink`]s.
-///
-/// [`Stream`]: ::futures_util::Stream
-/// [`Sink`]: ::futures_util::Sink
 ///
 /// See [module-level docs](`crate::poll_on_wake`) for examples.
 #[derive(Debug, Default)]
@@ -177,9 +174,6 @@ impl<S> PollOnWake<S> {
 }
 
 /// Extension trait combinator to reduce polling of [`Future`]s, [`Stream`]s and [`Sink`]s.
-///
-/// [`Stream`]: ::futures_util::Stream
-/// [`Sink`]: ::futures_util::Sink
 ///
 /// See [module-level docs](`crate::poll_on_wake`) for examples.
 pub trait PollOnWakeExt: Sized {
