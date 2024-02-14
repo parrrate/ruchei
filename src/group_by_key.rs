@@ -14,6 +14,7 @@ use futures_util::{
 };
 use pin_project::pin_project;
 
+#[derive(Debug)]
 pub struct GroupGuard<K>(OwnedMutexGuard<K>);
 
 impl<K> AsRef<K> for GroupGuard<K> {
@@ -34,6 +35,7 @@ pub trait Group {
     fn pair(&mut self) -> (Self::Sender, Self::Receiver);
 }
 
+#[derive(Debug)]
 #[pin_project]
 pub struct Grouped<S, Sender, K, G> {
     #[pin]

@@ -15,6 +15,7 @@ use futures_util::{
 };
 use pin_project::pin_project;
 
+#[derive(Debug, Default)]
 #[pin_project]
 pub struct PollOnWake<S> {
     #[pin]
@@ -26,6 +27,7 @@ pub struct PollOnWake<S> {
     close: Arc<SetFlag>,
 }
 
+#[derive(Debug)]
 struct SetFlag {
     flag: AtomicBool,
     waker: AtomicWaker,

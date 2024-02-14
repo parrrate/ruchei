@@ -6,6 +6,7 @@ use std::{
 use futures_util::{future::FusedFuture, stream::FusedStream, Future, Sink, Stream};
 use pin_project::pin_project;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[pin_project]
 pub struct WithExtra<T, Ex> {
     #[pin]

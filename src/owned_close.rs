@@ -7,6 +7,7 @@ use std::{
 use futures_util::{Future, Sink};
 use pin_project::pin_project;
 
+#[derive(Debug)]
 #[pin_project]
 pub(crate) struct OwnedClose<S, Out> {
     #[pin]

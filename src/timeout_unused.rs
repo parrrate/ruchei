@@ -14,8 +14,10 @@ use pin_project::pin_project;
 
 use crate::{callback::Start, with_extra::WithExtra};
 
+#[derive(Debug)]
 struct Alive;
 
+#[derive(Debug, Clone)]
 pub struct KeepAlive(Arc<OwnedMutexGuard<Alive>>);
 
 #[pin_project]

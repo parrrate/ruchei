@@ -8,6 +8,7 @@ use pin_project::pin_project;
 
 use crate::callback::OnItem;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[pin_project]
 pub struct ReadCallback<S, F> {
     #[pin]
