@@ -1,4 +1,5 @@
 use std::{
+    convert::Infallible,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -34,7 +35,7 @@ impl<In, E, S: FusedStream<Item = Result<In, E>>, F: OnItem<In>> ReadCallback<S,
 }
 
 impl<In, E, S: FusedStream<Item = Result<In, E>>, F: OnItem<In>> Stream for ReadCallback<S, F> {
-    type Item = Result<In, E>;
+    type Item = Result<Infallible, E>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match self.poll_inner(cx) {
