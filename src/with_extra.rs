@@ -28,9 +28,27 @@ impl<T, Ex> WithExtra<T, Ex> {
     }
 }
 
+impl<T, Ex> From<(T, Ex)> for WithExtra<T, Ex> {
+    fn from((inner, extra): (T, Ex)) -> Self {
+        Self::new(inner, extra)
+    }
+}
+
+impl<T, Ex> From<WithExtra<T, Ex>> for (T, Ex) {
+    fn from(value: WithExtra<T, Ex>) -> Self {
+        value.into_inner()
+    }
+}
+
 impl<T, Ex: Default> From<T> for WithExtra<T, Ex> {
     fn from(inner: T) -> Self {
         Self::new(inner, Ex::default())
+    }
+}
+
+impl<T, Ex> AsRef<T> for WithExtra<T, Ex> {
+    fn as_ref(&self) -> &T {
+        &self.inner
     }
 }
 
