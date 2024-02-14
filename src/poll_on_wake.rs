@@ -33,6 +33,9 @@ use pin_project::pin_project;
 
 /// Adapter to reduce polling of [`Future`]s, [`Stream`]s and [`Sink`]s.
 ///
+/// [`Stream`]: ::futures_util::Stream
+/// [`Sink`]: ::futures_util::Sink
+///
 /// See [module-level docs](`crate::poll_on_wake`) for examples.
 #[derive(Debug, Default)]
 #[pin_project]
@@ -174,6 +177,9 @@ impl<S> PollOnWake<S> {
 }
 
 /// Extension trait combinator to reduce polling of [`Future`]s, [`Stream`]s and [`Sink`]s.
+///
+/// [`Stream`]: ::futures_util::Stream
+/// [`Sink`]: ::futures_util::Sink
 ///
 /// See [module-level docs](`crate::poll_on_wake`) for examples.
 pub trait PollOnWakeExt: Sized {
