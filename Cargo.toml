@@ -2,7 +2,7 @@
 members = ["internal/ruchei-sample"]
 
 [workspace.package]
-version = "0.0.50" # ad7038ef3b571dc133c108e14e6bb0f8cdcd812d and earlier have invalid versions
+version = "0.0.51" # ad7038ef3b571dc133c108e14e6bb0f8cdcd812d and earlier have invalid versions
 edition = "2021"
 publish = true
 license = "MIT OR Apache-2.0"
