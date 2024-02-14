@@ -28,6 +28,12 @@ impl<T, Ex> WithExtra<T, Ex> {
     }
 }
 
+impl<T, Ex: Default> From<T> for WithExtra<T, Ex> {
+    fn from(inner: T) -> Self {
+        Self::new(inner, Ex::default())
+    }
+}
+
 impl<T, Ex> AsMut<T> for WithExtra<T, Ex> {
     fn as_mut(&mut self) -> &mut T {
         &mut self.inner
