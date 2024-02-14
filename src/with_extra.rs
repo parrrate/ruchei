@@ -1,6 +1,7 @@
 //! Store extra data alongside a [`Future`]/[`Stream`]/[`Sink`].
 //!
 //! Commonly used for storing types with [`Drop`] logic:
+//!
 //! * [`ruchei::timeout_unused::KeepAlive`]
 
 use std::{

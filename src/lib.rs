@@ -1,3 +1,5 @@
+//! Utilities for working with many streams
+
 #![deny(unsafe_code)]
 
 extern crate self as ruchei;
