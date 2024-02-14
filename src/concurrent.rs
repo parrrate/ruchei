@@ -7,8 +7,9 @@ use futures_util::{
     stream::{FusedStream, FuturesUnordered},
     Future, Stream,
 };
+use pin_project::pin_project;
 
-#[pin_project::pin_project]
+#[pin_project]
 pub struct Concurrent<R, Fut> {
     #[pin]
     stream: R,
