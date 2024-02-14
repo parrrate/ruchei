@@ -21,7 +21,7 @@ use futures_util::{
 };
 use pin_project::pin_project;
 use ruchei::{
-    callback::{FutureFactory, OnClose},
+    callback::{OnClose, Start},
     concurrent::ConcurrentExt,
     fanout_buffered::{Multicast, MulticastBuffered},
     pinned_extend::Extending,
@@ -174,9 +174,9 @@ impl<E> OnClose<E> for Ignore {
     fn on_close(&self, _: Option<E>) {}
 }
 
-struct ReadyFactory;
+struct ReadyStart;
 
-impl FutureFactory for ReadyFactory {
+impl Start for ReadyStart {
     type Fut = Ready<()>;
 
     fn make(&mut self) -> Self::Fut {
@@ -184,7 +184,7 @@ impl FutureFactory for ReadyFactory {
     }
 }
 
-type ActiveReceiver<S> = WithTimeout<Receiver<Active<S>>, Ready<()>, ReadyFactory>;
+type ActiveReceiver<S> = WithTimeout<Receiver<Active<S>>, Ready<()>, ReadyStart>;
 
 type ActiveMulticast<S, K, T> =
     Extending<Multicast<WithExtra<Active<S>, KeepAlive>, (K, T), Ignore>, ActiveReceiver<S>>;
@@ -272,7 +272,7 @@ impl<
                     Pin::new(this.active.entry(k).or_insert_with_key(|k| {
                         let (sender, receiver) = unbounded();
                         let (sink, stream) = receiver
-                            .timeout_unused(ReadyFactory)
+                            .timeout_unused(ReadyStart)
                             .multicast_buffered(Ignore)
                             .split();
                         this.finalizing.push(Finalize(stream, Some(k.clone())));
