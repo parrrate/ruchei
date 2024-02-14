@@ -1,8 +1,8 @@
 pub mod callback;
 pub mod concurrent;
 pub mod echo;
-pub mod fanout;
 pub mod group_by_key;
+pub mod multicast;
 mod owned_close;
 pub mod pinned_extend;
 pub mod poll_on_wake;

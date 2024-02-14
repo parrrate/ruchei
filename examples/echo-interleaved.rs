@@ -1,8 +1,8 @@
 use async_std::net::TcpListener;
 use futures_util::StreamExt;
 use ruchei::{
-    concurrent::ConcurrentExt, echo::interleaved::EchoInterleaved, fanout::replay::MulticastReplay,
-    poll_on_wake::PollOnWakeExt,
+    concurrent::ConcurrentExt, echo::interleaved::EchoInterleaved,
+    multicast::replay::MulticastReplay, poll_on_wake::PollOnWakeExt,
 };
 
 #[async_std::main]
