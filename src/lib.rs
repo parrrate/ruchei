@@ -1,3 +1,5 @@
+#![deny(unsafe_code)]
+
 pub mod callback;
 pub mod concurrent;
 pub mod echo;
