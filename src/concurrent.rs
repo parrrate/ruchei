@@ -30,7 +30,7 @@ use futures_util::{
 };
 use pin_project::pin_project;
 
-/// Yields outputs of [`Future`]s the inner [`Stream`] yields.
+/// Yields outputs of [`Future`]s the inner `Stream` yields.
 ///
 /// Order is not guaranteed.
 #[derive(Debug)]
