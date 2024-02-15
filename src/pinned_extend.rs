@@ -33,6 +33,18 @@ impl<S, R> Extending<S, R> {
     }
 }
 
+impl<S, R> AsRef<S> for Extending<S, R> {
+    fn as_ref(&self) -> &S {
+        &self.inner
+    }
+}
+
+impl<S, R> AsMut<S> for Extending<S, R> {
+    fn as_mut(&mut self) -> &mut S {
+        &mut self.inner
+    }
+}
+
 struct PollIter<'a, 'cx, R> {
     cx: &'a mut Context<'cx>,
     incoming: Pin<&'a mut R>,
