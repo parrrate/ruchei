@@ -40,7 +40,7 @@ use pin_project::pin_project;
 
 use crate::{
     callback::OnClose,
-    pinned_extend::{AutoPinnedExtend, Extending, ExteningExt},
+    pinned_extend::{AutoPinnedExtend, Extending, ExtendingExt},
 };
 
 struct Shared<Out> {

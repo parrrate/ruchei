@@ -41,7 +41,7 @@ use pin_project::pin_project;
 use crate::{
     callback::OnClose,
     owned_close::OwnedClose,
-    pinned_extend::{AutoPinnedExtend, Extending, ExteningExt},
+    pinned_extend::{AutoPinnedExtend, Extending, ExtendingExt},
 };
 
 #[derive(Clone, Debug)]
