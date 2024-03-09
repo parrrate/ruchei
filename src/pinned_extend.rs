@@ -31,6 +31,30 @@ impl<S, R> Extending<S, R> {
     pub fn new(incoming: R, inner: S) -> Self {
         Self { incoming, inner }
     }
+
+    pub fn as_pin_mut(self: Pin<&mut Self>) -> Pin<&mut S> {
+        self.project().inner
+    }
+
+    pub fn into_inner(self) -> S {
+        self.inner
+    }
+
+    pub fn incoming_pin_mut(self: Pin<&mut Self>) -> Pin<&mut R> {
+        self.project().incoming
+    }
+
+    pub fn incoming(&self) -> &R {
+        &self.incoming
+    }
+
+    pub fn incoming_mut(&mut self) -> &mut R {
+        &mut self.incoming
+    }
+
+    pub fn into_incoming(self) -> R {
+        self.incoming
+    }
 }
 
 impl<S, R> AsRef<S> for Extending<S, R> {
@@ -114,5 +138,14 @@ pub trait ExteningExt: Sized {
 impl<R> ExteningExt for R {
     fn extending<S>(self, inner: S) -> Extending<S, Self> {
         Extending::new(self, inner)
+    }
+}
+
+impl<S: Default, R> From<R> for Extending<S, R> {
+    fn from(incoming: R) -> Self {
+        Self {
+            incoming,
+            inner: Default::default(),
+        }
     }
 }
