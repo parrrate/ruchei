@@ -26,6 +26,7 @@ struct Alive;
 pub struct KeepAlive(Arc<OwnedMutexGuard<Alive>>);
 
 /// `Stream` closing on timeout.
+#[derive(Debug)]
 #[pin_project]
 pub struct WithTimeout<S, Fut, F> {
     #[pin]
@@ -38,6 +39,35 @@ pub struct WithTimeout<S, Fut, F> {
     locked: Weak<OwnedMutexGuard<Alive>>,
     mutex: Arc<Mutex<Alive>>,
     done: bool,
+}
+
+impl<S, Fut, F> WithTimeout<S, Fut, F> {
+    /// Pinned mutable reference to the inner stream.
+    pub fn as_pin_mut(self: Pin<&mut Self>) -> Pin<&mut S> {
+        self.project().stream
+    }
+
+    /// Shared reference to the timer future factory. **Does not start the timer.**
+    pub fn start(&self) -> &F {
+        &self.start
+    }
+
+    /// Mutable reference to the timer future factory. **Does not start the timer.**
+    pub fn start_mut(&mut self) -> &mut F {
+        &mut self.start
+    }
+}
+
+impl<S, Fut, F> AsRef<S> for WithTimeout<S, Fut, F> {
+    fn as_ref(&self) -> &S {
+        &self.stream
+    }
+}
+
+impl<S, Fut, F> AsMut<S> for WithTimeout<S, Fut, F> {
+    fn as_mut(&mut self) -> &mut S {
+        &mut self.stream
+    }
 }
 
 impl<S: Stream, Fut: Future<Output = ()>, F: Start<Fut = Fut>> Stream for WithTimeout<S, Fut, F> {
@@ -105,5 +135,21 @@ impl<S> TimeoutUnused for S {
             mutex,
             done: false,
         }
+    }
+}
+
+impl<S, Fut: Future<Output = ()>, F: Default + Start<Fut = Fut>> From<S>
+    for WithTimeout<S, Fut, F>
+{
+    fn from(stream: S) -> Self {
+        stream.timeout_unused(Default::default())
+    }
+}
+
+impl<S: Default, Fut: Future<Output = ()>, F: Default + Start<Fut = Fut>> Default
+    for WithTimeout<S, Fut, F>
+{
+    fn default() -> Self {
+        S::default().into()
     }
 }

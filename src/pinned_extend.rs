@@ -6,9 +6,12 @@ use std::{
 use futures_util::{stream::FusedStream, Sink, Stream};
 use pin_project::pin_project;
 
+/// Auto-derive [`PinnedExtend`] from [`Extend`].
 pub trait AutoPinnedExtend {}
 
+/// [`Extend`] equivalent for [`Pin<&mut I>`].
 pub trait PinnedExtend<A> {
+    /// [`Extend::extend`] equivalent for [`Pin<&mut I>`].
     fn extend_pinned<T: IntoIterator<Item = A>>(self: Pin<&mut Self>, iter: T);
 }
 
@@ -18,6 +21,7 @@ impl<A, S: AutoPinnedExtend + Extend<A> + Unpin> PinnedExtend<A> for S {
     }
 }
 
+/// Type extending a [`PinnedExtend`] value from a fused stream.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[pin_project]
 pub struct Extending<S, R> {
@@ -32,10 +36,12 @@ impl<S, R> Extending<S, R> {
         Self { incoming, inner }
     }
 
+    /// Pinned mutable reference to the inner stream/sink.
     pub fn as_pin_mut(self: Pin<&mut Self>) -> Pin<&mut S> {
         self.project().inner
     }
 
+    /// Convert into the inner stream/sink.
     pub fn into_inner(self) -> S {
         self.inner
     }
