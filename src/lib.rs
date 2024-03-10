@@ -5,6 +5,7 @@
 extern crate self as ruchei;
 
 pub mod callback;
+pub mod close_all;
 pub mod concurrent;
 pub mod echo;
 pub mod group_by_key;
