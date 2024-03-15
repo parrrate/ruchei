@@ -2,7 +2,7 @@
 members = ["internal/ruchei-sample"]
 
 [workspace.package]
-version = "0.0.72" # ad7038ef3b571dc133c108e14e6bb0f8cdcd812d and earlier have invalid versions
+version = "0.0.73" # ad7038ef3b571dc133c108e14e6bb0f8cdcd812d and earlier have invalid versions
 edition = "2021"
 publish = true
 license = "MIT OR Apache-2.0"
@@ -29,6 +29,7 @@ futures-util = { version = "0.3.30", features = ["sink"] }
 pin-project = "1"
 
 [dev-dependencies]
+async-io = "2.3.2"
 async-std = { version = "1.12.0", features = ["attributes"] }
 async-tungstenite = { version = "0.24.0", features = ["async-std-runtime"] }
 futures-channel = "0.3.30"
