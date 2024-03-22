@@ -1,19 +1,14 @@
 //! Store extra data alongside a [`Future`]/`Stream`/`Sink`.
 //!
-//! Commonly used for storing types with [`Drop`] logic:
-//!
-//! * [`ruchei::timeout_unused::KeepAlive`]
+//! Commonly used for storing types with [`Drop`] logic.
 
 use std::{
     pin::Pin,
     task::{Context, Poll},
 };
 
-use futures_util::{
-    future::{FusedFuture, Future},
-    sink::Sink,
-    stream::{FusedStream, Stream},
-};
+use futures_core::{FusedFuture, FusedStream, Future, Stream};
+use futures_sink::Sink;
 use pin_project::pin_project;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]

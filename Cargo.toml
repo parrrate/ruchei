@@ -1,13 +1,16 @@
 [workspace]
-members = ["internal/ruchei-sample"]
+members = ["internal/ruchei-sample", "ruchei-extra"]
 
 [workspace.package]
-version = "0.0.73" # ad7038ef3b571dc133c108e14e6bb0f8cdcd812d and earlier have invalid versions
+version = "0.0.74" # ad7038ef3b571dc133c108e14e6bb0f8cdcd812d and earlier have invalid versions
 edition = "2021"
 publish = true
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/parrrate/ruchei"
-authors = ["Alisa Feistel <alisafeistel@gmail.com>", "Timofey Prikhodko <tim@ongoteam.yaconnect.com>"]
+authors = [
+    "Alisa Feistel <alisafeistel@gmail.com>",
+    "Timofey Prikhodko <tim@ongoteam.yaconnect.com>",
+]
 rust-version = "1.72"
 
 [package]
@@ -25,9 +28,17 @@ repository.workspace = true
 authors.workspace = true
 rust-version.workspace = true
 
-[dependencies]
+[workspace.dependencies]
+futures-core = "0.3.30"
+futures-sink = "0.3.30"
 futures-util = { version = "0.3.30", features = ["sink"] }
 pin-project = "1"
+
+[dependencies]
+ruchei-extra.path = "ruchei-extra"
+
+futures-util.workspace = true
+pin-project.workspace = true
 
 [dev-dependencies]
 async-io = "2.3.2"

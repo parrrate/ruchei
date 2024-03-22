@@ -27,8 +27,8 @@ use ruchei::{
     pinned_extend::Extending,
     poll_on_wake::PollOnWakeExt,
     timeout_unused::{KeepAlive, TimeoutUnused, WithTimeout},
-    with_extra::WithExtra,
 };
+use ruchei_extra::WithExtra;
 
 enum Command<K, T> {
     Publish(K, T),
