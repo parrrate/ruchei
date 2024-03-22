@@ -8,6 +8,7 @@ publish = true
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/parrrate/ruchei"
 authors = ["Alisa Feistel <alisafeistel@gmail.com>", "Timofey Prikhodko <tim@ongoteam.yaconnect.com>"]
+rust-version = "1.72"
 
 [package]
 name = "ruchei"
@@ -22,7 +23,7 @@ publish.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-rust-version = "1.72"
+rust-version.workspace = true
 
 [dependencies]
 futures-util = { version = "0.3.30", features = ["sink"] }
