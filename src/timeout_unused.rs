@@ -1,4 +1,4 @@
-//! Close `Stream` on timer running out.
+//! Close [`Stream`] on timer running out.
 //!
 //! Starts the timer when all [`KeepAlive`]s are dropped, which includes that upon startup.
 
@@ -26,7 +26,7 @@ struct Alive;
 #[derive(Debug, Clone)]
 pub struct KeepAlive(Arc<OwnedMutexGuard<Alive>>);
 
-/// `Stream` closing on timeout.
+/// [`Stream`] closing on timeout.
 #[derive(Debug)]
 #[pin_project]
 pub struct WithTimeout<S, Fut, F> {
@@ -112,7 +112,7 @@ impl<S: FusedStream, Fut: Future<Output = ()>, F: Start<Fut = Fut>> FusedStream
     }
 }
 
-/// Extension trait combinator for closing `Stream`s on timeout.
+/// Extension trait combinator for closing [`Stream`]s on timeout.
 pub trait TimeoutUnused: Sized {
     fn timeout_unused<Fut: Future<Output = ()>, F: Start<Fut = Fut>>(
         self,
