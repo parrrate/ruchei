@@ -2,7 +2,7 @@
 //!
 //! Commonly used for storing types with [`Drop`] logic.
 
-use std::{
+use core::{
     pin::Pin,
     task::{Context, Poll},
 };
