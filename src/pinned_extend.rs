@@ -138,12 +138,12 @@ impl<Item, S: Sink<Item>, R> Sink<Item> for Extending<S, R> {
     }
 }
 
-pub trait ExtendingExt: Sized {
-    fn extending<S>(self, inner: S) -> Extending<S, Self>;
+pub trait ExtendingExt<A>: Sized {
+    fn extending<S: PinnedExtend<A>>(self, inner: S) -> Extending<S, Self>;
 }
 
-impl<R> ExtendingExt for R {
-    fn extending<S>(self, inner: S) -> Extending<S, Self> {
+impl<A, R: FusedStream<Item = A>> ExtendingExt<A> for R {
+    fn extending<S: PinnedExtend<A>>(self, inner: S) -> Extending<S, Self> {
         Extending::new(self, inner)
     }
 }

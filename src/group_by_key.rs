@@ -174,10 +174,10 @@ pub trait GroupByKey: Sized {
     ) -> Grouped<Self, G::Sender, Self::Key, G>;
 }
 
-impl<Item, Key, S: Stream<Item = (Key, Item)>> GroupByKey for S {
+impl<Item, K: Eq + Hash + Clone, S: Stream<Item = (K, Item)>> GroupByKey for S {
     type Item = Item;
 
-    type Key = Key;
+    type Key = K;
 
     fn group_by_key<G: Group<Item = Self::Item>>(
         self,

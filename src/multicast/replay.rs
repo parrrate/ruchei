@@ -507,7 +507,7 @@ impl<
         Out: Clone,
         E,
         S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
-        R: Stream<Item = S>,
+        R: FusedStream<Item = S>,
     > MulticastReplay<Out> for R
 {
     type S = S;

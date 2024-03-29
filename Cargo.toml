@@ -2,7 +2,7 @@
 members = ["internal/ruchei-sample", "ruchei-extra", "ruchei-route"]
 
 [workspace.package]
-version = "0.0.79"
+version = "0.0.80"
 edition = "2021"
 publish = true
 license = "MIT OR Apache-2.0"

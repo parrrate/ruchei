@@ -183,11 +183,11 @@ pub fn isolation() -> (CtxInner, CtxOuter) {
     (CtxInner(mutex.clone()), CtxOuter(mutex))
 }
 
-pub trait IsolateInner: Sized {
+pub trait IsolateInner<Out>: Sized {
     fn isolate_inner(self, inner: CtxInner) -> RwInner<Self>;
 }
 
-impl<S> IsolateInner for S {
+impl<Out, S: Stream + Sink<Out>> IsolateInner<Out> for S {
     fn isolate_inner(self, inner: CtxInner) -> RwInner<Self> {
         RwInner {
             stream: self,
@@ -198,11 +198,11 @@ impl<S> IsolateInner for S {
     }
 }
 
-pub trait IsolateOuter: Sized {
+pub trait IsolateOuter<Out>: Sized {
     fn isolate_outer(self, outer: CtxOuter) -> RwOuter<Self>;
 }
 
-impl<S> IsolateOuter for S {
+impl<Out, S: Stream + Sink<Out>> IsolateOuter<Out> for S {
     fn isolate_outer(self, outer: CtxOuter) -> RwOuter<Self> {
         RwOuter {
             stream: self,

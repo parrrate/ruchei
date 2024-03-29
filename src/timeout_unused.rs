@@ -112,23 +112,12 @@ impl<S: FusedStream, Fut: Future<Output = ()>, F: Start<Fut = Fut>> FusedStream
     }
 }
 
-/// Extension trait combinator for closing [`Stream`]s on timeout.
-pub trait TimeoutUnused: Sized {
-    fn timeout_unused<Fut: Future<Output = ()>, F: Start<Fut = Fut>>(
-        self,
-        start: F,
-    ) -> WithTimeout<Self, Fut, F>;
-}
-
-impl<S> TimeoutUnused for S {
-    fn timeout_unused<Fut: Future<Output = ()>, F: Start<Fut = Fut>>(
-        self,
-        start: F,
-    ) -> WithTimeout<Self, Fut, F> {
+impl<S, Fut, F> WithTimeout<S, Fut, F> {
+    fn new(stream: S, start: F) -> Self {
         let mutex = Arc::new(Mutex::new(Alive));
         let locking = mutex.clone().lock_owned();
         WithTimeout {
-            stream: self,
+            stream,
             timeout: None,
             start,
             locking,
@@ -139,11 +128,28 @@ impl<S> TimeoutUnused for S {
     }
 }
 
+/// Extension trait combinator for closing [`Stream`]s on timeout.
+pub trait TimeoutUnused: Sized {
+    fn timeout_unused<Fut: Future<Output = ()>, F: Start<Fut = Fut>>(
+        self,
+        start: F,
+    ) -> WithTimeout<Self, Fut, F>;
+}
+
+impl<S: Stream> TimeoutUnused for S {
+    fn timeout_unused<Fut: Future<Output = ()>, F: Start<Fut = Fut>>(
+        self,
+        start: F,
+    ) -> WithTimeout<Self, Fut, F> {
+        WithTimeout::new(self, start)
+    }
+}
+
 impl<S, Fut: Future<Output = ()>, F: Default + Start<Fut = Fut>> From<S>
     for WithTimeout<S, Fut, F>
 {
     fn from(stream: S) -> Self {
-        stream.timeout_unused(Default::default())
+        Self::new(stream, Default::default())
     }
 }
 
