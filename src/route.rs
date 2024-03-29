@@ -20,6 +20,11 @@ use crate::{
     pinned_extend::{AutoPinnedExtend, Extending, ExtendingRoute},
 };
 
+/// Helper trait for something that can be used as a key in [`Router`].
+pub trait Key: 'static + Send + Sync + Clone + Hash + PartialEq + Eq {}
+
+impl<K: 'static + Send + Sync + Clone + Hash + PartialEq + Eq> Key for K {}
+
 struct Ready<K>(Arc<std::sync::Mutex<HashSet<K>>>);
 
 impl<K> Default for Ready<K> {
@@ -53,11 +58,6 @@ impl<K> ReadyWeak<K> {
         }
     }
 }
-
-/// Helper trait for something that can be used as a key in [`Router`].
-pub trait Key: 'static + Send + Sync + Clone + Hash + PartialEq + Eq {}
-
-impl<K: 'static + Send + Sync + Clone + Hash + PartialEq + Eq> Key for K {}
 
 impl<K: Key> Ready<K> {
     fn remove(&self, key: &K) {
