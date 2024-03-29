@@ -36,7 +36,7 @@ pin-project = "1"
 
 [dependencies]
 ruchei-extra = { path = "ruchei-extra", version = "0.1.0" }
-ruchei-route = { path = "ruchei-route", version = "0.1.0" }
+ruchei-route = { path = "ruchei-route", version = "0.1.4" }
 
 futures-util.workspace = true
 pin-project.workspace = true
