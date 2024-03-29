@@ -23,6 +23,10 @@ pub trait RouteSink<Route, Msg> {
     ) -> Poll<Result<(), Self::Error>>;
 
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>>;
+
+    fn is_routing(&self) -> bool {
+        true
+    }
 }
 
 impl<Route, Msg, E, T: Sink<(Route, Msg), Error = E>> RouteSink<Route, Msg> for T {
@@ -50,6 +54,10 @@ impl<Route, Msg, E, T: Sink<(Route, Msg), Error = E>> RouteSink<Route, Msg> for 
 
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Sink::poll_close(self, cx)
+    }
+
+    fn is_routing(&self) -> bool {
+        false
     }
 }
 
