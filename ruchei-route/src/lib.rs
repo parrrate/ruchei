@@ -84,3 +84,14 @@ impl<'a, Route: Clone, Msg, E, T: ?Sized + RouteSink<Route, Msg, Error = E>> Sin
         self.get_mut().route_sink.as_mut().poll_close(cx)
     }
 }
+
+pub trait RouteExt<Route> {
+    fn route(self: Pin<&mut Self>, route: Route) -> WithRoute<'_, Self, Route> {
+        WithRoute {
+            route_sink: self,
+            route,
+        }
+    }
+}
+
+impl<T: ?Sized, Route> RouteExt<Route> for T {}
