@@ -86,12 +86,29 @@ impl<'a, Route: Clone, Msg, E, T: ?Sized + RouteSink<Route, Msg, Error = E>> Sin
 }
 
 pub trait RouteExt<Route> {
-    fn route(self: Pin<&mut Self>, route: Route) -> WithRoute<'_, Self, Route> {
+    type T: ?Sized;
+
+    fn route(&mut self, route: Route) -> WithRoute<'_, Self::T, Route>;
+}
+
+impl<T: ?Sized, Route> RouteExt<Route> for Pin<&'_ mut T> {
+    type T = T;
+
+    fn route(&mut self, route: Route) -> WithRoute<'_, Self::T, Route> {
         WithRoute {
-            route_sink: self,
+            route_sink: self.as_mut(),
             route,
         }
     }
 }
 
-impl<T: ?Sized, Route> RouteExt<Route> for T {}
+impl<T: ?Sized + Unpin, Route> RouteExt<Route> for &'_ mut T {
+    type T = T;
+
+    fn route(&mut self, route: Route) -> WithRoute<'_, Self::T, Route> {
+        WithRoute {
+            route_sink: Pin::new(self),
+            route,
+        }
+    }
+}
