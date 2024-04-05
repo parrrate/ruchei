@@ -1,3 +1,28 @@
+//! [`Stream`]`+`[`Sink`] from a [`Stream`] of [`Stream`]`+`[`Sink`]s switching to a new one as soon
+//! as it becomes available.
+//!
+//! ```rust
+//! # use async_std::net::TcpListener;
+//! # use futures_util::StreamExt;
+//! # use ruchei::concurrent::ConcurrentExt;
+//! # use ruchei::poll_on_wake::PollOnWakeExt;
+//! use ruchei::switching::SwitchingExt;
+//!
+//! # async fn __() {
+//! TcpListener::bind("127.0.0.1:8080")
+//!     .await
+//!     .unwrap()
+//!     .incoming()
+//!     .poll_on_wake()
+//!     .filter_map(|r| async { r.ok() })
+//!     .map(async_tungstenite::accept_async)
+//!     .fuse()
+//!     .concurrent()
+//!     .filter_map(|r| async { r.ok() })
+//!     .switching();
+//! # }
+//! ```
+
 use std::{
     marker::PhantomData,
     pin::Pin,
@@ -7,6 +32,10 @@ use std::{
 use futures_util::{ready, stream::FusedStream, task::AtomicWaker, Sink, Stream};
 use pin_project::pin_project;
 
+/// When a new [`Stream`]`+`[`Sink`] becomes available, closes the existing one, then switches to a
+/// next one.
+///
+/// Closes when the incoming stream is done.
 #[pin_project]
 pub struct Switching<R, S, Out> {
     #[pin]
@@ -149,9 +178,14 @@ impl<
     }
 }
 
+/// Extension trait for constructing [`Switching`].
 pub trait SwitchingExt<Out>: Sized {
+    /// [`Stream`]`+`[`Sink`] that this [`Stream`] yields.
     type S;
 
+    /// Convert a [`Stream`] of [`Stream`]`+`[`Sink`]s into a single [`Stream`]`+`[`Sink`].
+    ///
+    /// See [`Switching`] for details.
     fn switching(self) -> Switching<Self, Self::S, Out>;
 }
 
