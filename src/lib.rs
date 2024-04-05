@@ -19,5 +19,6 @@ pub mod poll_on_wake;
 pub mod read_callback;
 pub mod route;
 pub mod rw_isolation;
+pub mod switching;
 pub mod timeout_unused;
 mod wait_all;

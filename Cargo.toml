@@ -2,7 +2,7 @@
 members = ["internal/ruchei-sample", "ruchei-extra", "ruchei-route"]
 
 [workspace.package]
-version = "0.0.80"
+version = "0.0.81"
 edition = "2021"
 publish = true
 license = "MIT OR Apache-2.0"
@@ -35,7 +35,7 @@ futures-util = { version = "0.3.30", features = ["sink"] }
 pin-project = "1"
 
 [dependencies]
-ruchei-extra = { path = "ruchei-extra", version = "0.1.0" }
+ruchei-extra = { path = "ruchei-extra", version = "0.1.1" }
 ruchei-route = { path = "ruchei-route", version = "0.1.5" }
 
 futures-util.workspace = true
