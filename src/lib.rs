@@ -4,9 +4,9 @@
 
 extern crate self as ruchei;
 
+pub use ruchei_callback as callback;
 pub use ruchei_extra as with_extra;
 
-pub mod callback;
 pub mod close_all;
 pub mod compress;
 pub mod concurrent;

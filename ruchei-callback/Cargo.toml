@@ -1,0 +1,15 @@
+[package]
+name = "ruchei-callback"
+description = "Callback traits for ruchei"
+documentation = "https://docs.rs/ruchei-callback"
+keywords = ["async"]
+categories = ["asynchronous"]
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[dependencies]
