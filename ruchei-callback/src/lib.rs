@@ -2,8 +2,8 @@
 
 //! Callbacks used in [`ruchei`] stream adapters.
 //!
-//! Put in a separate crate to improve compatibility across [`ruchei`] versions, since the bigger
-//! crate is still at `0.0.X`, at the time of writing, and has no intent of changing that yet.
+//! Placed in a separate crate to improve compatibility across [`ruchei`] versions, since the bigger
+//! crate is still at `0.0.X`, at the time of writing, and there are no plans of changing that yet.
 //!
 //! [`ruchei`]: https://docs.rs/ruchei/0.0.81/ruchei/index.html
 
