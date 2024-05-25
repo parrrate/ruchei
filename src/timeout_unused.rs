@@ -24,7 +24,9 @@ struct Alive;
 
 /// Handle indicating the value from [`WithTimeout`] is used.
 #[derive(Debug, Clone)]
-pub struct KeepAlive(Arc<OwnedMutexGuard<Alive>>);
+pub struct KeepAlive {
+    _locked: Arc<OwnedMutexGuard<Alive>>,
+}
 
 /// [`Stream`] closing on timeout.
 #[derive(Debug)]
@@ -84,7 +86,7 @@ impl<S: Stream, Fut: Future<Output = ()>, F: Start<Fut = Fut>> Stream for WithTi
                     Arc::new(this.mutex.try_lock_owned().unwrap())
                 });
                 *this.locked = Arc::downgrade(&locked);
-                Poll::Ready(Some(WithExtra::new(item, KeepAlive(locked))))
+                Poll::Ready(Some(WithExtra::new(item, KeepAlive { _locked: locked })))
             }
             Poll::Ready(None) => Poll::Ready(None),
             Poll::Pending => loop {

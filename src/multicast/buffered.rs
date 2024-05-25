@@ -45,7 +45,9 @@ use crate::{
 };
 
 #[derive(Clone, Debug)]
-struct Done(Arc<OwnedMutexGuard<()>>);
+struct Done {
+    _guard: Arc<OwnedMutexGuard<()>>,
+}
 
 #[derive(Debug)]
 struct Node<Out>(Out, Done, List<Out>);
@@ -272,7 +274,9 @@ impl<
         let list_guard = list_mutex.clone().try_lock_owned().unwrap();
         **this.list_guard = Some(Node(
             item,
-            Done(Arc::new(done_mutex.clone().try_lock_owned().unwrap())),
+            Done {
+                _guard: Arc::new(done_mutex.clone().try_lock_owned().unwrap()),
+            },
             list,
         ));
         *this.list_guard = list_guard;
