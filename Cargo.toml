@@ -7,7 +7,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.0.84"
+version = "0.0.85"
 edition = "2021"
 publish = true
 license = "MIT OR Apache-2.0"
@@ -34,17 +34,23 @@ authors.workspace = true
 rust-version.workspace = true
 
 [workspace.dependencies]
-futures-core = "0.3.30"
-futures-sink = "0.3.30"
-futures-util = { version = "0.3.30", features = ["sink"] }
-pin-project = "1"
-
-[dependencies]
 ruchei-callback = { path = "ruchei-callback", version = "0.1.0" }
 ruchei-extra = { path = "ruchei-extra", version = "0.1.1" }
 ruchei-route = { path = "ruchei-route", version = "0.1.5" }
 
+futures-core = "0.3.30"
+futures-sink = "0.3.30"
+futures-util = { version = "0.3.30", features = ["sink"] }
+linked-hash-map = "0.5.6"
+pin-project = "1"
+
+[dependencies]
+ruchei-callback.workspace = true
+ruchei-extra.workspace = true
+ruchei-route.workspace = true
+
 futures-util.workspace = true
+linked-hash-map.workspace = true
 pin-project.workspace = true
 
 [dev-dependencies]
