@@ -1,3 +1,5 @@
+//! [`ruchei::switching`]
+
 use async_std::net::TcpListener;
 use futures_util::StreamExt;
 use ruchei::{

@@ -180,8 +180,9 @@ impl<
 impl<S, Out, F> AutoPinnedExtend for Multicast<S, Out, F> {}
 
 pub trait MulticastIgnore<Out>: Sized {
+    /// Single [`Stream`]/[`Sink`].
     type S;
-
+    /// Error.
     type E;
 
     fn multicast_ignore<F: OnClose<Self::E>>(

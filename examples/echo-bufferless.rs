@@ -1,3 +1,5 @@
+//! [`ruchei::multicast::bufferless`] with [`ruchei::echo::bufferless`]
+
 use async_std::net::TcpListener;
 use futures_util::StreamExt;
 use ruchei::{

@@ -1,3 +1,5 @@
+//! Send once, receive forever.
+
 use std::pin::pin;
 
 use async_std::stream::StreamExt;

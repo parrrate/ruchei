@@ -1,3 +1,5 @@
+//! Read many messages.
+
 use std::{pin::pin, time::Instant};
 
 use async_std::stream::StreamExt;

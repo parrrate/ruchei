@@ -1,3 +1,5 @@
+//! Client-side [`ruchei::echo::buffered`]
+
 use ruchei::echo::buffered::EchoBuffered;
 
 #[async_std::main]

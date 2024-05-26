@@ -1,3 +1,5 @@
+//! [`ruchei::read_callback`]
+
 use std::{pin::pin, time::Duration};
 
 use async_std::{net::TcpListener, task::sleep};

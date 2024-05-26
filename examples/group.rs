@@ -1,3 +1,5 @@
+//! [`ruchei::group_by_key`] and [`ruchei::timeout_unused`]
+
 use std::marker::PhantomData;
 
 use async_std::net::TcpListener;

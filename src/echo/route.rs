@@ -180,7 +180,9 @@ impl<K: Key, T, E, S: Stream<Item = Result<(K, T), E>> + RouteSink<K, T, Error =
 }
 
 pub trait EchoRoute: Sized {
+    /// Per-connection unique key.
     type K;
+    /// Item yielded and accepted by `self` as [`Stream`]/[`RouteSink`].
     type T;
 
     fn echo_route(self) -> Echo<Self, Self::K, Self::T> {
