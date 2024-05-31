@@ -14,6 +14,7 @@ use linked_hash_map::LinkedHashMap;
 use ruchei_callback::OnClose;
 
 use crate::{
+    collections::linked_hash_set::LinkedHashSet,
     pinned_extend::{AutoPinnedExtend, Extending},
     ready_weak::{Connection, ConnectionWaker, Ready},
     route::Key,
@@ -24,7 +25,7 @@ pub struct Dealer<K, S, F> {
     connections: LinkedHashMap<K, Connection<K, S>>,
     next: Ready<K>,
     wready: AtomicWaker,
-    started: HashSet<K>,
+    started: LinkedHashSet<K>,
     flushing: HashSet<K>,
     wflush: AtomicWaker,
     flush: Ready<K>,
@@ -149,7 +150,7 @@ impl<Out, K: Key, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> Sink<Out> f
                 if let Err(e) = connection.stream.start_send_unpin(msg) {
                     this.remove(&key, Some(e));
                 } else {
-                    this.started.insert(key);
+                    this.started.insert_if_absent(key);
                     this.wflush.wake();
                 }
             } else {
