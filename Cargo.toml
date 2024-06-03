@@ -7,7 +7,6 @@ members = [
 ]
 
 [workspace.package]
-version = "0.0.89"
 edition = "2021"
 publish = true
 license = "MIT OR Apache-2.0"
@@ -20,12 +19,12 @@ rust-version = "1.72"
 
 [package]
 name = "ruchei"
+version = "0.0.89"
 description = "Utilities for working with many streams"
 documentation = "https://docs.rs/ruchei"
 keywords = ["streams", "async", "stream"]
 categories = ["asynchronous"]
 readme = "README.md"
-version.workspace = true
 edition.workspace = true
 publish.workspace = true
 license.workspace = true
