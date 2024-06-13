@@ -27,7 +27,6 @@ pub struct Dealer<K, S, F> {
     wready: AtomicWaker,
     started: LinkedHashSet<K>,
     flushing: HashSet<K>,
-    wflush: AtomicWaker,
     flush: Ready<K>,
     close: Ready<K>,
     callback: F,
@@ -128,7 +127,7 @@ impl<Out, K: Key, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> Sink<Out> f
         this.wready.register(cx.waker());
         if let Some((key, _)) = this.connections.front() {
             let key = key.clone();
-            while let Some(connection) = this.connections.get_mut(&key) {
+            if let Some(connection) = this.connections.get_mut(&key) {
                 if let Err(e) = ready!(connection
                     .ready
                     .poll(cx, |cx| connection.stream.poll_ready_unpin(cx)))
@@ -154,7 +153,6 @@ impl<Out, K: Key, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> Sink<Out> f
                 this.remove(&key, Some(e));
             } else {
                 this.started.insert_if_absent(key);
-                this.wflush.wake();
             }
         };
         Ok(())
@@ -162,7 +160,6 @@ impl<Out, K: Key, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> Sink<Out> f
 
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let this = self.get_mut();
-        this.wflush.register(cx.waker());
         this.flush.downgrade().extend(
             this.started
                 .drain()
@@ -260,7 +257,6 @@ impl<In, K: Key, E, S: Unpin + Stream<Item = Result<In, E>>, R: FusedStream<Item
                 wready: Default::default(),
                 started: Default::default(),
                 flushing: Default::default(),
-                wflush: Default::default(),
                 flush: Default::default(),
                 close: Default::default(),
                 callback,
