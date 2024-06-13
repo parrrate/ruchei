@@ -1,7 +1,7 @@
 //! Await futures concurrently.
 //!
 //! ```rust
-//! # use async_std::net::TcpListener;
+//! # use async_net::TcpListener;
 //! # use futures_util::StreamExt;
 //! # use ruchei::concurrent::ConcurrentExt;
 //! use ruchei::poll_on_wake::PollOnWakeExt;

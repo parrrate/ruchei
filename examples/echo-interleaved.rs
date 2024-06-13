@@ -1,6 +1,6 @@
 //! [`ruchei::multicast::replay`] with [`ruchei::echo::interleaved`]
 
-use async_std::net::TcpListener;
+use async_net::TcpListener;
 use futures_util::StreamExt;
 use ruchei::{
     concurrent::ConcurrentExt, echo::interleaved::EchoInterleaved,

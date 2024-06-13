@@ -1,6 +1,6 @@
 //! [`ruchei::route`] with [`ruchei::echo::route`]
 
-use async_std::net::TcpListener;
+use async_net::TcpListener;
 use futures_util::StreamExt;
 use ruchei::{
     concurrent::ConcurrentExt, echo::route::EchoRoute, poll_on_wake::PollOnWakeExt,
