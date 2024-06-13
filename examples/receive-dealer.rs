@@ -2,10 +2,7 @@
 
 use async_std::net::TcpListener;
 use futures_util::{StreamExt, TryStreamExt};
-use ruchei::{
-    concurrent::ConcurrentExt, deal::DealerExt,
-    poll_on_wake::PollOnWakeExt,
-};
+use ruchei::{concurrent::ConcurrentExt, deal::DealerExt, poll_on_wake::PollOnWakeExt};
 
 #[async_std::main]
 async fn main() {
