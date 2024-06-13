@@ -37,7 +37,7 @@ impl<K> Ready<K> {
 impl<K> ReadyWeak<K> {
     pub(crate) fn lock(&self, f: impl FnOnce(std::sync::MutexGuard<'_, LinkedHashSet<K>>)) {
         if let Some(ready) = self.0.upgrade() {
-            f(ready.lock().unwrap_or_else(|e| e.into_inner()));
+            f(Ready(ready).lock());
         }
     }
 }
