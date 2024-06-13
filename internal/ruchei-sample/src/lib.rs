@@ -8,6 +8,7 @@ use std::{
 
 static SAMPLE: AtomicBool = AtomicBool::new(false);
 
+#[doc(hidden)]
 pub struct Enable;
 
 impl Drop for Enable {
@@ -21,6 +22,7 @@ pub fn enable() -> Enable {
     Enable
 }
 
+#[doc(hidden)]
 pub struct Disable;
 
 impl Drop for Disable {
