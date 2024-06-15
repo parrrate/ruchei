@@ -48,7 +48,6 @@ pin-project = "1"
 ruchei-callback.workspace = true
 ruchei-extra.workspace = true
 ruchei-route.workspace = true
-# ruchei-sample.workspace = true
 
 futures-util.workspace = true
 linked-hash-map.workspace = true
