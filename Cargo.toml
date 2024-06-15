@@ -19,7 +19,7 @@ rust-version = "1.72"
 
 [package]
 name = "ruchei"
-version = "0.0.92"
+version = "0.0.93"
 description = "Utilities for working with many streams"
 documentation = "https://docs.rs/ruchei"
 keywords = ["streams", "async", "stream"]
