@@ -45,7 +45,7 @@ impl<T: Hash + Eq> LinkedHashSet<T> {
         }
     }
 
-    pub fn iter(&self) -> Iter<'_, T> {
+    pub(crate) fn iter(&self) -> Iter<'_, T> {
         Iter {
             iter: self.map.keys(),
         }
@@ -73,7 +73,7 @@ impl<T: Hash + Eq> LinkedHashSet<T> {
         self.map.remove(value).is_some()
     }
 
-    pub fn pop_front(&mut self) -> Option<T> {
+    pub(crate) fn pop_front(&mut self) -> Option<T> {
         self.map.pop_front().map(|(k, ())| k)
     }
 }
