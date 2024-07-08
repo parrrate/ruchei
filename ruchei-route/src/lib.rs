@@ -12,23 +12,41 @@ use futures_sink::Sink;
 
 /// [`Sink`] with `route` provided to some methods.
 ///
-/// This trait is considered weaker than [`Sink<Route, Msg>`] (thus is blanked-implemented for it).
+/// This trait is considered weaker than [`Sink<(Route, Msg)>`] (thus is blanked-implemented for it).
 ///
 /// Unless specified otherwise by the implementor, all operations on [`RouteSink`] for all routes
-/// (and [`poll_close`]) are considered invalid once an error occurs.
+/// (and all route-independent fallible operations) are considered invalid once an error occurs.
 ///
-/// [`poll_close`]: RouteSink::poll_close
+/// ## For [`Sink`]s
+///
+/// This trait is implemented for all [`Sink<(Route, Msg)>`]s:
+///
+/// - [`RouteSink::Error`] forwards [`Sink::Error`]
+/// - [`RouteSink::poll_ready`] discards the route and calls [`RouteSink::poll_ready_any`]
+/// - [`RouteSink::poll_ready_any`] forwards [`Sink::poll_ready`]
+/// - [`RouteSink::start_send`] forwards [`Sink::start_send`]
+/// - [`RouteSink::poll_flush`] discards the route and calls [`RouteSink::poll_flush_all`]
+/// - [`RouteSink::poll_flush_all`] forwards [`Sink::poll_flush`]
+/// - [`RouteSink::poll_close`] forwards [`Sink::poll_close`]
+/// - [`RouteSink::is_routing`] returns `false`
+///
+/// **NOTE**: this arrangement conflates wakers from separate routes as one, potentially leading to
+/// losing track of them. Check for [`is_routing`] to check if the implementation comes from a
+/// [`Sink`] (in which case [`is_routing`] is `false`).
+///
+/// [`is_routing`]: RouteSink::is_routing
+/// [`Sink<(Route, Msg)>`]: Sink
 pub trait RouteSink<Route, Msg> {
     /// The type of value produced by the sink when an error occurs.
     ///
-    /// See also: [`Sink::Error`]
+    /// See also: [`Sink::Error`] ([forwarded][RouteSink#for-sinks] by this associated type)
     type Error;
 
     /// Attempts to prepare the [`RouteSink`] to receive a message on a specified route.
     ///
     /// Must return `Poll::Ready(Ok(()))` before each call to [`start_send`] on the same route.
     ///
-    /// See also: [`Sink::poll_ready`]
+    /// See also: [`Sink::poll_ready`], [`RouteSink::poll_ready_any`]
     ///
     /// [`start_send`]: RouteSink::start_send
     fn poll_ready(
@@ -37,47 +55,88 @@ pub trait RouteSink<Route, Msg> {
         cx: &mut Context<'_>,
     ) -> Poll<Result<(), Self::Error>>;
 
+    /// Attempt to prepare the [`RouteSink`] to receive a message on an arbitrary route.
+    ///
+    /// Forever pending by default. Must be implemented when [`is_routing`] returns `false`.
+    ///
+    /// If this returns `Poll::Ready(Ok(()))`, call to [`start_send`] should be as correct as after
+    /// [`poll_ready`] with a specific route.
+    ///
+    /// See also: [`Sink::poll_ready`] ([forwarded][RouteSink#for-sinks] by this method),
+    /// [`RouteSink::poll_ready`]
+    ///
+    /// [`start_send`]: RouteSink::start_send
+    /// [`poll_ready`]: RouteSink::poll_ready
+    /// [`is_routing`]: RouteSink::is_routing
+    fn poll_ready_any(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        let _ = cx;
+        Poll::Pending
+    }
+
     /// Begin the process of sending a message to the [`RouteSink`] on a specified route.
     ///
     /// Each call to this method must be preceeded by [`poll_ready`] returning `Poll::Ready(Ok(()))`
-    /// on the same route.
+    /// on the same route (or [`poll_ready_any`] without a route).
     ///
     /// May or may not trigger the actual sending process. To guarantee the delivery, use either
-    /// [`poll_flush`] on the same route, or [`poll_close`] on the whole sink.
+    /// [`poll_flush`] on the same route, [`poll_flush_all`] if supported, or [`poll_close`] on the
+    /// whole sink.
     ///
-    /// See also: [`Sink::start_send`]
+    /// See also: [`Sink::start_send`] ([forwarded][RouteSink#for-sinks] by this method)
     ///
     /// [`poll_ready`]: RouteSink::poll_ready
+    /// [`poll_ready_any`]: RouteSink::poll_ready_any
     /// [`poll_flush`]: RouteSink::poll_flush
+    /// [`poll_flush_all`]: RouteSink::poll_flush_all
     /// [`poll_close`]: RouteSink::poll_close
     fn start_send(self: Pin<&mut Self>, route: Route, msg: Msg) -> Result<(), Self::Error>;
 
     /// Flush all the remaining items on a specified route.
     ///
+    /// Forever pending by default. Must be implemented when [`is_routing`] returns `false`.
+    ///
     /// Returns `Poll::Ready(Ok(()))` once all items sent via [`start_send`] on that route have been
     /// flushed from the buffer to the underlying transport.
     ///
-    /// See also: [`Sink::poll_flush`]
+    /// See also: [`Sink::poll_flush`], [`RouteSink::poll_flush_all`]
     ///
     /// [`start_send`]: RouteSink::start_send
+    /// [`is_routing`]: RouteSink::is_routing
     fn poll_flush(
         self: Pin<&mut Self>,
         route: &Route,
         cx: &mut Context<'_>,
     ) -> Poll<Result<(), Self::Error>>;
 
+    /// Flush all the routes.
+    ///
+    /// Returns `Poll::Ready(Ok(()))` once all items sent via [`start_send`] on all routes have been
+    /// flushed from the buffer to the underlying transport.
+    ///
+    /// See also: [`Sink::poll_flush`] ([forwarded][RouteSink#for-sinks] by this method),
+    /// [`RouteSink::poll_flush`]
+    ///
+    /// [`start_send`]: RouteSink::start_send
+    /// flushed from the buffer to the underlying transport.
+    fn poll_flush_all(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        let _ = cx;
+        Poll::Pending
+    }
+
     /// Flush and close all the routes.
     ///
     /// All other operations on the sink are considered invalid as soon as it has been polled for
-    /// close for the first time
+    /// close for the first time.
     ///
     /// [`RouteSink`] doesn't provide a method to close a specific route yet, since most interfaces,
     /// that we've looked into, don't. It might be added later on with an empty (returning
     /// `Poll::Ready(Ok(()))`) implementation (as not to break compatibility). If you really need
     /// that type of control, it is recommended to use message transports that do explicit sessions
-    /// or connections, like TCP or WebSocket.
+    /// or connections, like TCP, [TIPC] or WebSocket.
     ///
-    /// See also: [`Sink::poll_close`]
+    /// See also: [`Sink::poll_close`] ([forwarded][RouteSink#for-sinks] by this method)
+    ///
+    /// [TIPC]: <https://tipc.sourceforge.net/>
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>>;
 
     /// Whether this [`RouteSink`] itself is doing any actual routing and keeping wakers separate.
@@ -90,13 +149,19 @@ pub trait RouteSink<Route, Msg> {
     /// systems that normally assume each ready/flushed route state to be independent (thus not
     /// polling other routes once one of them is done, which leaves them unprocessed forever).
     ///
+    /// Another implication of not routing is that [`poll_ready_any`] and [`poll_flush_all`] are
+    /// valid and should succeed or fail eventually.
+    ///
     /// [`poll_ready`]: RouteSink::poll_ready
+    /// [`poll_ready_any`]: RouteSink::poll_ready_any
     /// [`poll_flush`]: RouteSink::poll_flush
+    /// [`poll_flush_all`]: RouteSink::poll_flush_all
     fn is_routing(&self) -> bool {
         true
     }
 }
 
+/// See [notes][RouteSink#for-sinks]
 impl<Route, Msg, E, T: ?Sized + Sink<(Route, Msg), Error = E>> RouteSink<Route, Msg> for T {
     type Error = E;
 
@@ -105,6 +170,10 @@ impl<Route, Msg, E, T: ?Sized + Sink<(Route, Msg), Error = E>> RouteSink<Route, 
         _: &Route,
         cx: &mut Context<'_>,
     ) -> Poll<Result<(), Self::Error>> {
+        self.poll_ready_any(cx)
+    }
+
+    fn poll_ready_any(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Sink::poll_ready(self, cx)
     }
 
@@ -117,6 +186,10 @@ impl<Route, Msg, E, T: ?Sized + Sink<(Route, Msg), Error = E>> RouteSink<Route, 
         _: &Route,
         cx: &mut Context<'_>,
     ) -> Poll<Result<(), Self::Error>> {
+        self.poll_flush_all(cx)
+    }
+
+    fn poll_flush_all(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Sink::poll_flush(self, cx)
     }
 
