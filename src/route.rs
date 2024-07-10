@@ -1,7 +1,4 @@
-//! [`Sink`]s with routing inspired by ZeroMQ's `ROUTER` sockets.
-//!
-//! This model sits somewhere between explicit connection management and ZMQ-like routing trying to
-//! be a reasonable abstraction around both, with some trade-offs.
+//! See [`ruchei_route`].
 
 use std::{
     collections::HashMap,
