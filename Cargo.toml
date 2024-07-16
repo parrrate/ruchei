@@ -35,7 +35,7 @@ rust-version.workspace = true
 [workspace.dependencies]
 ruchei-callback = { path = "ruchei-callback", version = "0.1.0" }
 ruchei-extra = { path = "ruchei-extra", version = "0.1.1" }
-ruchei-route = { path = "ruchei-route", version = "0.1.6" }
+ruchei-route = { path = "ruchei-route", version = "0.1.6", default-features = false }
 ruchei-sample.path = "internal/ruchei-sample"
 
 futures-core = "0.3.30"
@@ -47,7 +47,7 @@ pin-project = "1"
 [dependencies]
 ruchei-callback.workspace = true
 ruchei-extra.workspace = true
-ruchei-route.workspace = true
+ruchei-route = { workspace = true, features = ["unroute"] }
 
 futures-util.workspace = true
 linked-hash-map.workspace = true

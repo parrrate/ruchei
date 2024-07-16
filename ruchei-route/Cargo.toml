@@ -13,4 +13,10 @@ authors.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+futures-core = { workspace = true, optional = true }
 futures-sink.workspace = true
+pin-project = { workspace = true, optional = true }
+
+[features]
+default = ["unroute"]
+unroute = ["dep:futures-core", "dep:pin-project"]
