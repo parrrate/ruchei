@@ -238,6 +238,7 @@ pub trait DealerExt: Sized {
     type E;
 
     /// Extend the stream of connections (`self`) into a [`Dealer`].
+    #[must_use]
     fn deal<F: OnClose<Self::E>>(self, callback: F) -> DealerExtending<F, Self>;
 }
 
@@ -248,6 +249,7 @@ impl<In, K: Key, E, S: Unpin + Stream<Item = Result<In, E>>, R: FusedStream<Item
     type S = S;
     type E = E;
 
+    #[must_use]
     fn deal<F: OnClose<Self::E>>(self, callback: F) -> DealerExtending<F, Self> {
         Extending::new(
             self,
