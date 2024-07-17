@@ -108,6 +108,7 @@ impl<K: Key, T> Connection<K, T> {
 }
 
 #[pin_project]
+#[must_use = "futures must be awaited"]
 pub struct Echo<S, K, T> {
     #[pin]
     router: S,

@@ -8,6 +8,7 @@ use pin_project::pin_project;
 
 #[derive(Debug)]
 #[pin_project]
+#[must_use = "futures must be awaited"]
 pub struct Echo<T, S> {
     #[pin]
     stream: S,
