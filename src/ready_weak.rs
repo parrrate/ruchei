@@ -12,6 +12,7 @@ type Mutex<K> = std::sync::Mutex<LinkedHashSet<K>>;
 
 type Guard<'a, K> = std::sync::MutexGuard<'a, LinkedHashSet<K>>;
 
+#[must_use]
 pub(crate) struct Ready<K>(Arc<Mutex<K>>);
 
 impl<K: Hash + Eq> Default for Ready<K> {
@@ -20,6 +21,7 @@ impl<K: Hash + Eq> Default for Ready<K> {
     }
 }
 
+#[must_use]
 pub(crate) struct ReadyWeak<K>(Weak<Mutex<K>>);
 
 impl<K> Default for ReadyWeak<K> {
@@ -51,6 +53,7 @@ impl<K: Key> Ready<K> {
         self.lock().remove(key);
     }
 
+    #[must_use]
     pub(crate) fn next(&self) -> Option<K> {
         self.lock().pop_front()
     }
@@ -70,6 +73,7 @@ impl<K: Key> Extend<K> for ReadyWeak<K> {
     }
 }
 
+#[must_use]
 pub(crate) struct ConnectionWaker<K> {
     pub(crate) waker: AtomicWaker,
     ready: ReadyWeak<K>,
@@ -77,6 +81,7 @@ pub(crate) struct ConnectionWaker<K> {
 }
 
 impl<K> ConnectionWaker<K> {
+    #[must_use]
     pub(crate) fn new(key: K, ready: ReadyWeak<K>) -> Arc<Self> {
         Arc::new(Self {
             waker: Default::default(),
@@ -108,6 +113,7 @@ impl<K: Key> ConnectionWaker<K> {
     }
 }
 
+#[must_use]
 pub(crate) struct Connection<K, S> {
     pub(crate) stream: S,
     pub(crate) next: Arc<ConnectionWaker<K>>,
