@@ -168,6 +168,7 @@ pub trait GroupByKey: Sized {
 
     type Key;
 
+    #[must_use]
     fn group_by_key<G: Group<Item = Self::Item>>(
         self,
         group: G,
@@ -179,6 +180,7 @@ impl<Item, K: Eq + Hash + Clone, S: Stream<Item = (K, Item)>> GroupByKey for S {
 
     type Key = K;
 
+    #[must_use]
     fn group_by_key<G: Group<Item = Self::Item>>(
         self,
         group: G,
