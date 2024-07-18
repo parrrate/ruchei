@@ -186,6 +186,7 @@ pub trait SwitchingExt<Out>: Sized {
     /// Convert a [`Stream`] of [`Stream`]`+`[`Sink`]s into a single [`Stream`]`+`[`Sink`].
     ///
     /// See [`Switching`] for details.
+    #[must_use]
     fn switching(self) -> Switching<Self, Self::S, Out>;
 }
 
@@ -199,6 +200,7 @@ impl<
 {
     type S = S;
 
+    #[must_use]
     fn switching(self) -> Switching<Self, Self::S, Out> {
         Switching {
             incoming: self,
