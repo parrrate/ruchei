@@ -202,6 +202,7 @@ pub trait RouterExt: Sized {
     type E;
 
     /// Extend the stream of connections (`self`) into a [`Router`].
+    #[must_use]
     fn route<F: OnClose<Self::E>>(self, callback: F) -> RouterExtending<F, Self>;
 }
 
@@ -212,6 +213,7 @@ impl<In, K: Key, E, S: Unpin + Stream<Item = Result<In, E>>, R: FusedStream<Item
     type S = S;
     type E = E;
 
+    #[must_use]
     fn route<F: OnClose<Self::E>>(self, callback: F) -> RouterExtending<F, Self> {
         ExtendingRoute(Extending::new(
             self,
