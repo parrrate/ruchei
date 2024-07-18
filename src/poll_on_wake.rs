@@ -47,6 +47,7 @@ pub struct PollOnWake<S> {
 }
 
 #[derive(Debug)]
+#[must_use]
 struct SetFlag {
     flag: AtomicBool,
     waker: AtomicWaker,
@@ -147,18 +148,21 @@ impl<Item, S: Sink<Item>> Sink<Item> for PollOnWake<S> {
 }
 
 impl<S> AsRef<S> for PollOnWake<S> {
+    #[must_use]
     fn as_ref(&self) -> &S {
         &self.inner
     }
 }
 
 impl<S> AsMut<S> for PollOnWake<S> {
+    #[must_use]
     fn as_mut(&mut self) -> &mut S {
         &mut self.inner
     }
 }
 
 impl<S> From<S> for PollOnWake<S> {
+    #[must_use]
     fn from(inner: S) -> Self {
         Self {
             inner,
@@ -172,6 +176,7 @@ impl<S> From<S> for PollOnWake<S> {
 }
 
 impl<S> PollOnWake<S> {
+    #[must_use]
     pub fn into_inner(self) -> S {
         self.inner
     }
@@ -181,10 +186,12 @@ impl<S> PollOnWake<S> {
 ///
 /// See [module-level docs](`crate::poll_on_wake`) for examples.
 pub trait PollOnWakeExt: Sized {
+    #[must_use]
     fn poll_on_wake(self) -> PollOnWake<Self>;
 }
 
 impl<S> PollOnWakeExt for S {
+    #[must_use]
     fn poll_on_wake(self) -> PollOnWake<Self> {
         self.into()
     }
