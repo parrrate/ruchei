@@ -38,32 +38,39 @@ pub struct Extending<S, R> {
 }
 
 impl<S, R> Extending<S, R> {
+    #[must_use]
     pub fn new(incoming: R, inner: S) -> Self {
         Self { incoming, inner }
     }
 
     /// Pinned mutable reference to the inner stream/sink.
+    #[must_use]
     pub fn as_pin_mut(self: Pin<&mut Self>) -> Pin<&mut S> {
         self.project().inner
     }
 
     /// Convert into the inner stream/sink.
+    #[must_use]
     pub fn into_inner(self) -> S {
         self.inner
     }
 
+    #[must_use]
     pub fn incoming_pin_mut(self: Pin<&mut Self>) -> Pin<&mut R> {
         self.project().incoming
     }
 
+    #[must_use]
     pub fn incoming(&self) -> &R {
         &self.incoming
     }
 
+    #[must_use]
     pub fn incoming_mut(&mut self) -> &mut R {
         &mut self.incoming
     }
 
+    #[must_use]
     pub fn into_incoming(self) -> R {
         self.incoming
     }
@@ -76,6 +83,7 @@ impl<S, R> AsRef<S> for Extending<S, R> {
 }
 
 impl<S, R> AsMut<S> for Extending<S, R> {
+    #[must_use]
     fn as_mut(&mut self) -> &mut S {
         &mut self.inner
     }
@@ -144,16 +152,19 @@ impl<Item, S: Sink<Item>, R> Sink<Item> for Extending<S, R> {
 }
 
 pub trait ExtendingExt<A>: Sized {
+    #[must_use]
     fn extending<S: PinnedExtend<A>>(self, inner: S) -> Extending<S, Self>;
 }
 
 impl<A, R: FusedStream<Item = A>> ExtendingExt<A> for R {
+    #[must_use]
     fn extending<S: PinnedExtend<A>>(self, inner: S) -> Extending<S, Self> {
         Extending::new(self, inner)
     }
 }
 
 impl<S: Default, R> From<R> for Extending<S, R> {
+    #[must_use]
     fn from(incoming: R) -> Self {
         Self {
             incoming,
