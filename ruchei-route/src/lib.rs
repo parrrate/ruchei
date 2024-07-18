@@ -276,12 +276,14 @@ pub trait RouteExt<Route> {
     type T: ?Sized;
 
     /// Create a route-specific [`Sink`].
+    #[must_use]
     fn route(&mut self, route: Route) -> WithRoute<'_, Self::T, Route>;
 }
 
 impl<T: ?Sized, Route> RouteExt<Route> for Pin<&'_ mut T> {
     type T = T;
 
+    #[must_use]
     fn route(&mut self, route: Route) -> WithRoute<'_, Self::T, Route> {
         WithRoute {
             route_sink: self.as_mut(),
@@ -293,6 +295,7 @@ impl<T: ?Sized, Route> RouteExt<Route> for Pin<&'_ mut T> {
 impl<T: ?Sized + Unpin, Route> RouteExt<Route> for &'_ mut T {
     type T = T;
 
+    #[must_use]
     fn route(&mut self, route: Route) -> WithRoute<'_, Self::T, Route> {
         WithRoute {
             route_sink: Pin::new(self),
