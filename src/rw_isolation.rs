@@ -17,6 +17,7 @@ use futures_util::{
 use pin_project::pin_project;
 
 #[derive(Default, Debug)]
+#[must_use]
 struct MutexWaker {
     pending: Arc<AtomicBool>,
     waker: AtomicWaker,
@@ -35,6 +36,7 @@ impl Wake for MutexWaker {
 }
 
 #[derive(Debug)]
+#[must_use]
 struct AllowRead;
 
 #[derive(Debug)]
@@ -182,16 +184,19 @@ pub struct CtxInner(Arc<Mutex<AllowRead>>);
 
 pub struct CtxOuter(Arc<Mutex<AllowRead>>);
 
+#[must_use]
 pub fn isolation() -> (CtxInner, CtxOuter) {
     let mutex = Arc::new(Mutex::new(AllowRead));
     (CtxInner(mutex.clone()), CtxOuter(mutex))
 }
 
 pub trait IsolateInner<Out>: Sized {
+    #[must_use]
     fn isolate_inner(self, inner: CtxInner) -> RwInner<Self>;
 }
 
 impl<Out, S: Stream + Sink<Out>> IsolateInner<Out> for S {
+    #[must_use]
     fn isolate_inner(self, inner: CtxInner) -> RwInner<Self> {
         RwInner {
             stream: self,
@@ -203,10 +208,12 @@ impl<Out, S: Stream + Sink<Out>> IsolateInner<Out> for S {
 }
 
 pub trait IsolateOuter<Out>: Sized {
+    #[must_use]
     fn isolate_outer(self, outer: CtxOuter) -> RwOuter<Self>;
 }
 
 impl<Out, S: Stream + Sink<Out>> IsolateOuter<Out> for S {
+    #[must_use]
     fn isolate_outer(self, outer: CtxOuter) -> RwOuter<Self> {
         RwOuter {
             stream: self,
