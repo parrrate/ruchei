@@ -7,6 +7,7 @@ use std::{
 use futures_util::Future;
 
 #[derive(Debug, Clone, Default)]
+#[must_use]
 pub(crate) struct Completable {
     waker: Arc<Mutex<Option<Waker>>>,
 }
@@ -24,11 +25,13 @@ impl Completable {
 }
 
 #[derive(Debug, Clone, Default)]
+#[must_use]
 pub(crate) struct CompleteOne {
     completable: Option<Completable>,
 }
 
 impl CompleteOne {
+    #[must_use]
     pub fn pending(&self) -> bool {
         self.completable.is_some()
     }
@@ -51,6 +54,7 @@ impl Drop for CompleteOne {
 }
 
 #[derive(Default, Debug)]
+#[must_use]
 pub(crate) struct WaitMany {
     waker: Weak<Mutex<Option<Waker>>>,
 }
