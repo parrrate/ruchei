@@ -7,3 +7,6 @@ publish = false
 [dependencies]
 futures-util.workspace = true
 pin-project.workspace = true
+
+[package.metadata.tagit]
+skip = true
