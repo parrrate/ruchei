@@ -45,7 +45,7 @@ impl<S, F> Router<S, F> {
         }
     }
 
-    /// Add new connection with its unique key.
+    /// Add new connection.
     pub fn push(self: Pin<&mut Self>, stream: S) {
         let this = self.project();
         let key = this.connections.vacant_key();
