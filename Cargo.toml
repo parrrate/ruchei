@@ -38,6 +38,7 @@ ruchei-extra = { path = "ruchei-extra", version = "0.1.1" }
 ruchei-route = { path = "ruchei-route", version = "0.1.7", default-features = false }
 ruchei-sample.path = "internal/ruchei-sample"
 
+futures-channel = "0.3.30"
 futures-core = "0.3.30"
 futures-sink = "0.3.30"
 futures-util = { version = "0.3.30", features = ["sink"] }
@@ -50,16 +51,16 @@ ruchei-callback.workspace = true
 ruchei-extra.workspace = true
 ruchei-route = { workspace = true, features = ["unroute"] }
 
+futures-channel.workspace = true
 futures-util.workspace = true
 linked-hash-map.workspace = true
 pin-project.workspace = true
+slab.workspace = true
 
 [dev-dependencies]
 async-io = "2.3.2"
 async-net = "2.0.0"
 async-std = { version = "1.12.0", features = ["attributes"] }
 async-tungstenite = { version = "0.26.1" }
-futures-channel = "0.3.30"
 rand = "0.8.5"
-slab.workspace = true
 thiserror = "1"
