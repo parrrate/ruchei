@@ -1,5 +1,3 @@
-//! [`Sink`]s with round-robin distribution inspired by ZeroMQ's `DEALER` sockets.
-
 use std::{
     collections::HashSet,
     convert::Infallible,
