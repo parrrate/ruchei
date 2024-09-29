@@ -11,7 +11,7 @@ pub use ruchei_route::{RouteExt, RouteSink, Unroute, WithRoute};
 use crate::{
     callback::OnClose,
     pinned_extend::{AutoPinnedExtend, Extending, ExtendingRoute},
-    ready_weak::{Connection, ConnectionWaker, Ready},
+    ready_keyed::{Connection, ConnectionWaker, Ready},
 };
 
 use super::Key;

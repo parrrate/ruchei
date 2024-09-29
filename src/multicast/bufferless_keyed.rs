@@ -12,7 +12,7 @@ use ruchei_callback::OnClose;
 use crate::{
     collections::linked_hash_set::LinkedHashSet,
     pinned_extend::{AutoPinnedExtend, Extending},
-    ready_weak::{Connection, ConnectionWaker, Ready},
+    ready_keyed::{Connection, ConnectionWaker, Ready},
     route::Key,
 };
 
