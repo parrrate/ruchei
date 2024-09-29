@@ -1,7 +1,7 @@
 //! [`ruchei::deal`] with [`ruchei::echo::buffered`]
 
 use async_net::TcpListener;
-use futures_util::StreamExt;
+use futures_util::{future::ready, StreamExt};
 use ruchei::{
     concurrent::ConcurrentExt, deal::DealerExt, echo::buffered::EchoBuffered,
     poll_on_wake::PollOnWakeExt,
@@ -19,6 +19,7 @@ async fn main() {
         .fuse()
         .concurrent()
         .filter_map(|r| async { r.ok() })
+        .map(|s| s.filter(|m| ready(m.as_ref().is_ok_and(|m| !m.is_close()))))
         .map(|s| (rand::random::<u64>(), s))
         .deal(|_| {})
         .echo_buffered()
