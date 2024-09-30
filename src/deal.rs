@@ -1,6 +1,7 @@
 //! [`Sink`]s with round-robin distribution inspired by ZeroMQ's `DEALER` sockets.
 
 pub mod keyed;
+pub mod slab;
 
 #[deprecated]
 pub type Dealer<K, S, F> = keyed::Dealer<K, S, F>;
