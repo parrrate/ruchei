@@ -15,11 +15,11 @@ authors = [
     "Alisa Feistel <alisafeistel@gmail.com>",
     "Timofey Prikhodko <tim@ongoteam.yaconnect.com>",
 ]
-rust-version = "1.72"
+rust-version = "1.75"
 
 [package]
 name = "ruchei"
-version = "0.0.94"
+version = "0.0.95"
 description = "Utilities for working with many streams"
 documentation = "https://docs.rs/ruchei"
 keywords = ["streams", "async", "stream"]
