@@ -68,25 +68,30 @@ impl<T, const N: usize> LinkedSlab<T, N> {
     #[inline(always)]
     fn unlink(&mut self, link: Link, n: usize) {
         assert!(n < N);
+        assert!(self.lens[n] > 0);
         self.lens[n] -= 1;
         let (prev, next) = match link {
             Link::EMPTY => {
+                assert!(self.lens[n] == 0);
                 self.links[n] = Link::EMPTY;
                 return;
             }
             Link { prev: EMPTY, next } => {
+                assert!(self.lens[n] > 0);
                 let next = self.slab.get_mut(next).expect("next not found");
                 let next = next.links[n].as_mut().expect("next not linked");
                 let prev = &mut self.links[n];
                 (prev, next)
             }
             Link { prev, next: EMPTY } => {
+                assert!(self.lens[n] > 0);
                 let prev = self.slab.get_mut(prev).expect("prev not found");
                 let prev = prev.links[n].as_mut().expect("prev not linked");
                 let next = &mut self.links[n];
                 (prev, next)
             }
             Link { prev, next } => {
+                assert!(self.lens[n] > 0);
                 let (prev, next) = self
                     .slab
                     .get2_mut(prev, next)
@@ -151,10 +156,12 @@ impl<T, const N: usize> LinkedSlab<T, N> {
         }
         let link = match self.link::<M>() {
             None => {
+                assert!(self.lens[M] == 0);
                 self.links[M] = Link::new(key);
                 Link::EMPTY
             }
             Some((prev, _)) => {
+                assert!(self.lens[M] > 0);
                 self.slab.get_mut(prev).expect("last not found").links[M]
                     .as_mut()
                     .expect("last not linked")
