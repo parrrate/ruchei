@@ -66,13 +66,15 @@ impl<T, const N: usize> LinkedSlab<T, N> {
     }
 
     #[inline(always)]
-    fn unlink(&mut self, link: Link, n: usize) {
+    fn unlink(&mut self, link: Link, n: usize, key: usize) {
         assert!(n < N);
         assert!(self.lens[n] > 0);
         self.lens[n] -= 1;
         let (prev, next) = match link {
             Link::EMPTY => {
                 assert!(self.lens[n] == 0);
+                assert_eq!(self.links[n].next, key);
+                assert_eq!(self.links[n].prev, key);
                 self.links[n] = Link::EMPTY;
                 return;
             }
@@ -101,6 +103,8 @@ impl<T, const N: usize> LinkedSlab<T, N> {
                 (prev, next)
             }
         };
+        assert_eq!(prev.next, key);
+        assert_eq!(next.prev, key);
         prev.next = link.next;
         next.prev = link.prev;
     }
@@ -180,7 +184,7 @@ impl<T, const N: usize> LinkedSlab<T, N> {
     pub(crate) fn link_pop_at<const M: usize>(&mut self, key: usize) -> bool {
         assert!(M < N);
         if let Some(link) = self.slab.get_mut(key).expect("key not found").links[M].take() {
-            self.unlink(link, M);
+            self.unlink(link, M, key);
             true
         } else {
             false
@@ -214,7 +218,7 @@ impl<T, const N: usize> LinkedSlab<T, N> {
         let value = self.slab.try_remove(key)?;
         for (n, link) in value.links.into_iter().enumerate() {
             if let Some(link) = link {
-                self.unlink(link, n);
+                self.unlink(link, n, key);
             }
         }
         Some(value.value)
