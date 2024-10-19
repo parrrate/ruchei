@@ -309,6 +309,21 @@ impl<T: ?Sized + Unpin, Route> RouteExt<Route> for &'_ mut T {
 #[pin_project::pin_project]
 pub struct Unroute<S>(#[pin] pub S);
 
+impl<S> Unroute<S> {
+    /// Create a [`Sink`] out of a [`RouteSink`] and asserts that it's derived from a [`Sink`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if [`RouteSink::is_routing`] is `true`.
+    pub fn new_checked<Route, Msg>(sink: S) -> Self
+    where
+        S: RouteSink<Route, Msg>,
+    {
+        assert!(!sink.is_routing());
+        Self(sink)
+    }
+}
+
 #[cfg(feature = "unroute")]
 impl<S: futures_core::Stream> futures_core::Stream for Unroute<S> {
     type Item = S::Item;
@@ -323,17 +338,20 @@ impl<Route, Msg, S: RouteSink<Route, Msg>> Sink<(Route, Msg)> for Unroute<S> {
     type Error = S::Error;
 
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        debug_assert!(!self.0.is_routing());
+        // This used to be a `debug_assert!`. Then we got hit with violation of this precondition in
+        // a release build. On `RouteSink`s statically known to be `Sink`s this should be zero-cost,
+        // as it inlines `false`, and thus removes the assert altogether. So it is now an `assert!`.
+        assert!(!self.0.is_routing());
         self.project().0.poll_ready_any(cx)
     }
 
     fn start_send(self: Pin<&mut Self>, (route, msg): (Route, Msg)) -> Result<(), Self::Error> {
-        debug_assert!(!self.0.is_routing());
+        assert!(!self.0.is_routing());
         self.project().0.start_send(route, msg)
     }
 
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        debug_assert!(!self.0.is_routing());
+        assert!(!self.0.is_routing());
         self.project().0.poll_flush_all(cx)
     }
 
