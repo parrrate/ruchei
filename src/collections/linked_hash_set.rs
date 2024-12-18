@@ -118,19 +118,19 @@ impl<'a, T> Iterator for Iter<'a, T> {
     }
 }
 
-impl<'a, T> ExactSizeIterator for Iter<'a, T> {
+impl<T> ExactSizeIterator for Iter<'_, T> {
     fn len(&self) -> usize {
         self.iter.len()
     }
 }
 
-impl<'a, T: Debug> Debug for Iter<'a, T> {
+impl<T: Debug> Debug for Iter<'_, T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
 }
 
-impl<'a, T> Iterator for Drain<'a, T> {
+impl<T> Iterator for Drain<'_, T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -142,7 +142,7 @@ impl<'a, T> Iterator for Drain<'a, T> {
     }
 }
 
-impl<'a, T> ExactSizeIterator for Drain<'a, T> {
+impl<T> ExactSizeIterator for Drain<'_, T> {
     fn len(&self) -> usize {
         self.drain.len()
     }
