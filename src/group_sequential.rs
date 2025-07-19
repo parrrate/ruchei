@@ -14,7 +14,7 @@ pub struct Grouped<S, K, T> {
 }
 
 pub trait GroupItem: Sized {
-    type K: PartialEq + Clone;
+    type K: PartialEq;
     type V;
     type Grouped<T: Extend<Self::V>>;
 
@@ -25,7 +25,7 @@ pub trait GroupItem: Sized {
     ) -> Poll<Option<Self::Grouped<T>>>;
 }
 
-impl<K: PartialEq + Clone, V> GroupItem for (K, V) {
+impl<K: PartialEq, V> GroupItem for (K, V) {
     type K = K;
     type V = V;
     type Grouped<T: Extend<Self::V>> = (K, T);
@@ -67,7 +67,7 @@ impl<K: PartialEq + Clone, V> GroupItem for (K, V) {
     }
 }
 
-impl<K: PartialEq + Clone, V, E> GroupItem for Result<(K, V), E> {
+impl<K: PartialEq, V, E> GroupItem for Result<(K, V), E> {
     type K = K;
     type V = V;
     type Grouped<T: Extend<Self::V>> = Result<(K, T), E>;
@@ -129,7 +129,7 @@ impl<S: FusedStream<Item = I>, I: GroupItem, T: Default + Extend<I::V>> FusedStr
 }
 
 pub trait GroupSequential: Sized + FusedStream<Item: GroupItem<K = Self::K, V = Self::V>> {
-    type K: PartialEq + Clone;
+    type K: PartialEq;
     type V;
     fn group_sequential<T: Default + Extend<Self::V>>(self) -> Grouped<Self, Self::K, T> {
         Grouped {

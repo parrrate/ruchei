@@ -5,6 +5,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+### Changed
+
+- Dropped `Clone` bound for `group_sequential` context
+
 ### [0.0.96] - 2025-07-19
 
 ### Added
