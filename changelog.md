@@ -5,6 +5,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+### [0.0.96] - 2025-07-19
+
 ### Added
 
 - `group_sequential`
@@ -59,7 +61,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 (baseline)
 
-[unreleased]: https://github.com/parrrate/ruchei/compare/0.0.95..HEAD
+[unreleased]: https://github.com/parrrate/ruchei/compare/0.0.96..HEAD
+[0.0.96]: https://github.com/parrrate/ruchei/compare/0.0.95..0.0.96
 [0.0.95]: https://github.com/parrrate/ruchei/compare/0.0.94..0.0.95
 [0.0.94]: https://github.com/parrrate/ruchei/compare/0.0.94..0.0.95
 [0.0.93]: https://github.com/parrrate/releases/tag/0.0.93
