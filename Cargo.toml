@@ -15,7 +15,7 @@ authors = [
     "Alisa Feistel <alisafeistel@gmail.com>",
     "Clementina Prikhodko <tim@ongoteam.yaconnect.com>",
 ]
-rust-version = "1.75"
+rust-version = "1.79"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
