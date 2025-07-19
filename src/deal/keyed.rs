@@ -9,10 +9,10 @@ use futures_util::{
     ready, stream::FusedStream, task::AtomicWaker, Sink, SinkExt, Stream, StreamExt,
 };
 use linked_hash_map::LinkedHashMap;
+use linked_hash_set::LinkedHashSet;
 use ruchei_callback::OnClose;
 
 use crate::{
-    collections::linked_hash_set::LinkedHashSet,
     pinned_extend::{AutoPinnedExtend, Extending},
     ready_keyed::{Connection, ConnectionWaker, Ready},
     route::Key,
