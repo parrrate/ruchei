@@ -146,7 +146,6 @@ impl<Out, S, R: Stream<Item = S>> FusedStream for CloseAll<R, Out> {
 }
 
 impl<Out, S: Sink<Out>, R: Stream<Item = S>> From<R> for CloseAll<R, Out> {
-    #[must_use]
     fn from(stream: R) -> Self {
         let lock = Arc::new(Mutex::new(Closed));
         let guard = lock.clone().try_lock_owned().unwrap();
@@ -165,7 +164,6 @@ pub trait CloseAllExt<Out>: Sized {
 }
 
 impl<Out, S: Sink<Out>, R: Stream<Item = S>> CloseAllExt<Out> for R {
-    #[must_use]
     fn close_all(self) -> CloseAll<Self, Out> {
         self.into()
     }

@@ -148,21 +148,18 @@ impl<Item, S: Sink<Item>> Sink<Item> for PollOnWake<S> {
 }
 
 impl<S> AsRef<S> for PollOnWake<S> {
-    #[must_use]
     fn as_ref(&self) -> &S {
         &self.inner
     }
 }
 
 impl<S> AsMut<S> for PollOnWake<S> {
-    #[must_use]
     fn as_mut(&mut self) -> &mut S {
         &mut self.inner
     }
 }
 
 impl<S> From<S> for PollOnWake<S> {
-    #[must_use]
     fn from(inner: S) -> Self {
         Self {
             inner,
@@ -191,7 +188,6 @@ pub trait PollOnWakeExt: Sized {
 }
 
 impl<S> PollOnWakeExt for S {
-    #[must_use]
     fn poll_on_wake(self) -> PollOnWake<Self> {
         self.into()
     }

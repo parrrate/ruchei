@@ -260,7 +260,6 @@ impl<In, E, S: Unpin + Stream<Item = Result<In, E>>, R: FusedStream<Item = S>> D
     type S = S;
     type E = E;
 
-    #[must_use]
     fn deal_slab<F: OnClose<Self::E>>(self, callback: F) -> DealerExtending<F, Self> {
         Extending::new(
             self,

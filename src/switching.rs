@@ -200,7 +200,6 @@ impl<
 {
     type S = S;
 
-    #[must_use]
     fn switching(self) -> Switching<Self, Self::S, Out> {
         Switching {
             incoming: self,

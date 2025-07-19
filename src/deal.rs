@@ -37,7 +37,6 @@ impl<R: keyed::DealerKeyedExt> DealerExt for R {
     type S = <R as keyed::DealerKeyedExt>::S;
     type E = <R as keyed::DealerKeyedExt>::E;
 
-    #[must_use]
     fn deal<F: crate::callback::OnClose<<Self as keyed::DealerKeyedExt>::E>>(
         self,
         callback: F,

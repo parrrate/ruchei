@@ -44,7 +44,6 @@ impl<R: keyed::RouterKeyedExt> RouterExt for R {
     type S = <R as keyed::RouterKeyedExt>::S;
     type E = <R as keyed::RouterKeyedExt>::E;
 
-    #[must_use]
     fn route<F: crate::callback::OnClose<<Self as keyed::RouterKeyedExt>::E>>(
         self,
         callback: F,

@@ -83,7 +83,6 @@ impl<S, R> AsRef<S> for Extending<S, R> {
 }
 
 impl<S, R> AsMut<S> for Extending<S, R> {
-    #[must_use]
     fn as_mut(&mut self) -> &mut S {
         &mut self.inner
     }
@@ -157,14 +156,12 @@ pub trait ExtendingExt<A>: Sized {
 }
 
 impl<A, R: FusedStream<Item = A>> ExtendingExt<A> for R {
-    #[must_use]
     fn extending<S: PinnedExtend<A>>(self, inner: S) -> Extending<S, Self> {
         Extending::new(self, inner)
     }
 }
 
 impl<S: Default, R> From<R> for Extending<S, R> {
-    #[must_use]
     fn from(incoming: R) -> Self {
         Self {
             incoming,

@@ -66,14 +66,12 @@ impl<S, Fut, F> WithTimeout<S, Fut, F> {
 }
 
 impl<S, Fut, F> AsRef<S> for WithTimeout<S, Fut, F> {
-    #[must_use]
     fn as_ref(&self) -> &S {
         &self.stream
     }
 }
 
 impl<S, Fut, F> AsMut<S> for WithTimeout<S, Fut, F> {
-    #[must_use]
     fn as_mut(&mut self) -> &mut S {
         &mut self.stream
     }
@@ -147,7 +145,6 @@ pub trait TimeoutUnused: Sized {
 }
 
 impl<S: Stream> TimeoutUnused for S {
-    #[must_use]
     fn timeout_unused<Fut: Future<Output = ()>, F: Start<Fut = Fut>>(
         self,
         start: F,
@@ -159,7 +156,6 @@ impl<S: Stream> TimeoutUnused for S {
 impl<S, Fut: Future<Output = ()>, F: Default + Start<Fut = Fut>> From<S>
     for WithTimeout<S, Fut, F>
 {
-    #[must_use]
     fn from(stream: S) -> Self {
         Self::new(stream, Default::default())
     }
@@ -168,7 +164,6 @@ impl<S, Fut: Future<Output = ()>, F: Default + Start<Fut = Fut>> From<S>
 impl<S: Default, Fut: Future<Output = ()>, F: Default + Start<Fut = Fut>> Default
     for WithTimeout<S, Fut, F>
 {
-    #[must_use]
     fn default() -> Self {
         S::default().into()
     }
