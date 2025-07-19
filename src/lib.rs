@@ -13,7 +13,7 @@ pub mod compress;
 pub mod concurrent;
 pub mod deal;
 pub mod echo;
-pub mod group_by_key;
+pub mod group_concurrent;
 pub mod multicast;
 mod owned_close;
 pub mod pinned_extend;
