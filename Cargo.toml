@@ -4,6 +4,7 @@ members = [
     "ruchei-callback",
     "ruchei-extra",
     "ruchei-route",
+    "ruchei-trie",
 ]
 
 [workspace.package]
