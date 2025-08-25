@@ -4,8 +4,9 @@ use slab::Slab;
 
 #[derive(Debug)]
 struct Nodes<T> {
-    slab: Slab<Node<T>>,
+    slab: Slab<(usize, Node<T>)>,
     roots: usize,
+    ctr: usize,
 }
 
 impl<T> Default for Nodes<T> {
@@ -13,17 +14,30 @@ impl<T> Default for Nodes<T> {
         Self {
             slab: Default::default(),
             roots: Default::default(),
+            ctr: Default::default(),
         }
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct NodeId(usize);
+struct NodeId {
+    location: usize,
+    ctr: usize,
+}
 
 impl<T> Nodes<T> {
+    fn next_ctr(&mut self) -> usize {
+        let next_ctr = self.ctr.wrapping_add(1);
+        std::mem::replace(&mut self.ctr, next_ctr)
+    }
+
     fn push(&mut self, node: Node<T>) -> NodeId {
         self.increment_roots();
-        NodeId(self.slab.insert(node))
+        let ctr = self.next_ctr();
+        NodeId {
+            location: self.slab.insert((ctr, node)),
+            ctr,
+        }
     }
 
     fn pop(&mut self, id: NodeId) {
@@ -31,7 +45,8 @@ impl<T> Nodes<T> {
         assert!(node.parent.is_none());
         assert!(node.value.is_none());
         assert!(node.children.is_empty());
-        self.slab.remove(id.0);
+        let (ctr, _) = self.slab.remove(id.location);
+        assert_eq!(ctr, id.ctr);
         self.decrement_roots();
     }
 
@@ -44,11 +59,15 @@ impl<T> Nodes<T> {
     }
 
     fn get(&self, id: NodeId) -> &Node<T> {
-        self.slab.get(id.0).expect("invalid node id")
+        let (ctr, node) = self.slab.get(id.location).expect("invalid node id");
+        assert_eq!(*ctr, id.ctr);
+        node
     }
 
     fn get_mut(&mut self, id: NodeId) -> &mut Node<T> {
-        self.slab.get_mut(id.0).expect("invalid node id")
+        let (ctr, node) = self.slab.get_mut(id.location).expect("invalid node id");
+        assert_eq!(*ctr, id.ctr);
+        node
     }
 
     fn push_value(&mut self, value: T) -> NodeId {
