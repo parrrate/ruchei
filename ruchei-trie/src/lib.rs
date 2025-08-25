@@ -353,74 +353,74 @@ impl<T> Trie<T> {
         value
     }
 
-    // pub fn prefix_of<'a, 'b>(&'a self, suffix: &'b [u8]) -> PrefixOf<'a, 'b, T> {
-    //     PrefixOf {
-    //         node: self.root.as_ref(),
-    //         suffix,
-    //     }
-    // }
+    pub fn prefix_of<'a, 'b>(&'a self, suffix: &'b [u8]) -> PrefixOf<'a, 'b, T> {
+        PrefixOf {
+            nodes: &self.nodes,
+            id: Some(self.root),
+            suffix,
+        }
+    }
 
-    // pub fn prefix_of_mut<'a, 'b>(&'a mut self, suffix: &'b [u8]) -> PrefixOfMut<'a, 'b, T> {
-    //     PrefixOfMut {
-    //         node: self.root.as_mut(),
-    //         suffix,
-    //     }
-    // }
+    pub fn prefix_of_mut<'a, 'b>(&'a mut self, suffix: &'b [u8]) -> PrefixOfMut<'a, 'b, T> {
+        PrefixOfMut {
+            nodes: &mut self.nodes,
+            id: Some(self.root),
+            suffix,
+        }
+    }
 }
 
-// pub struct PrefixOf<'a, 'b, T> {
-//     node: Option<&'a Node<T>>,
-//     suffix: &'b [u8],
-// }
+pub struct PrefixOf<'a, 'b, T> {
+    nodes: &'a Nodes<T>,
+    id: Option<NodeId>,
+    suffix: &'b [u8],
+}
 
-// impl<'a, 'b, T> Iterator for PrefixOf<'a, 'b, T> {
-//     type Item = &'a T;
+impl<'a, 'b, T> Iterator for PrefixOf<'a, 'b, T> {
+    type Item = &'a T;
 
-//     fn next(&mut self) -> Option<Self::Item> {
-//         loop {
-//             let node = self.node.take()?;
-//             let value = node.value.as_ref();
-//             if let Some((first, rest)) = self.suffix.split_first()
-//                 && let Some((prefix, node)) = node.children.get(first)
-//                 && let Some(suffix) = rest.strip_prefix(prefix.as_slice())
-//             {
-//                 assert!(suffix.len() < self.suffix.len());
-//                 self.node = Some(node);
-//                 self.suffix = suffix;
-//             }
-//             if value.is_some() {
-//                 break value;
-//             }
-//         }
-//     }
-// }
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            let id = self.id.take()?;
+            if let Some((first, rest)) = self.suffix.split_first()
+                && let Some((prefix, id)) = self.nodes.get(id).children.get(first)
+                && let Some(suffix) = rest.strip_prefix(prefix.as_slice())
+            {
+                assert!(suffix.len() < self.suffix.len());
+                self.id = Some(*id);
+                self.suffix = suffix;
+            }
+            if self.nodes.get(id).value.is_some() {
+                break self.nodes.get(id).value.as_ref();
+            }
+        }
+    }
+}
 
-// pub struct PrefixOfMut<'a, 'b, T> {
-//     node: Option<&'a mut Node<T>>,
-//     suffix: &'b [u8],
-// }
+pub struct PrefixOfMut<'a, 'b, T> {
+    nodes: &'a mut Nodes<T>,
+    id: Option<NodeId>,
+    suffix: &'b [u8],
+}
 
-// impl<'a, 'b, T> Iterator for PrefixOfMut<'a, 'b, T> {
-//     type Item = &'a mut T;
-
-//     fn next(&mut self) -> Option<Self::Item> {
-//         loop {
-//             let node = self.node.take()?;
-//             let value = node.value.as_mut();
-//             if let Some((first, rest)) = self.suffix.split_first()
-//                 && let Some((prefix, node)) = node.children.get_mut(first)
-//                 && let Some(suffix) = rest.strip_prefix(prefix.as_slice())
-//             {
-//                 assert!(suffix.len() < self.suffix.len());
-//                 self.node = Some(node);
-//                 self.suffix = suffix;
-//             }
-//             if value.is_some() {
-//                 break value;
-//             }
-//         }
-//     }
-// }
+impl<'a, 'b, T> PrefixOfMut<'a, 'b, T> {
+    pub fn borrow_next(&mut self) -> Option<&mut T> {
+        loop {
+            let id = self.id.take()?;
+            if let Some((first, rest)) = self.suffix.split_first()
+                && let Some((prefix, id)) = self.nodes.get(id).children.get(first)
+                && let Some(suffix) = rest.strip_prefix(prefix.as_slice())
+            {
+                assert!(suffix.len() < self.suffix.len());
+                self.id = Some(*id);
+                self.suffix = suffix;
+            }
+            if self.nodes.get(id).value.is_some() {
+                break self.nodes.get_mut(id).value.as_mut();
+            }
+        }
+    }
+}
 
 #[test]
 fn empty_get() {
