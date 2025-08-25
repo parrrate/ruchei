@@ -311,10 +311,10 @@ impl<T> Trie<T> {
         Some((id, value))
     }
 
-    pub fn insert(&mut self, key: &[u8], value: T) -> Option<T> {
-        let (_, value) = self.nodes.insert(self.root, key, value);
+    pub fn insert(&mut self, key: &[u8], value: T) -> (NodeId, Option<T>) {
+        let result = self.nodes.insert(self.root, key, value);
         assert_eq!(self.nodes.roots, 1);
-        value
+        result
     }
 
     pub fn remove(&mut self, key: &[u8]) -> Option<T> {
