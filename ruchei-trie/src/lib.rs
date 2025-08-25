@@ -209,14 +209,14 @@ impl<'a, T> NodeMut<'a, T> {
         self.nodes.get_mut(self.id)
     }
 
-    fn insert(mut self, mut key: &[u8], value: T) -> Option<T> {
+    fn insert(mut self, mut key: &[u8], value: T) -> (NodeId, Option<T>) {
         loop {
             let Some((first, rest)) = key.split_first() else {
-                return self.into_mut().value.replace(value);
+                break (self.id, self.into_mut().value.replace(value));
             };
             let Some((prefix, id)) = self.as_mut().children.get_mut(first) else {
-                self.nodes.add_value(self.id, *first, rest.into(), value);
-                return None;
+                let id = self.nodes.add_value(self.id, *first, rest.into(), value);
+                break (id, None);
             };
             let id = *id;
             if let Some(sub_key) = rest.strip_prefix(prefix.as_slice()) {
@@ -225,7 +225,7 @@ impl<'a, T> NodeMut<'a, T> {
                 key = sub_key;
                 continue;
             }
-            if let Some(old_sub) = prefix.strip_prefix(rest) {
+            let id = if let Some(old_sub) = prefix.strip_prefix(rest) {
                 assert!(!old_sub.is_empty());
                 let (old_first, old_rest) = old_sub.split_first().expect("not an empty string");
                 let old_first = *old_first;
@@ -233,6 +233,7 @@ impl<'a, T> NodeMut<'a, T> {
                 self.nodes.disown(id);
                 let middle = self.nodes.add_value(self.id, *first, rest.into(), value);
                 self.nodes.add_child(middle, old_first, old_rest, id);
+                middle
             } else {
                 let (common, new, old) = common_prefix(rest, prefix);
                 assert!(!new.is_empty());
@@ -251,9 +252,9 @@ impl<'a, T> NodeMut<'a, T> {
                     id,
                 );
                 self.nodes
-                    .add_value(common, *new_first, new_rest.into(), value);
-            }
-            break None;
+                    .add_value(common, *new_first, new_rest.into(), value)
+            };
+            break (id, None);
         }
     }
 
@@ -316,7 +317,7 @@ impl<T> Trie<T> {
     }
 
     pub fn insert(&mut self, key: &[u8], value: T) -> Option<T> {
-        let value = NodeMut {
+        let (_, value) = NodeMut {
             nodes: &mut self.nodes,
             id: self.root,
         }
