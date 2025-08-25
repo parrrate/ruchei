@@ -23,12 +23,22 @@ impl<T> Default for Nodes<T> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct NodeId {
+pub struct NodeId {
     location: usize,
     ctr: usize,
 }
 
 impl<T> Nodes<T> {
+    fn get(&self, id: NodeId) -> Option<&Node<T>> {
+        let (ctr, node) = self.slab.get(id.location)?;
+        (*ctr == id.ctr).then_some(node)
+    }
+
+    fn get_mut(&mut self, id: NodeId) -> Option<&mut Node<T>> {
+        let (ctr, node) = self.slab.get_mut(id.location)?;
+        (*ctr == id.ctr).then_some(node)
+    }
+
     fn next_ctr(&mut self) -> usize {
         let next_ctr = self.ctr.wrapping_add(1);
         std::mem::replace(&mut self.ctr, next_ctr)
@@ -281,15 +291,24 @@ impl<T> Default for Trie<T> {
 }
 
 impl<T> Trie<T> {
-    pub fn get<'a>(&'a self, key: &[u8]) -> Option<&'a T> {
-        self.nodes[self.nodes.locate(self.root, key)?]
-            .value
-            .as_ref()
+    pub fn try_index(&self, id: NodeId) -> Option<&T> {
+        self.nodes.get(id)?.value.as_ref()
     }
 
-    pub fn get_mut<'a>(&'a mut self, key: &[u8]) -> Option<&'a mut T> {
+    pub fn try_index_mut(&mut self, id: NodeId) -> Option<&mut T> {
+        self.nodes.get_mut(id)?.value.as_mut()
+    }
+
+    pub fn get<'a>(&'a self, key: &[u8]) -> Option<(NodeId, &'a T)> {
         let id = self.nodes.locate(self.root, key)?;
-        self.nodes[id].value.as_mut()
+        let value = self.nodes[id].value.as_ref()?;
+        Some((id, value))
+    }
+
+    pub fn get_mut<'a>(&'a mut self, key: &[u8]) -> Option<(NodeId, &'a mut T)> {
+        let id = self.nodes.locate(self.root, key)?;
+        let value = self.nodes[id].value.as_mut()?;
+        Some((id, value))
     }
 
     pub fn insert(&mut self, key: &[u8], value: T) -> Option<T> {
@@ -384,7 +403,7 @@ fn empty_get() {
 fn insert_at_root() {
     let mut trie = Trie::<i32>::default();
     trie.insert(b"", 123);
-    assert_eq!(*trie.get(b"").unwrap(), 123);
+    assert_eq!(*trie.get(b"").unwrap().1, 123);
     assert!(trie.get(b"sub").is_none());
 }
 
@@ -392,7 +411,7 @@ fn insert_at_root() {
 fn insert_at_sub() {
     let mut trie = Trie::<i32>::default();
     trie.insert(b"sub", 123);
-    assert_eq!(*trie.get(b"sub").unwrap(), 123);
+    assert_eq!(*trie.get(b"sub").unwrap().1, 123);
     assert!(trie.get(b"").is_none());
 }
 
@@ -401,8 +420,8 @@ fn insert_ab() {
     let mut trie = Trie::<i32>::default();
     trie.insert(b"a", 123);
     trie.insert(b"b", 456);
-    assert_eq!(*trie.get(b"a").unwrap(), 123);
-    assert_eq!(*trie.get(b"b").unwrap(), 456);
+    assert_eq!(*trie.get(b"a").unwrap().1, 123);
+    assert_eq!(*trie.get(b"b").unwrap().1, 456);
     assert!(trie.get(b"").is_none());
 }
 
@@ -411,8 +430,8 @@ fn insert_common_ab() {
     let mut trie = Trie::<i32>::default();
     trie.insert(b"common-a", 123);
     trie.insert(b"common-b", 456);
-    assert_eq!(*trie.get(b"common-a").unwrap(), 123);
-    assert_eq!(*trie.get(b"common-b").unwrap(), 456);
+    assert_eq!(*trie.get(b"common-a").unwrap().1, 123);
+    assert_eq!(*trie.get(b"common-b").unwrap().1, 456);
     assert!(trie.get(b"").is_none());
     assert!(trie.get(b"common-").is_none());
 }
@@ -423,9 +442,9 @@ fn insert_nested_abc() {
     trie.insert(b"ab", 456);
     trie.insert(b"a", 123);
     trie.insert(b"abc", 789);
-    assert_eq!(*trie.get(b"a").unwrap(), 123);
-    assert_eq!(*trie.get(b"ab").unwrap(), 456);
-    assert_eq!(*trie.get(b"abc").unwrap(), 789);
+    assert_eq!(*trie.get(b"a").unwrap().1, 123);
+    assert_eq!(*trie.get(b"ab").unwrap().1, 456);
+    assert_eq!(*trie.get(b"abc").unwrap().1, 789);
     assert!(trie.get(b"").is_none());
     assert!(trie.get(b"b").is_none());
     assert!(trie.get(b"c").is_none());
