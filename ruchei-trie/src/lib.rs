@@ -39,6 +39,10 @@ impl<T> Nodes<T> {
         (*ctr == id.ctr).then_some(node)
     }
 
+    fn contains(&self, id: NodeId) -> bool {
+        self.get(id).is_some()
+    }
+
     fn next_ctr(&mut self) -> usize {
         let next_ctr = self.ctr.wrapping_add(1);
         std::mem::replace(&mut self.ctr, next_ctr)
@@ -319,6 +323,14 @@ impl<T> Trie<T> {
         let result = self.nodes.insert(self.root, key, value);
         assert_eq!(self.nodes.roots, 1);
         result
+    }
+
+    pub fn remove_at(&mut self, id: NodeId) -> Option<T> {
+        if self.nodes.contains(id) {
+            self.nodes.remove_at(id)
+        } else {
+            None
+        }
     }
 
     pub fn remove(&mut self, key: &[u8]) -> Option<T> {
