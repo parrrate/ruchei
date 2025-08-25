@@ -1,4 +1,7 @@
-use std::collections::BTreeMap;
+use std::{
+    collections::BTreeMap,
+    ops::{Index, IndexMut},
+};
 
 use slab::Slab;
 
@@ -41,7 +44,7 @@ impl<T> Nodes<T> {
     }
 
     fn pop(&mut self, id: NodeId) {
-        let node = self.get(id);
+        let node = &self[id];
         assert!(node.parent.is_none());
         assert!(node.value.is_none());
         assert!(node.children.is_empty());
@@ -58,24 +61,12 @@ impl<T> Nodes<T> {
         self.roots = self.roots.checked_sub(1).expect("root count underflow");
     }
 
-    fn get(&self, id: NodeId) -> &Node<T> {
-        let (ctr, node) = self.slab.get(id.location).expect("invalid node id");
-        assert_eq!(*ctr, id.ctr);
-        node
-    }
-
-    fn get_mut(&mut self, id: NodeId) -> &mut Node<T> {
-        let (ctr, node) = self.slab.get_mut(id.location).expect("invalid node id");
-        assert_eq!(*ctr, id.ctr);
-        node
-    }
-
     fn push_value(&mut self, value: T) -> NodeId {
         self.push(Node::new_value(value))
     }
 
     fn connect(&mut self, parent: NodeId, first: u8, child: NodeId) {
-        let child = self.get_mut(child);
+        let child = &mut self[child];
         assert!(child.parent.is_none());
         child.parent = Some((first, parent));
         self.decrement_roots();
@@ -88,7 +79,7 @@ impl<T> Nodes<T> {
     }
 
     fn add_child(&mut self, parent: NodeId, first: u8, rest: Vec<u8>, child: NodeId) {
-        self.get_mut(parent).children.insert(first, (rest, child));
+        self[parent].children.insert(first, (rest, child));
         self.connect(parent, first, child);
     }
 
@@ -113,21 +104,14 @@ impl<T> Nodes<T> {
     }
 
     fn remove_child(&mut self, parent: NodeId, first: u8) -> (Vec<u8>, NodeId) {
-        let (prefix, child) = self
-            .get_mut(parent)
-            .children
-            .remove(&first)
-            .expect("unknown child");
+        let (prefix, child) = self[parent].children.remove(&first).expect("unknown child");
         self.increment_roots();
-        self.get_mut(child).parent = None;
+        self[child].parent = None;
         (prefix, child)
     }
 
     fn disown(&mut self, child: NodeId) -> (NodeId, u8, Vec<u8>) {
-        let (first, parent) = self
-            .get_mut(child)
-            .parent
-            .expect("disowning without a parent");
+        let (first, parent) = self[child].parent.expect("disowning without a parent");
         let (prefix, c) = self.remove_child(parent, first);
         assert_eq!(child, c);
         (parent, first, prefix)
@@ -135,7 +119,7 @@ impl<T> Nodes<T> {
 
     fn locate(&self, mut id: NodeId, mut key: &[u8]) -> Option<NodeId> {
         while let Some((first, rest)) = key.split_first() {
-            let (prefix, sub_id) = self.get(id).children.get(first)?;
+            let (prefix, sub_id) = self[id].children.get(first)?;
             let sub_key = rest.strip_prefix(prefix.as_slice())?;
             assert!(sub_key.len() < key.len());
             id = *sub_id;
@@ -143,6 +127,24 @@ impl<T> Nodes<T> {
         }
         assert!(key.is_empty());
         Some(id)
+    }
+}
+
+impl<T> Index<NodeId> for Nodes<T> {
+    type Output = Node<T>;
+
+    fn index(&self, id: NodeId) -> &Self::Output {
+        let (ctr, node) = self.slab.get(id.location).expect("invalid node id");
+        assert_eq!(*ctr, id.ctr);
+        node
+    }
+}
+
+impl<T> IndexMut<NodeId> for Nodes<T> {
+    fn index_mut(&mut self, id: NodeId) -> &mut Self::Output {
+        let (ctr, node) = self.slab.get_mut(id.location).expect("invalid node id");
+        assert_eq!(*ctr, id.ctr);
+        node
     }
 }
 
@@ -202,11 +204,11 @@ struct NodeMut<'a, T> {
 
 impl<'a, T> NodeMut<'a, T> {
     fn as_mut(&mut self) -> &mut Node<T> {
-        self.nodes.get_mut(self.id)
+        &mut self.nodes[self.id]
     }
 
     fn into_mut(self) -> &'a mut Node<T> {
-        self.nodes.get_mut(self.id)
+        &mut self.nodes[self.id]
     }
 
     fn insert(mut self, mut key: &[u8], value: T) -> (NodeId, Option<T>) {
@@ -260,7 +262,7 @@ impl<'a, T> NodeMut<'a, T> {
 
     fn remove(mut self, key: &[u8]) -> Option<T> {
         self.id = self.nodes.locate(self.id, key)?;
-        let value = self.nodes.get_mut(self.id).value.take()?;
+        let value = self.nodes[self.id].value.take()?;
         while let node = self.as_mut()
             && node.is_collapsible()
         {
@@ -303,17 +305,14 @@ impl<T> Default for Trie<T> {
 
 impl<T> Trie<T> {
     pub fn get<'a>(&'a self, key: &[u8]) -> Option<&'a T> {
-        self.nodes
-            .get(self.nodes.locate(self.root, key)?)
+        self.nodes[self.nodes.locate(self.root, key)?]
             .value
             .as_ref()
     }
 
     pub fn get_mut<'a>(&'a mut self, key: &[u8]) -> Option<&'a mut T> {
-        self.nodes
-            .get_mut(self.nodes.locate(self.root, key)?)
-            .value
-            .as_mut()
+        let id = self.nodes.locate(self.root, key)?;
+        self.nodes[id].value.as_mut()
     }
 
     pub fn insert(&mut self, key: &[u8], value: T) -> Option<T> {
@@ -366,15 +365,15 @@ impl<'a, 'b, T> Iterator for PrefixOf<'a, 'b, T> {
         loop {
             let id = self.id.take()?;
             if let Some((first, rest)) = self.suffix.split_first()
-                && let Some((prefix, id)) = self.nodes.get(id).children.get(first)
+                && let Some((prefix, id)) = self.nodes[id].children.get(first)
                 && let Some(suffix) = rest.strip_prefix(prefix.as_slice())
             {
                 assert!(suffix.len() < self.suffix.len());
                 self.id = Some(*id);
                 self.suffix = suffix;
             }
-            if self.nodes.get(id).value.is_some() {
-                break self.nodes.get(id).value.as_ref();
+            if self.nodes[id].value.is_some() {
+                break self.nodes[id].value.as_ref();
             }
         }
     }
@@ -391,15 +390,15 @@ impl<'a, 'b, T> PrefixOfMut<'a, 'b, T> {
         loop {
             let id = self.id.take()?;
             if let Some((first, rest)) = self.suffix.split_first()
-                && let Some((prefix, id)) = self.nodes.get(id).children.get(first)
+                && let Some((prefix, id)) = self.nodes[id].children.get(first)
                 && let Some(suffix) = rest.strip_prefix(prefix.as_slice())
             {
                 assert!(suffix.len() < self.suffix.len());
                 self.id = Some(*id);
                 self.suffix = suffix;
             }
-            if self.nodes.get(id).value.is_some() {
-                break self.nodes.get_mut(id).value.as_mut();
+            if self.nodes[id].value.is_some() {
+                break self.nodes[id].value.as_mut();
             }
         }
     }
