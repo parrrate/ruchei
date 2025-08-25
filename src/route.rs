@@ -21,10 +21,10 @@ pub type RouterExtending<F, R> = keyed::RouterExtending<F, R>;
 #[deprecated]
 pub trait RouterExt:
     keyed::RouterKeyedExt<
-    K = <Self as RouterExt>::K,
-    S = <Self as RouterExt>::S,
-    E = <Self as RouterExt>::E,
->
+        K = <Self as RouterExt>::K,
+        S = <Self as RouterExt>::S,
+        E = <Self as RouterExt>::E,
+    >
 {
     type K;
     type S;

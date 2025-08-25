@@ -86,10 +86,10 @@ use std::{
 };
 
 use futures_util::{
+    Stream,
     lock::{Mutex, OwnedMutexGuard, OwnedMutexLockFuture},
     ready,
     stream::FuturesUnordered,
-    Stream,
 };
 use pin_project::pin_project;
 
@@ -132,12 +132,12 @@ pub struct Grouped<S, Sender, K, G> {
 }
 
 impl<
-        Item,
-        Sender,
-        K: Eq + Hash + Clone,
-        S: Stream<Item = (K, Item)>,
-        G: Group<Item = Item, Sender = Sender>,
-    > Stream for Grouped<S, Sender, K, G>
+    Item,
+    Sender,
+    K: Eq + Hash + Clone,
+    S: Stream<Item = (K, Item)>,
+    G: Group<Item = Item, Sender = Sender>,
+> Stream for Grouped<S, Sender, K, G>
 {
     type Item = (G::Receiver, GroupGuard<K>);
 

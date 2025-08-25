@@ -29,7 +29,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures_util::{ready, stream::FusedStream, task::AtomicWaker, Sink, Stream};
+use futures_util::{Sink, Stream, ready, stream::FusedStream, task::AtomicWaker};
 use pin_project::pin_project;
 
 /// When a new [`Stream`]`+`[`Sink`] becomes available, closes the existing one, then switches to a
@@ -49,13 +49,8 @@ pub struct Switching<R, S, Out> {
     _out: PhantomData<Out>,
 }
 
-impl<
-        In,
-        Out,
-        E,
-        S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
-        R: FusedStream<Item = S>,
-    > Switching<R, S, Out>
+impl<In, Out, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>, R: FusedStream<Item = S>>
+    Switching<R, S, Out>
 {
     fn ensure_current(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), E>> {
         let mut this = self.project();
@@ -71,11 +66,11 @@ impl<
                     this.current.as_mut().set(this.swap.take());
                 }
                 None => {
-                    if !this.incoming.is_terminated() {
-                        if let Poll::Ready(Some(swap)) = this.incoming.as_mut().poll_next(cx) {
-                            *this.swap = Some(swap);
-                            continue;
-                        }
+                    if !this.incoming.is_terminated()
+                        && let Poll::Ready(Some(swap)) = this.incoming.as_mut().poll_next(cx)
+                    {
+                        *this.swap = Some(swap);
+                        continue;
                     }
                     break Poll::Ready(Ok(()));
                 }
@@ -84,13 +79,8 @@ impl<
     }
 }
 
-impl<
-        In,
-        Out,
-        E,
-        S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
-        R: FusedStream<Item = S>,
-    > Stream for Switching<R, S, Out>
+impl<In, Out, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>, R: FusedStream<Item = S>>
+    Stream for Switching<R, S, Out>
 {
     type Item = Result<In, E>;
 
@@ -112,26 +102,16 @@ impl<
     }
 }
 
-impl<
-        In,
-        Out,
-        E,
-        S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
-        R: FusedStream<Item = S>,
-    > FusedStream for Switching<R, S, Out>
+impl<In, Out, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>, R: FusedStream<Item = S>>
+    FusedStream for Switching<R, S, Out>
 {
     fn is_terminated(&self) -> bool {
         self.current.is_none() && self.swap.is_none() && self.incoming.is_terminated()
     }
 }
 
-impl<
-        In,
-        Out,
-        E,
-        S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
-        R: FusedStream<Item = S>,
-    > Sink<Out> for Switching<R, S, Out>
+impl<In, Out, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>, R: FusedStream<Item = S>>
+    Sink<Out> for Switching<R, S, Out>
 {
     type Error = E;
 
@@ -190,13 +170,8 @@ pub trait SwitchingExt<Out>: Sized {
     fn switching(self) -> Switching<Self, Self::S, Out>;
 }
 
-impl<
-        In,
-        Out,
-        E,
-        S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
-        R: FusedStream<Item = S>,
-    > SwitchingExt<Out> for R
+impl<In, Out, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>, R: FusedStream<Item = S>>
+    SwitchingExt<Out> for R
 {
     type S = S;
 

@@ -5,8 +5,8 @@ use std::{
 };
 
 use futures_util::{
-    stream::{FusedStream, FuturesUnordered, SelectAll},
     Sink, Stream,
+    stream::{FusedStream, FuturesUnordered, SelectAll},
 };
 use pin_project::pin_project;
 
@@ -141,12 +141,12 @@ impl<In, Out, E, S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
 }
 
 impl<
-        In,
-        Out,
-        E,
-        S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
-        F: Default + OnClose<E>,
-    > Default for Multicast<S, Out, F>
+    In,
+    Out,
+    E,
+    S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
+    F: Default + OnClose<E>,
+> Default for Multicast<S, Out, F>
 {
     fn default() -> Self {
         Self::new(F::default())
@@ -164,12 +164,12 @@ impl<In, Out, E, S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
 }
 
 impl<
-        In,
-        Out,
-        E,
-        S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
-        F: Default + OnClose<E>,
-    > FromIterator<S> for Multicast<S, Out, F>
+    In,
+    Out,
+    E,
+    S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
+    F: Default + OnClose<E>,
+> FromIterator<S> for Multicast<S, Out, F>
 {
     fn from_iter<T: IntoIterator<Item = S>>(iter: T) -> Self {
         let mut this = Self::default();
@@ -194,12 +194,12 @@ pub trait MulticastIgnore<Out>: Sized {
 }
 
 impl<
-        In,
-        Out,
-        E,
-        S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
-        R: FusedStream<Item = S>,
-    > MulticastIgnore<Out> for R
+    In,
+    Out,
+    E,
+    S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
+    R: FusedStream<Item = S>,
+> MulticastIgnore<Out> for R
 {
     type S = S;
 

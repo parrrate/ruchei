@@ -14,10 +14,10 @@ pub type DealerExtending<F, R> = keyed::DealerExtending<F, R>;
 #[deprecated]
 pub trait DealerExt:
     keyed::DealerKeyedExt<
-    K = <Self as DealerExt>::K,
-    S = <Self as DealerExt>::S,
-    E = <Self as DealerExt>::E,
->
+        K = <Self as DealerExt>::K,
+        S = <Self as DealerExt>::S,
+        E = <Self as DealerExt>::E,
+    >
 {
     type K;
     type S;

@@ -3,8 +3,8 @@
 use std::marker::PhantomData;
 
 use async_net::TcpListener;
-use futures_channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
-use futures_util::{future::ready, StreamExt};
+use futures_channel::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
+use futures_util::{StreamExt, future::ready};
 use ruchei::{
     concurrent::ConcurrentExt,
     echo::buffered::EchoBuffered,

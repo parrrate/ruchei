@@ -29,9 +29,9 @@ use std::{
 };
 
 use futures_util::{
+    Future, Sink, Stream,
     stream::{FusedStream, FuturesUnordered, SelectAll},
     task::AtomicWaker,
-    Future, Sink, Stream,
 };
 use pin_project::pin_project;
 
@@ -69,14 +69,14 @@ impl<In, Out, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>, F: OnCl
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
         this.waker.register(cx.waker());
-        if *this.ready {
-            if let Some(out) = this.started.take() {
-                match this.stream.as_mut().start_send(out) {
-                    Ok(()) => *this.ready = false,
-                    Err(e) => {
-                        this.callback.on_close(Some(e));
-                        return Poll::Ready(None);
-                    }
+        if *this.ready
+            && let Some(out) = this.started.take()
+        {
+            match this.stream.as_mut().start_send(out) {
+                Ok(()) => *this.ready = false,
+                Err(e) => {
+                    this.callback.on_close(Some(e));
+                    return Poll::Ready(None);
                 }
             }
         }
@@ -93,16 +93,16 @@ impl<In, Out, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>, F: OnCl
                 Poll::Pending => {}
             }
         }
-        if *this.ready {
-            if let Some(out) = this.started.take() {
-                match this.stream.as_mut().start_send(out) {
-                    Ok(()) => {
-                        *this.ready = false;
-                    }
-                    Err(e) => {
-                        this.callback.on_close(Some(e));
-                        return Poll::Ready(None);
-                    }
+        if *this.ready
+            && let Some(out) = this.started.take()
+        {
+            match this.stream.as_mut().start_send(out) {
+                Ok(()) => {
+                    *this.ready = false;
+                }
+                Err(e) => {
+                    this.callback.on_close(Some(e));
+                    return Poll::Ready(None);
                 }
             }
         }
@@ -173,12 +173,12 @@ impl<In, Out, E, S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
 }
 
 impl<
-        In,
-        Out: Clone,
-        E,
-        S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
-        F: OnClose<E>,
-    > Sink<Out> for Multicast<S, Out, F>
+    In,
+    Out: Clone,
+    E,
+    S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
+    F: OnClose<E>,
+> Sink<Out> for Multicast<S, Out, F>
 {
     type Error = Infallible;
 
@@ -289,12 +289,12 @@ impl<In, Out, E, S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
 }
 
 impl<
-        In,
-        Out,
-        E,
-        S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
-        F: Default + OnClose<E>,
-    > Default for Multicast<S, Out, F>
+    In,
+    Out,
+    E,
+    S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
+    F: Default + OnClose<E>,
+> Default for Multicast<S, Out, F>
 {
     fn default() -> Self {
         Self::new(F::default())
@@ -312,12 +312,12 @@ impl<In, Out, E, S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
 }
 
 impl<
-        In,
-        Out,
-        E,
-        S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
-        F: Default + OnClose<E>,
-    > FromIterator<S> for Multicast<S, Out, F>
+    In,
+    Out,
+    E,
+    S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
+    F: Default + OnClose<E>,
+> FromIterator<S> for Multicast<S, Out, F>
 {
     fn from_iter<T: IntoIterator<Item = S>>(iter: T) -> Self {
         let mut this = Self::default();
@@ -342,12 +342,12 @@ pub trait MulticastBufferless<Out>: Sized {
 }
 
 impl<
-        In,
-        Out,
-        E,
-        S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
-        R: FusedStream<Item = S>,
-    > MulticastBufferless<Out> for R
+    In,
+    Out,
+    E,
+    S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
+    R: FusedStream<Item = S>,
+> MulticastBufferless<Out> for R
 {
     type S = S;
 

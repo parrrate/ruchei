@@ -17,8 +17,8 @@
 use std::{
     pin::Pin,
     sync::{
-        atomic::{AtomicBool, Ordering},
         Arc,
+        atomic::{AtomicBool, Ordering},
     },
     task::{Context, Poll, Wake},
 };

@@ -4,8 +4,8 @@ use std::{
     task::{Context, Poll, Wake, Waker},
 };
 
-use futures_channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
-use futures_util::{task::AtomicWaker, Stream};
+use futures_channel::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
+use futures_util::{Stream, task::AtomicWaker};
 use pin_project::pin_project;
 
 use crate::collections::linked_slab::LinkedSlab;

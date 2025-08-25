@@ -1,15 +1,15 @@
 //! Various benchmarks for in-memory multicast.
 
 use std::{
-    pin::{pin, Pin},
+    pin::{Pin, pin},
     task::{Context, Poll},
     time::Instant,
 };
 
-use futures_channel::mpsc::{unbounded, SendError, UnboundedReceiver, UnboundedSender};
+use futures_channel::mpsc::{SendError, UnboundedReceiver, UnboundedSender, unbounded};
 use futures_util::{
-    future::{select, select_all},
     Future, Sink, SinkExt, Stream, StreamExt,
+    future::{select, select_all},
 };
 use pin_project::pin_project;
 use ruchei::{
@@ -17,7 +17,7 @@ use ruchei::{
     multicast::buffered::MulticastBuffered,
     multicast::bufferless::MulticastBufferless,
     multicast::replay::MulticastReplay,
-    rw_isolation::{isolation, IsolateInner, IsolateOuter},
+    rw_isolation::{IsolateInner, IsolateOuter, isolation},
 };
 
 #[pin_project]

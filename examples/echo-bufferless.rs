@@ -7,7 +7,7 @@ use ruchei::{
     echo::bufferless::EchoBufferless,
     multicast::bufferless::MulticastBufferless,
     poll_on_wake::PollOnWakeExt,
-    rw_isolation::{isolation, IsolateInner, IsolateOuter},
+    rw_isolation::{IsolateInner, IsolateOuter, isolation},
 };
 
 #[async_std::main]

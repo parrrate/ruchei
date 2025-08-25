@@ -5,7 +5,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures_util::{stream::FusedStream, Sink, SinkExt, Stream, StreamExt};
+use futures_util::{Sink, SinkExt, Stream, StreamExt, stream::FusedStream};
 use linked_hash_map::LinkedHashMap;
 use linked_hash_set::LinkedHashSet;
 use ruchei_callback::OnClose;
@@ -127,18 +127,16 @@ impl<Out: Clone, K: Key, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> Sink
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let this = self.get_mut();
         while let Some(key) = this.ready.next() {
-            if !this.readied.contains(&key) {
-                if let Some(connection) = this.connections.get_mut(&key) {
-                    if let Poll::Ready(r) = connection
-                        .ready
-                        .poll(cx, |cx| connection.stream.poll_ready_unpin(cx))
-                    {
-                        if let Err(e) = r {
-                            this.remove(&key, Some(e));
-                        } else {
-                            this.readied.insert(key);
-                        }
-                    }
+            if !this.readied.contains(&key)
+                && let Some(connection) = this.connections.get_mut(&key)
+                && let Poll::Ready(r) = connection
+                    .ready
+                    .poll(cx, |cx| connection.stream.poll_ready_unpin(cx))
+            {
+                if let Err(e) = r {
+                    this.remove(&key, Some(e));
+                } else {
+                    this.readied.insert(key);
                 }
             }
         }
@@ -205,18 +203,17 @@ impl<Out: Clone, K: Key, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> Sink
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let this = self.get_mut();
         while let Some(key) = this.close.next() {
-            if let Some(connection) = this.connections.get_mut(&key) {
-                if let Poll::Ready(r) = connection
+            if let Some(connection) = this.connections.get_mut(&key)
+                && let Poll::Ready(r) = connection
                     .close
                     .poll(cx, |cx| connection.stream.poll_close_unpin(cx))
-                {
-                    match r {
-                        Ok(()) => {
-                            this.remove(&key, None);
-                        }
-                        Err(e) => {
-                            this.remove(&key, Some(e));
-                        }
+            {
+                match r {
+                    Ok(()) => {
+                        this.remove(&key, None);
+                    }
+                    Err(e) => {
+                        this.remove(&key, Some(e));
                     }
                 }
             }

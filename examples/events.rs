@@ -10,16 +10,16 @@ use std::{
 };
 
 use async_std::{
-    channel::{unbounded, Receiver, Sender},
+    channel::{Receiver, Sender, unbounded},
     net::TcpListener,
 };
 use async_tungstenite::tungstenite::{self, Message};
 use futures_util::{
+    Future, FutureExt, Sink, SinkExt, Stream, StreamExt,
     future::Ready,
     lock::{Mutex, OwnedMutexGuard, OwnedMutexLockFuture},
     ready,
     stream::{FusedStream, FuturesUnordered, SelectAll, SplitSink, SplitStream},
-    Future, FutureExt, Sink, SinkExt, Stream, StreamExt,
 };
 use pin_project::pin_project;
 use ruchei::{
@@ -54,12 +54,8 @@ struct Client<S, K> {
     joined: HashMap<K, Joined>,
 }
 
-impl<
-        E,
-        K: Unpin + Clone + Eq + Hash,
-        T,
-        S: Unpin + FusedStream<Item = Result<Command<K, T>, E>>,
-    > Stream for Client<S, K>
+impl<E, K: Unpin + Clone + Eq + Hash, T, S: Unpin + FusedStream<Item = Result<Command<K, T>, E>>>
+    Stream for Client<S, K>
 {
     type Item = Event<S, K, T>;
 
@@ -195,11 +191,11 @@ type ActiveMulticast<S, K, T> =
 struct Finalize<S, K, T>(#[pin] SplitStream<ActiveMulticast<S, K, T>>, Option<K>);
 
 impl<
-        E,
-        K: Unpin + Clone + Eq + Hash,
-        T: Clone,
-        S: Unpin + FusedStream<Item = Result<Command<K, T>, E>> + Sink<(K, T), Error = E>,
-    > Future for Finalize<S, K, T>
+    E,
+    K: Unpin + Clone + Eq + Hash,
+    T: Clone,
+    S: Unpin + FusedStream<Item = Result<Command<K, T>, E>> + Sink<(K, T), Error = E>,
+> Future for Finalize<S, K, T>
 {
     type Output = K;
 
@@ -230,12 +226,12 @@ struct Server<R, S, K, T> {
 }
 
 impl<
-        E,
-        K: Unpin + Clone + Eq + Hash,
-        T: Clone,
-        S: Unpin + FusedStream<Item = Result<Command<K, T>, E>> + Sink<(K, T), Error = E>,
-        R: FusedStream<Item = S>,
-    > Future for Server<R, S, K, T>
+    E,
+    K: Unpin + Clone + Eq + Hash,
+    T: Clone,
+    S: Unpin + FusedStream<Item = Result<Command<K, T>, E>> + Sink<(K, T), Error = E>,
+    R: FusedStream<Item = S>,
+> Future for Server<R, S, K, T>
 {
     type Output = ();
 
@@ -300,12 +296,12 @@ trait ServeEvents: Sized {
 }
 
 impl<
-        E,
-        K: Unpin + Clone + Eq + Hash,
-        T,
-        S: Unpin + FusedStream<Item = Result<Command<K, T>, E>>,
-        R: Stream<Item = S>,
-    > ServeEvents for R
+    E,
+    K: Unpin + Clone + Eq + Hash,
+    T,
+    S: Unpin + FusedStream<Item = Result<Command<K, T>, E>>,
+    R: Stream<Item = S>,
+> ServeEvents for R
 {
     type S = S;
 

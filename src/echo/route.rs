@@ -5,7 +5,7 @@ use std::{
     task::{Context, Poll, Wake, Waker},
 };
 
-use futures_util::{task::AtomicWaker, Future, Stream};
+use futures_util::{Future, Stream, task::AtomicWaker};
 use pin_project::pin_project;
 use ruchei_route::RouteSink;
 
@@ -169,10 +169,10 @@ impl<K: Key, T, E, S: Stream<Item = Result<(K, T), E>> + RouteSink<K, T, Error =
             }
             if ready && !this.router.is_routing() {
                 let mut guard = this.ready.lock();
-                if guard.is_empty() {
-                    if let Some(key) = this.connections.keys().next() {
-                        guard.insert(key.clone());
-                    }
+                if guard.is_empty()
+                    && let Some(key) = this.connections.keys().next()
+                {
+                    guard.insert(key.clone());
                 }
             }
         }

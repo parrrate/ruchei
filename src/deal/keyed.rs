@@ -6,7 +6,7 @@ use std::{
 };
 
 use futures_util::{
-    ready, stream::FusedStream, task::AtomicWaker, Sink, SinkExt, Stream, StreamExt,
+    Sink, SinkExt, Stream, StreamExt, ready, stream::FusedStream, task::AtomicWaker,
 };
 use linked_hash_map::LinkedHashMap;
 use linked_hash_set::LinkedHashSet;
@@ -81,22 +81,21 @@ impl<In, K: Key, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stre
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
         while let Some(key) = this.next.next() {
-            if let Some(connection) = this.connections.get_mut(&key) {
-                if let Poll::Ready(o) = connection
+            if let Some(connection) = this.connections.get_mut(&key)
+                && let Poll::Ready(o) = connection
                     .next
                     .poll(cx, |cx| connection.stream.poll_next_unpin(cx))
-                {
-                    match o {
-                        Some(Ok(item)) => {
-                            this.next.downgrade().insert(key);
-                            return Poll::Ready(Some(Ok(item)));
-                        }
-                        Some(Err(e)) => {
-                            this.remove(&key, Some(e));
-                        }
-                        None => {
-                            this.remove(&key, None);
-                        }
+            {
+                match o {
+                    Some(Ok(item)) => {
+                        this.next.downgrade().insert(key);
+                        return Poll::Ready(Some(Ok(item)));
+                    }
+                    Some(Err(e)) => {
+                        this.remove(&key, Some(e));
+                    }
+                    None => {
+                        this.remove(&key, None);
                     }
                 }
             }
@@ -126,10 +125,11 @@ impl<Out, K: Key, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> Sink<Out> f
         if let Some((key, _)) = this.connections.front() {
             let key = key.clone();
             if let Some(connection) = this.connections.get_mut(&key) {
-                if let Err(e) = ready!(connection
-                    .ready
-                    .poll(cx, |cx| connection.stream.poll_ready_unpin(cx)))
-                {
+                if let Err(e) = ready!(
+                    connection
+                        .ready
+                        .poll(cx, |cx| connection.stream.poll_ready_unpin(cx))
+                ) {
                     this.remove(&key, Some(e));
                 } else {
                     return Poll::Ready(Ok(()));
@@ -191,18 +191,17 @@ impl<Out, K: Key, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> Sink<Out> f
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let this = self.get_mut();
         while let Some(key) = this.close.next() {
-            if let Some(connection) = this.connections.get_mut(&key) {
-                if let Poll::Ready(r) = connection
+            if let Some(connection) = this.connections.get_mut(&key)
+                && let Poll::Ready(r) = connection
                     .close
                     .poll(cx, |cx| connection.stream.poll_close_unpin(cx))
-                {
-                    match r {
-                        Ok(()) => {
-                            this.remove(&key, None);
-                        }
-                        Err(e) => {
-                            this.remove(&key, Some(e));
-                        }
+            {
+                match r {
+                    Ok(()) => {
+                        this.remove(&key, None);
+                    }
+                    Err(e) => {
+                        this.remove(&key, Some(e));
                     }
                 }
             }
