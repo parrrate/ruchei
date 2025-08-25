@@ -128,6 +128,28 @@ impl<T> Nodes<T> {
         assert!(key.is_empty());
         Some(id)
     }
+
+    fn remove(&mut self, mut id: NodeId, key: &[u8]) -> Option<T> {
+        id = self.locate(id, key)?;
+        let value = self[id].value.take()?;
+        while self[id].is_collapsible() {
+            if let Some(child) = self[id].only_child() {
+                let (middle, ifirst, mut irest) = self.disown(child);
+                assert_eq!(middle, id);
+                let (parent, ofirst, mut orest) = self.disown(id);
+                orest.push(ifirst);
+                orest.append(&mut irest);
+                self.add_child(parent, ofirst, orest, child);
+                self.pop(id);
+                id = parent;
+            } else {
+                let (parent, _, _) = self.disown(id);
+                self.pop(id);
+                id = parent;
+            }
+        }
+        Some(value)
+    }
 }
 
 impl<T> Index<NodeId> for Nodes<T> {
@@ -259,30 +281,6 @@ impl<'a, T> NodeMut<'a, T> {
             break (id, None);
         }
     }
-
-    fn remove(mut self, key: &[u8]) -> Option<T> {
-        self.id = self.nodes.locate(self.id, key)?;
-        let value = self.nodes[self.id].value.take()?;
-        while let node = self.as_mut()
-            && node.is_collapsible()
-        {
-            if let Some(child) = node.only_child() {
-                let (middle, ifirst, mut irest) = self.nodes.disown(child);
-                assert_eq!(middle, self.id);
-                let (parent, ofirst, mut orest) = self.nodes.disown(self.id);
-                orest.push(ifirst);
-                orest.append(&mut irest);
-                self.nodes.add_child(parent, ofirst, orest, child);
-                self.nodes.pop(self.id);
-                self.id = parent;
-            } else {
-                let (parent, _, _) = self.nodes.disown(self.id);
-                self.nodes.pop(self.id);
-                self.id = parent;
-            }
-        }
-        Some(value)
-    }
 }
 
 #[derive(Debug)]
@@ -326,11 +324,7 @@ impl<T> Trie<T> {
     }
 
     pub fn remove(&mut self, key: &[u8]) -> Option<T> {
-        let value = NodeMut {
-            nodes: &mut self.nodes,
-            id: self.root,
-        }
-        .remove(key);
+        let value = self.nodes.remove(self.root, key);
         assert_eq!(self.nodes.roots, 1);
         value
     }
