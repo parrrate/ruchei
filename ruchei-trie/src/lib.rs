@@ -5,6 +5,8 @@ use std::{
 
 use slab::Slab;
 
+pub mod multi_trie;
+
 #[derive(Debug)]
 struct Nodes<T> {
     slab: Slab<(usize, Node<T>)>,
