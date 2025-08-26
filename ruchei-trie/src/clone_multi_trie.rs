@@ -102,6 +102,8 @@ fn ab() {
     assert!(!mt.contains(b"col-b", b"key-b"));
     mt.remove(b"col-a", b"key-b");
     assert!(!mt.contains(b"col-a", b"key-b"));
+    assert!(mt.is_empty(b"col-a"));
     mt.remove(b"col-b", b"key-a");
     assert!(!mt.contains(b"col-b", b"key-a"));
+    assert!(mt.is_empty(b"col-b"));
 }
