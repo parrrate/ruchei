@@ -5,6 +5,7 @@ use std::{
 
 use slab::Slab;
 
+pub mod bytes_multi_trie;
 pub mod clone_multi_trie;
 
 #[derive(Debug)]
@@ -213,9 +214,10 @@ impl<T> Nodes<T> {
         Some(value)
     }
 
-    fn remove(&mut self, mut id: NodeId, key: &[u8]) -> Option<T> {
+    fn remove(&mut self, mut id: NodeId, key: &[u8]) -> Option<(NodeId, T)> {
         id = self.locate(id, key)?;
-        self.remove_at(id)
+        let value = self.remove_at(id)?;
+        Some((id, value))
     }
 }
 
@@ -343,10 +345,10 @@ impl<T> Trie<T> {
         }
     }
 
-    pub fn remove(&mut self, key: &[u8]) -> Option<T> {
-        let value = self.nodes.remove(self.root, key);
+    pub fn remove(&mut self, key: &[u8]) -> Option<(NodeId, T)> {
+        let result = self.nodes.remove(self.root, key);
         assert_eq!(self.nodes.roots, 1);
-        value
+        result
     }
 
     pub fn prefix_of<'a, 'b>(&'a self, suffix: &'b [u8]) -> PrefixOf<'a, 'b, T> {
@@ -480,7 +482,7 @@ fn insert_nested_abc() {
 fn insert_remove_a() {
     let mut trie = Trie::<i32>::default();
     trie.insert(b"a", 123);
-    assert_eq!(trie.remove(b"a").unwrap(), 123);
+    assert_eq!(trie.remove(b"a").unwrap().1, 123);
     assert!(trie.get(b"a").is_none());
 }
 
@@ -489,8 +491,8 @@ fn insert_remove_ab() {
     let mut trie = Trie::<i32>::default();
     trie.insert(b"+a", 123);
     trie.insert(b"+b", 456);
-    assert_eq!(trie.remove(b"+a").unwrap(), 123);
-    assert_eq!(trie.remove(b"+b").unwrap(), 456);
+    assert_eq!(trie.remove(b"+a").unwrap().1, 123);
+    assert_eq!(trie.remove(b"+b").unwrap().1, 456);
     assert!(trie.get(b"+a").is_none());
     assert!(trie.get(b"+b").is_none());
     assert_eq!(trie.nodes.slab.len(), 1);
