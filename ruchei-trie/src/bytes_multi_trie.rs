@@ -79,3 +79,24 @@ impl BytesMultiTrie {
             .unwrap_or_default()
     }
 }
+
+#[test]
+fn ab() {
+    let mut mt = BytesMultiTrie::default();
+    mt.add(b"col-a", b"key-a");
+    assert!(mt.contains(b"col-a", b"key-a"));
+    mt.add(b"col-b", b"key-b");
+    assert!(mt.contains(b"col-b", b"key-b"));
+    mt.add(b"col-a", b"key-b");
+    assert!(mt.contains(b"col-a", b"key-b"));
+    mt.add(b"col-b", b"key-a");
+    assert!(mt.contains(b"col-b", b"key-a"));
+    mt.remove(b"col-a", b"key-a");
+    assert!(!mt.contains(b"col-a", b"key-a"));
+    mt.remove(b"col-b", b"key-b");
+    assert!(!mt.contains(b"col-b", b"key-b"));
+    mt.remove(b"col-a", b"key-b");
+    assert!(!mt.contains(b"col-a", b"key-b"));
+    mt.remove(b"col-b", b"key-a");
+    assert!(!mt.contains(b"col-b", b"key-a"));
+}
