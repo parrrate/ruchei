@@ -4,12 +4,12 @@ use slab::Slab;
 
 use crate::{NodeId, Trie};
 
-pub struct MultiTrie<T> {
+pub struct CloneMultiTrie<T> {
     trie: Trie<BTreeMap<T, usize>>,
     map: BTreeMap<T, Slab<NodeId>>,
 }
 
-impl<T: Clone + Ord> MultiTrie<T> {
+impl<T: Clone + Ord> CloneMultiTrie<T> {
     pub fn add(&mut self, collection: T, key: &[u8]) {
         if !self.map.contains_key(&collection) {
             self.map.insert(collection.clone(), Slab::new());

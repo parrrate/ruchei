@@ -5,7 +5,7 @@ use std::{
 
 use slab::Slab;
 
-pub mod multi_trie;
+pub mod clone_multi_trie;
 
 #[derive(Debug)]
 struct Nodes<T> {
