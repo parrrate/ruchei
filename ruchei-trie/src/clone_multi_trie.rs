@@ -52,6 +52,13 @@ impl<T: Clone + Ord> CloneMultiTrie<T> {
         }
     }
 
+    pub fn contains(&mut self, collection: &T, key: &[u8]) -> bool {
+        let Some((_, map)) = self.keys.get(key) else {
+            return false;
+        };
+        map.contains_key(collection)
+    }
+
     pub fn clear(&mut self, collection: &T) {
         let Some(slab) = self.collections.remove(collection) else {
             return;
