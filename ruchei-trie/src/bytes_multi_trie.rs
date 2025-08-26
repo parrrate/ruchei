@@ -44,6 +44,16 @@ impl BytesMultiTrie {
         }
     }
 
+    pub fn contains(&self, collection: &[u8], key: &[u8]) -> bool {
+        let Some((collection, _)) = self.collections.get(collection) else {
+            return false;
+        };
+        let Some((_, map)) = self.keys.get(key) else {
+            return false;
+        };
+        map.contains_key(&collection)
+    }
+
     pub fn clear(&mut self, collection: &[u8]) {
         let Some((collection, slab)) = self.collections.remove(collection) else {
             return;
