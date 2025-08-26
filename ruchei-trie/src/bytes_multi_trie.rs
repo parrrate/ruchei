@@ -4,6 +4,7 @@ use slab::Slab;
 
 use crate::{NodeId, Trie};
 
+#[derive(Debug, Default)]
 pub struct BytesMultiTrie {
     keys: Trie<BTreeMap<NodeId, usize>>,
     collections: Trie<Slab<NodeId>>,
