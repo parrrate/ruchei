@@ -9,6 +9,15 @@ pub struct CloneMultiTrie<T> {
     collections: BTreeMap<T, Slab<NodeId>>,
 }
 
+impl<T> Default for CloneMultiTrie<T> {
+    fn default() -> Self {
+        Self {
+            keys: Default::default(),
+            collections: Default::default(),
+        }
+    }
+}
+
 impl<T: Clone + Ord> CloneMultiTrie<T> {
     pub fn add(&mut self, collection: T, key: &[u8]) {
         if !self.collections.contains_key(&collection) {
