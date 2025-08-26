@@ -313,6 +313,10 @@ impl<T> Trie<T> {
         self.nodes.get_mut(id)?.value.as_mut()
     }
 
+    pub fn contains_key(&self, key: &[u8]) -> bool {
+        self.get(key).is_some()
+    }
+
     pub fn get<'a>(&'a self, key: &[u8]) -> Option<(NodeId, &'a T)> {
         let id = self.nodes.locate(self.root, key)?;
         let value = self.nodes[id].value.as_ref()?;
