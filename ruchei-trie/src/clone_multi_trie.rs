@@ -21,10 +21,8 @@ impl<T> Default for CloneMultiTrie<T> {
     }
 }
 
-impl<T: Ord> MultiTrie for CloneMultiTrie<T> {
-    type Collection = T;
-
-    fn remove(&mut self, collection: &Self::Collection, key: &[u8]) {
+impl<T: Ord> MultiTrie<T> for CloneMultiTrie<T> {
+    fn remove(&mut self, collection: &T, key: &[u8]) {
         let Some(slab) = self.collections.get_mut(collection) else {
             return;
         };
@@ -43,14 +41,14 @@ impl<T: Ord> MultiTrie for CloneMultiTrie<T> {
         }
     }
 
-    fn contains(&self, collection: &Self::Collection, key: &[u8]) -> bool {
+    fn contains(&self, collection: &T, key: &[u8]) -> bool {
         let Some((_, map)) = self.keys.get(key) else {
             return false;
         };
         map.contains_key(collection)
     }
 
-    fn clear(&mut self, collection: &Self::Collection) {
+    fn clear(&mut self, collection: &T) {
         let Some(slab) = self.collections.remove(collection) else {
             return;
         };
@@ -64,11 +62,11 @@ impl<T: Ord> MultiTrie for CloneMultiTrie<T> {
         }
     }
 
-    fn is_empty(&self, collection: &Self::Collection) -> bool {
+    fn is_empty(&self, collection: &T) -> bool {
         !self.collections.contains_key(collection)
     }
 
-    fn len(&self, collection: &Self::Collection) -> usize {
+    fn len(&self, collection: &T) -> usize {
         self.collections
             .get(collection)
             .map(|slab| slab.len())
@@ -76,8 +74,8 @@ impl<T: Ord> MultiTrie for CloneMultiTrie<T> {
     }
 }
 
-impl<T: Clone + Ord> MultiTrieAddRef for CloneMultiTrie<T> {
-    fn add_ref(&mut self, collection: &Self::Collection, key: &[u8]) {
+impl<T: Clone + Ord> MultiTrieAddRef<T> for CloneMultiTrie<T> {
+    fn add_ref(&mut self, collection: &T, key: &[u8]) {
         if !self.collections.contains_key(collection) {
             self.collections.insert(collection.clone(), Slab::new());
         }
@@ -92,8 +90,8 @@ impl<T: Clone + Ord> MultiTrieAddRef for CloneMultiTrie<T> {
     }
 }
 
-impl<T: Clone + Ord> MultiTrieAddOwned for CloneMultiTrie<T> {
-    fn add_owned(&mut self, collection: Self::Collection, key: &[u8]) {
+impl<T: Clone + Ord> MultiTrieAddOwned<T> for CloneMultiTrie<T> {
+    fn add_owned(&mut self, collection: T, key: &[u8]) {
         if !self.collections.contains_key(&collection) {
             self.collections.insert(collection.clone(), Slab::new());
         }

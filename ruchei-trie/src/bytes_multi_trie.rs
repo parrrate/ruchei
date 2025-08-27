@@ -13,10 +13,8 @@ pub struct BytesMultiTrie {
     collections: Trie<Slab<NodeId>>,
 }
 
-impl MultiTrie for BytesMultiTrie {
-    type Collection = [u8];
-
-    fn remove(&mut self, collection: &Self::Collection, key: &[u8]) {
+impl MultiTrie<[u8]> for BytesMultiTrie {
+    fn remove(&mut self, collection: &[u8], key: &[u8]) {
         let Some((collection, slab)) = self.collections.get_mut(collection) else {
             return;
         };
@@ -37,7 +35,7 @@ impl MultiTrie for BytesMultiTrie {
         }
     }
 
-    fn contains(&self, collection: &Self::Collection, key: &[u8]) -> bool {
+    fn contains(&self, collection: &[u8], key: &[u8]) -> bool {
         let Some((collection, _)) = self.collections.get(collection) else {
             return false;
         };
@@ -47,7 +45,7 @@ impl MultiTrie for BytesMultiTrie {
         map.contains_key(&collection)
     }
 
-    fn clear(&mut self, collection: &Self::Collection) {
+    fn clear(&mut self, collection: &[u8]) {
         let Some((collection, slab)) = self.collections.remove(collection) else {
             return;
         };
@@ -61,11 +59,11 @@ impl MultiTrie for BytesMultiTrie {
         }
     }
 
-    fn is_empty(&self, collection: &Self::Collection) -> bool {
+    fn is_empty(&self, collection: &[u8]) -> bool {
         !self.collections.contains_key(collection)
     }
 
-    fn len(&self, collection: &Self::Collection) -> usize {
+    fn len(&self, collection: &[u8]) -> usize {
         self.collections
             .get(collection)
             .map(|(_, slab)| slab.len())
@@ -73,8 +71,8 @@ impl MultiTrie for BytesMultiTrie {
     }
 }
 
-impl MultiTrieAddRef for BytesMultiTrie {
-    fn add_ref(&mut self, collection: &Self::Collection, key: &[u8]) {
+impl MultiTrieAddRef<[u8]> for BytesMultiTrie {
+    fn add_ref(&mut self, collection: &[u8], key: &[u8]) {
         if !self.collections.contains_key(collection) {
             self.collections.insert(collection, Slab::new());
         }
