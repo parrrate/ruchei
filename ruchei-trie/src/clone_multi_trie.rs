@@ -2,7 +2,10 @@ use std::collections::BTreeMap;
 
 use slab::Slab;
 
-use crate::{NodeId, Trie};
+use crate::{
+    NodeId, Trie,
+    multi_trie::{MultiTrie, MultiTrieAddOwned, MultiTrieAddRef},
+};
 
 pub struct CloneMultiTrie<T> {
     keys: Trie<BTreeMap<T, usize>>,
@@ -18,22 +21,10 @@ impl<T> Default for CloneMultiTrie<T> {
     }
 }
 
-impl<T: Clone + Ord> CloneMultiTrie<T> {
-    pub fn add(&mut self, collection: &T, key: &[u8]) {
-        if !self.collections.contains_key(collection) {
-            self.collections.insert(collection.clone(), Slab::new());
-        }
-        if self.keys.get(key).is_none() {
-            self.keys.insert(key, BTreeMap::new());
-        }
-        let slab = self.collections.get_mut(collection).expect("just inserted");
-        let (id, map) = self.keys.get_mut(key).expect("just inserted");
-        if !map.contains_key(collection) {
-            map.insert(collection.clone(), slab.insert(id));
-        }
-    }
+impl<T: Ord> MultiTrie for CloneMultiTrie<T> {
+    type Collection = T;
 
-    pub fn remove(&mut self, collection: &T, key: &[u8]) {
+    fn remove(&mut self, collection: &Self::Collection, key: &[u8]) {
         let Some(slab) = self.collections.get_mut(collection) else {
             return;
         };
@@ -52,14 +43,14 @@ impl<T: Clone + Ord> CloneMultiTrie<T> {
         }
     }
 
-    pub fn contains(&mut self, collection: &T, key: &[u8]) -> bool {
+    fn contains(&self, collection: &Self::Collection, key: &[u8]) -> bool {
         let Some((_, map)) = self.keys.get(key) else {
             return false;
         };
         map.contains_key(collection)
     }
 
-    pub fn clear(&mut self, collection: &T) {
+    fn clear(&mut self, collection: &Self::Collection) {
         let Some(slab) = self.collections.remove(collection) else {
             return;
         };
@@ -73,11 +64,11 @@ impl<T: Clone + Ord> CloneMultiTrie<T> {
         }
     }
 
-    pub fn is_empty(&self, collection: &T) -> bool {
+    fn is_empty(&self, collection: &Self::Collection) -> bool {
         !self.collections.contains_key(collection)
     }
 
-    pub fn len(&self, collection: &T) -> usize {
+    fn len(&self, collection: &Self::Collection) -> usize {
         self.collections
             .get(collection)
             .map(|slab| slab.len())
@@ -85,16 +76,49 @@ impl<T: Clone + Ord> CloneMultiTrie<T> {
     }
 }
 
+impl<T: Clone + Ord> MultiTrieAddRef for CloneMultiTrie<T> {
+    fn add_ref(&mut self, collection: &Self::Collection, key: &[u8]) {
+        if !self.collections.contains_key(collection) {
+            self.collections.insert(collection.clone(), Slab::new());
+        }
+        if self.keys.get(key).is_none() {
+            self.keys.insert(key, BTreeMap::new());
+        }
+        let slab = self.collections.get_mut(collection).expect("just inserted");
+        let (id, map) = self.keys.get_mut(key).expect("just inserted");
+        if !map.contains_key(collection) {
+            map.insert(collection.clone(), slab.insert(id));
+        }
+    }
+}
+
+impl<T: Clone + Ord> MultiTrieAddOwned for CloneMultiTrie<T> {
+    fn add_owned(&mut self, collection: Self::Collection, key: &[u8]) {
+        if !self.collections.contains_key(&collection) {
+            self.collections.insert(collection.clone(), Slab::new());
+        }
+        if self.keys.get(key).is_none() {
+            self.keys.insert(key, BTreeMap::new());
+        }
+        let slab = self
+            .collections
+            .get_mut(&collection)
+            .expect("just inserted");
+        let (id, map) = self.keys.get_mut(key).expect("just inserted");
+        map.entry(collection).or_insert_with(|| slab.insert(id));
+    }
+}
+
 #[test]
 fn ab() {
     let mut mt = CloneMultiTrie::default();
-    mt.add(b"col-a", b"key-a");
+    mt.add_ref(b"col-a", b"key-a");
     assert!(mt.contains(b"col-a", b"key-a"));
-    mt.add(b"col-b", b"key-b");
+    mt.add_ref(b"col-b", b"key-b");
     assert!(mt.contains(b"col-b", b"key-b"));
-    mt.add(b"col-a", b"key-b");
+    mt.add_ref(b"col-a", b"key-b");
     assert!(mt.contains(b"col-a", b"key-b"));
-    mt.add(b"col-b", b"key-a");
+    mt.add_ref(b"col-b", b"key-a");
     assert!(mt.contains(b"col-b", b"key-a"));
     mt.remove(b"col-a", b"key-a");
     assert!(!mt.contains(b"col-a", b"key-a"));

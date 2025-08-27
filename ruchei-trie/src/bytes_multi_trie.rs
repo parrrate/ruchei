@@ -2,7 +2,10 @@ use std::collections::BTreeMap;
 
 use slab::Slab;
 
-use crate::{NodeId, Trie};
+use crate::{
+    NodeId, Trie,
+    multi_trie::{MultiTrie, MultiTrieAddRef},
+};
 
 #[derive(Debug, Default)]
 pub struct BytesMultiTrie {
@@ -10,20 +13,10 @@ pub struct BytesMultiTrie {
     collections: Trie<Slab<NodeId>>,
 }
 
-impl BytesMultiTrie {
-    pub fn add(&mut self, collection: &[u8], key: &[u8]) {
-        if !self.collections.contains_key(collection) {
-            self.collections.insert(collection, Slab::new());
-        }
-        if self.keys.get(key).is_none() {
-            self.keys.insert(key, BTreeMap::new());
-        }
-        let (collection, slab) = self.collections.get_mut(collection).expect("just inserted");
-        let (id, map) = self.keys.get_mut(key).expect("just inserted");
-        map.entry(collection).or_insert_with(|| slab.insert(id));
-    }
+impl MultiTrie for BytesMultiTrie {
+    type Collection = [u8];
 
-    pub fn remove(&mut self, collection: &[u8], key: &[u8]) {
+    fn remove(&mut self, collection: &Self::Collection, key: &[u8]) {
         let Some((collection, slab)) = self.collections.get_mut(collection) else {
             return;
         };
@@ -44,7 +37,7 @@ impl BytesMultiTrie {
         }
     }
 
-    pub fn contains(&self, collection: &[u8], key: &[u8]) -> bool {
+    fn contains(&self, collection: &Self::Collection, key: &[u8]) -> bool {
         let Some((collection, _)) = self.collections.get(collection) else {
             return false;
         };
@@ -54,7 +47,7 @@ impl BytesMultiTrie {
         map.contains_key(&collection)
     }
 
-    pub fn clear(&mut self, collection: &[u8]) {
+    fn clear(&mut self, collection: &Self::Collection) {
         let Some((collection, slab)) = self.collections.remove(collection) else {
             return;
         };
@@ -68,11 +61,11 @@ impl BytesMultiTrie {
         }
     }
 
-    pub fn is_empty(&self, collection: &[u8]) -> bool {
+    fn is_empty(&self, collection: &Self::Collection) -> bool {
         !self.collections.contains_key(collection)
     }
 
-    pub fn len(&self, collection: &[u8]) -> usize {
+    fn len(&self, collection: &Self::Collection) -> usize {
         self.collections
             .get(collection)
             .map(|(_, slab)| slab.len())
@@ -80,16 +73,30 @@ impl BytesMultiTrie {
     }
 }
 
+impl MultiTrieAddRef for BytesMultiTrie {
+    fn add_ref(&mut self, collection: &Self::Collection, key: &[u8]) {
+        if !self.collections.contains_key(collection) {
+            self.collections.insert(collection, Slab::new());
+        }
+        if self.keys.get(key).is_none() {
+            self.keys.insert(key, BTreeMap::new());
+        }
+        let (collection, slab) = self.collections.get_mut(collection).expect("just inserted");
+        let (id, map) = self.keys.get_mut(key).expect("just inserted");
+        map.entry(collection).or_insert_with(|| slab.insert(id));
+    }
+}
+
 #[test]
 fn ab() {
     let mut mt = BytesMultiTrie::default();
-    mt.add(b"col-a", b"key-a");
+    mt.add_ref(b"col-a", b"key-a");
     assert!(mt.contains(b"col-a", b"key-a"));
-    mt.add(b"col-b", b"key-b");
+    mt.add_ref(b"col-b", b"key-b");
     assert!(mt.contains(b"col-b", b"key-b"));
-    mt.add(b"col-a", b"key-b");
+    mt.add_ref(b"col-a", b"key-b");
     assert!(mt.contains(b"col-a", b"key-b"));
-    mt.add(b"col-b", b"key-a");
+    mt.add_ref(b"col-b", b"key-a");
     assert!(mt.contains(b"col-b", b"key-a"));
     mt.remove(b"col-a", b"key-a");
     assert!(!mt.contains(b"col-a", b"key-a"));
