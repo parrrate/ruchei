@@ -31,6 +31,7 @@ impl<T> Nodes<T> {
     }
 
     fn add_child(&mut self, parent: NodeId, first: u8, rest: Vec<u8>, child: NodeId) {
+        assert!(!self[parent].children.contains_key(&first));
         self[parent].children.insert(first, (rest, child));
         self.adopt(parent, first, child);
     }
