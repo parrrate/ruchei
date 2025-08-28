@@ -7,7 +7,8 @@ use slab::Slab;
 
 use crate::{
     multi_trie::{MultiTrie, MultiTrieAddOwned, MultiTrieAddRef, MultiTriePrefix},
-    trie::{NodeId, Trie},
+    nodes::NodeId,
+    trie::Trie,
 };
 
 pub struct CloneMultiTrie<T> {
