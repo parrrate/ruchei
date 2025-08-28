@@ -57,14 +57,18 @@ impl<T> Nodes<T> {
         }
     }
 
+    fn pop_at(&mut self, id: NodeId) {
+        let (ctr, _) = self.slab.remove(id.location);
+        assert_eq!(ctr, id.ctr);
+        self.decrement_roots();
+    }
+
     fn pop(&mut self, id: NodeId) {
         let node = &self[id];
         assert!(node.parent.is_none());
         assert!(node.value.is_none());
         assert!(node.children.is_empty());
-        let (ctr, _) = self.slab.remove(id.location);
-        assert_eq!(ctr, id.ctr);
-        self.decrement_roots();
+        self.pop_at(id);
     }
 
     fn increment_roots(&mut self) {
