@@ -645,6 +645,12 @@ impl<K: Ord, V> Avl<(K, V)> {
     pub fn insert(&mut self, key: K, value: V) -> (NodeId, Option<V>) {
         self.insert_kv((key, value))
     }
+
+    pub fn get_mut<'a>(&'a mut self, key: &K) -> Option<(NodeId, &'a mut V)> {
+        let id = self.locate(key).ok()?;
+        let value = &mut self.nodes[id].value.1;
+        Some((id, value))
+    }
 }
 
 pub struct Iter<'a, T> {
