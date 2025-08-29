@@ -666,9 +666,12 @@ impl<'a, T: Kv> Iterator for Iter<'a, T> {
     }
 }
 
+pub type AvlSet<T> = Avl<(T,)>;
+pub type AvlMap<K, V> = Avl<(K, V)>;
+
 #[test]
 fn test() {
-    let mut avl = Avl::<(i32,)>::default();
+    let mut avl = AvlSet::<i32>::default();
     avl.insert(2);
     assert_eq!(avl.height, 1);
     avl.insert(1);
