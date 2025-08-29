@@ -1,3 +1,5 @@
+use std::ops::Index;
+
 use slab::Slab;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -248,6 +250,14 @@ impl<T, const N: usize> LinkedSlab<T, N> {
 
     pub fn len(&self) -> usize {
         self.slab.len()
+    }
+}
+
+impl<T, const N: usize> Index<usize> for LinkedSlab<T, N> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.slab[index].value
     }
 }
 
