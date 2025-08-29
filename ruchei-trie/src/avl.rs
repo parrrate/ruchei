@@ -464,7 +464,7 @@ impl<T> Avl<T> {
         }
     }
 
-    fn remove_at(&mut self, id: NodeId) -> T {
+    fn remove_node(&mut self, id: NodeId) -> T {
         let node = &self.nodes[id];
         match node.l {
             Some(child) => match node.r {
@@ -476,6 +476,14 @@ impl<T> Avl<T> {
                 None => self.skip(id, child, Side::L),
             },
             None => self.remove_without_left(id),
+        }
+    }
+
+    pub fn remove_at(&mut self, id: NodeId) -> Option<T> {
+        if self.nodes.contains(id) {
+            Some(self.remove_node(id))
+        } else {
+            None
         }
     }
 }
@@ -616,7 +624,7 @@ impl<T: Kv> Avl<T> {
 
     pub fn remove(&mut self, key: &T::K) -> Option<(NodeId, T::V)> {
         let id = self.locate(key).ok()?;
-        let kv = self.remove_at(id);
+        let kv = self.remove_node(id);
         assert_eq!(self.nodes.roots(), 0);
         Some((id, kv.into_v()))
     }
