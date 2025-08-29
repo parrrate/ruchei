@@ -5,4 +5,5 @@ pub mod clone_multi_trie;
 pub mod linked_slab;
 pub mod multi_trie;
 mod nodes;
+pub mod slab_multi_trie;
 pub mod trie;
