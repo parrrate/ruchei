@@ -478,13 +478,6 @@ impl<T> Avl<T> {
             None => self.remove_without_left(id),
         }
     }
-
-    pub fn iter(&self) -> Iter<'_, T> {
-        Iter {
-            avl: self,
-            id: self.root,
-        }
-    }
 }
 
 mod private {
@@ -495,12 +488,16 @@ pub trait Kv: Sized + private::Sealed {
     type K: Ord;
     type V;
     type Kv;
+    type RefItem<'a>: 'a
+    where
+        Self: 'a;
 
     fn as_k(&self) -> &Self::K;
     fn into_v(self) -> Self::V;
     fn as_v(&self) -> &Self::V;
     fn into_kv(self) -> Self::Kv;
     fn from_kv(kv: Self::Kv) -> Self;
+    fn as_item(&self) -> Self::RefItem<'_>;
 }
 
 impl<T: Ord> private::Sealed for (T,) {}
@@ -509,6 +506,10 @@ impl<T: Ord> Kv for (T,) {
     type K = T;
     type V = T;
     type Kv = T;
+    type RefItem<'a>
+        = &'a T
+    where
+        Self: 'a;
 
     fn as_k(&self) -> &Self::K {
         &self.0
@@ -529,6 +530,10 @@ impl<T: Ord> Kv for (T,) {
     fn from_kv(value: Self::Kv) -> Self {
         (value,)
     }
+
+    fn as_item(&self) -> Self::RefItem<'_> {
+        &self.0
+    }
 }
 
 impl<K: Ord, V> private::Sealed for (K, V) {}
@@ -537,6 +542,10 @@ impl<K: Ord, V> Kv for (K, V) {
     type K = K;
     type V = V;
     type Kv = Self;
+    type RefItem<'a>
+        = (&'a K, &'a V)
+    where
+        Self: 'a;
 
     fn as_k(&self) -> &Self::K {
         &self.0
@@ -556,6 +565,11 @@ impl<K: Ord, V> Kv for (K, V) {
 
     fn from_kv(kv: Self::Kv) -> Self {
         kv
+    }
+
+    fn as_item(&self) -> Self::RefItem<'_> {
+        let (k, v) = self;
+        (k, v)
     }
 }
 
@@ -612,6 +626,13 @@ impl<T: Kv> Avl<T> {
         let value = &self.nodes[id].value;
         Some((id, value.as_v()))
     }
+
+    pub fn iter(&self) -> Iter<'_, T> {
+        Iter {
+            avl: self,
+            id: self.root,
+        }
+    }
 }
 
 impl<T: Ord> Avl<(T,)> {
@@ -631,8 +652,8 @@ pub struct Iter<'a, T> {
     id: Option<NodeId>,
 }
 
-impl<'a, T> Iterator for Iter<'a, T> {
-    type Item = &'a T;
+impl<'a, T: Kv> Iterator for Iter<'a, T> {
+    type Item = T::RefItem<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let id = self.id?;
@@ -641,7 +662,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
         } else {
             self.avl.nodes.up(id, Side::R)
         };
-        Some(&self.avl.nodes[id].value)
+        Some(self.avl.nodes[id].value.as_item())
     }
 }
 
