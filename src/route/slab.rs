@@ -6,11 +6,11 @@ use std::{
 
 use futures_util::{Sink, SinkExt, Stream, StreamExt, ready, stream::FusedStream};
 use pin_project::pin_project;
+use ruchei_collections::linked_slab::LinkedSlab;
 pub use ruchei_route::{RouteExt, RouteSink, Unroute, WithRoute};
 
 use crate::{
     callback::OnClose,
-    collections::linked_slab::LinkedSlab,
     pinned_extend::{Extending, ExtendingRoute, PinnedExtend},
     ready_slab::{Connection, ConnectionWaker, Ready},
 };

@@ -7,9 +7,9 @@ use std::{
 use futures_util::{Sink, SinkExt, Stream, StreamExt, stream::FusedStream};
 use pin_project::pin_project;
 use ruchei_callback::OnClose;
+use ruchei_collections::linked_slab::LinkedSlab;
 
 use crate::{
-    collections::linked_slab::LinkedSlab,
     pinned_extend::{Extending, PinnedExtend},
     ready_slab::{Connection, ConnectionWaker, Ready},
 };

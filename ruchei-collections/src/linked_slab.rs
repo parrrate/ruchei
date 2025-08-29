@@ -42,7 +42,7 @@ impl<T, const N: usize> Value<T, N> {
 }
 
 #[derive(Debug)]
-pub(crate) struct LinkedSlab<T, const N: usize> {
+pub struct LinkedSlab<T, const N: usize> {
     slab: Slab<Value<T, N>>,
     links: [Link; N],
     lens: [usize; N],
@@ -60,8 +60,7 @@ impl<T, const N: usize> Default for LinkedSlab<T, N> {
 
 impl<T, const N: usize> LinkedSlab<T, N> {
     #[must_use]
-    #[cfg(any(test, kani))]
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 
@@ -128,23 +127,23 @@ impl<T, const N: usize> LinkedSlab<T, N> {
         }
     }
 
-    pub(crate) fn front<const M: usize>(&self) -> Option<usize> {
+    pub fn front<const M: usize>(&self) -> Option<usize> {
         assert!(M < N);
         let (_, next) = self.link::<M>()?;
         Some(next)
     }
 
-    pub(crate) fn link_empty<const M: usize>(&self) -> bool {
+    pub fn link_empty<const M: usize>(&self) -> bool {
         assert!(M < N);
         self.link::<M>().is_none()
     }
 
-    pub(crate) fn link_len<const M: usize>(&self) -> usize {
+    pub fn link_len<const M: usize>(&self) -> usize {
         assert!(M < N);
         self.lens[M]
     }
 
-    pub(crate) fn link_contains<const M: usize>(&self, key: usize) -> bool {
+    pub fn link_contains<const M: usize>(&self, key: usize) -> bool {
         assert!(M < N);
         if let Some(value) = self.slab.get(key) {
             value.links[M].is_some()
@@ -153,7 +152,7 @@ impl<T, const N: usize> LinkedSlab<T, N> {
         }
     }
 
-    pub(crate) fn link_push_back<const M: usize>(&mut self, key: usize) -> bool {
+    pub fn link_push_back<const M: usize>(&mut self, key: usize) -> bool {
         assert!(M < N);
         if !self.linkable::<M>(key) {
             return false;
@@ -182,7 +181,7 @@ impl<T, const N: usize> LinkedSlab<T, N> {
         true
     }
 
-    pub(crate) fn link_pop_at<const M: usize>(&mut self, key: usize) -> bool {
+    pub fn link_pop_at<const M: usize>(&mut self, key: usize) -> bool {
         assert!(M < N);
         if let Some(link) = self.slab.get_mut(key).expect("key not found").links[M].take() {
             self.unlink(link, M, key);
@@ -192,7 +191,7 @@ impl<T, const N: usize> LinkedSlab<T, N> {
         }
     }
 
-    pub(crate) fn link_pop_front<const M: usize>(&mut self) -> Option<usize> {
+    pub fn link_pop_front<const M: usize>(&mut self) -> Option<usize> {
         assert!(M < N);
         let key = self.front::<M>()?;
         let popped = self.link_pop_at::<M>(key);
@@ -200,22 +199,22 @@ impl<T, const N: usize> LinkedSlab<T, N> {
         Some(key)
     }
 
-    pub(crate) fn link_pops<const M: usize, U, F: FnMut(usize, &mut Self) -> U>(
+    pub fn link_pops<const M: usize, U, F: FnMut(usize, &mut Self) -> U>(
         &mut self,
         f: F,
     ) -> Pops<'_, T, F, N, M> {
         Pops(self, f)
     }
 
-    pub(crate) fn insert(&mut self, value: T) -> usize {
+    pub fn insert(&mut self, value: T) -> usize {
         self.slab.insert(Value::new(value))
     }
 
-    pub(crate) fn vacant_key(&mut self) -> usize {
+    pub fn vacant_key(&mut self) -> usize {
         self.slab.vacant_key()
     }
 
-    pub(crate) fn remove(&mut self, key: usize) -> Option<T> {
+    pub fn remove(&mut self, key: usize) -> Option<T> {
         let value = self.slab.try_remove(key)?;
         for (n, link) in value.links.into_iter().enumerate() {
             if let Some(link) = link {
@@ -225,26 +224,26 @@ impl<T, const N: usize> LinkedSlab<T, N> {
         Some(value.value)
     }
 
-    pub(crate) fn get_mut(&mut self, key: usize) -> Option<&mut T> {
+    pub fn get_mut(&mut self, key: usize) -> Option<&mut T> {
         Some(&mut self.slab.get_mut(key)?.value)
     }
 
-    pub(crate) fn get_refresh<const M: usize>(&mut self, key: usize) -> Option<&mut T> {
+    pub fn get_refresh<const M: usize>(&mut self, key: usize) -> Option<&mut T> {
         self.link_pop_at::<M>(key);
         self.link_push_back::<M>(key);
         self.get_mut(key)
     }
 
-    pub(crate) fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.slab.is_empty()
     }
 
-    pub(crate) fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.slab.len()
     }
 }
 
-pub(crate) struct Pops<'a, T, F, const N: usize, const M: usize>(&'a mut LinkedSlab<T, N>, F);
+pub struct Pops<'a, T, F, const N: usize, const M: usize>(&'a mut LinkedSlab<T, N>, F);
 
 impl<T, U, F: FnMut(usize, &mut LinkedSlab<T, N>) -> U, const N: usize, const M: usize> Iterator
     for Pops<'_, T, F, N, M>
