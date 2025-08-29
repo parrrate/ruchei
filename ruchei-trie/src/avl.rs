@@ -621,8 +621,8 @@ impl<T: Kv> Avl<T> {
         Some((id, kv.into_v()))
     }
 
-    pub fn get<'a>(&'a self, value: &T::K) -> Option<(NodeId, &'a T::V)> {
-        let id = self.locate(value).ok()?;
+    pub fn get<'a>(&'a self, key: &T::K) -> Option<(NodeId, &'a T::V)> {
+        let id = self.locate(key).ok()?;
         let value = &self.nodes[id].value;
         Some((id, value.as_v()))
     }
