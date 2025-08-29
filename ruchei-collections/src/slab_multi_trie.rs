@@ -139,3 +139,28 @@ impl<T> IndexMut<usize> for SlabMultiTrie<T> {
         &mut self.collections[index].0
     }
 }
+
+#[test]
+fn ab() {
+    let mut mt = SlabMultiTrie::default();
+    let col_a = mt.insert(b"col-a");
+    let col_b = mt.insert(b"col-b");
+    mt.add_ref(&col_a, b"key-a");
+    assert!(mt.contains(&col_a, b"key-a"));
+    mt.add_ref(&col_b, b"key-b");
+    assert!(mt.contains(&col_b, b"key-b"));
+    mt.add_ref(&col_a, b"key-b");
+    assert!(mt.contains(&col_a, b"key-b"));
+    mt.add_ref(&col_b, b"key-a");
+    assert!(mt.contains(&col_b, b"key-a"));
+    mt.remove(&col_a, b"key-a");
+    assert!(!mt.contains(&col_a, b"key-a"));
+    mt.remove(&col_b, b"key-b");
+    assert!(!mt.contains(&col_b, b"key-b"));
+    mt.remove(&col_a, b"key-b");
+    assert!(!mt.contains(&col_a, b"key-b"));
+    assert!(mt.is_empty(&col_a));
+    mt.remove(&col_b, b"key-a");
+    assert!(!mt.contains(&col_b, b"key-a"));
+    assert!(mt.is_empty(&col_b));
+}
