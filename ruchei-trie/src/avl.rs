@@ -671,6 +671,11 @@ impl<K: Ord, V> Avl<(K, V)> {
     pub fn contains_key(&self, key: &K) -> bool {
         self.locate(key).is_ok()
     }
+
+    pub fn try_index_mut(&mut self, id: NodeId) -> Option<(&K, &mut V)> {
+        let (k, v) = &mut self.nodes.get_mut(id)?.value;
+        Some((k, v))
+    }
 }
 
 pub struct Iter<'a, T> {
