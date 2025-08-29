@@ -1,4 +1,4 @@
-use std::ops::Index;
+use std::ops::{Index, IndexMut};
 
 use slab::Slab;
 
@@ -258,6 +258,12 @@ impl<T, const N: usize> Index<usize> for LinkedSlab<T, N> {
 
     fn index(&self, index: usize) -> &Self::Output {
         &self.slab[index].value
+    }
+}
+
+impl<T, const N: usize> IndexMut<usize> for LinkedSlab<T, N> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.slab[index].value
     }
 }
 
