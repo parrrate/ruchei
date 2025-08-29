@@ -526,6 +526,12 @@ impl<T: Ord> Avl<T> {
         assert_eq!(self.nodes.roots(), 0);
         Some((id, value))
     }
+
+    pub fn get<'a>(&'a self, value: &T) -> Option<(NodeId, &'a T)> {
+        let id = self.locate( value).ok()?;
+        let value = &self.nodes[id].value;
+        Some((id, value))
+    }
 }
 
 pub struct Iter<'a, T> {
