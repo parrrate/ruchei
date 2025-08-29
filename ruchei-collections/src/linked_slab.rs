@@ -224,6 +224,10 @@ impl<T, const N: usize> LinkedSlab<T, N> {
         Some(value.value)
     }
 
+    pub fn remove(&mut self, key: usize) -> T {
+        self.try_remove(key).expect("invalid key")
+    }
+
     pub fn get(&self, key: usize) -> Option<&T> {
         Some(&self.slab.get(key)?.value)
     }
