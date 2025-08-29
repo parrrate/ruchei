@@ -464,4 +464,8 @@ fn prefix_of_mut() {
     assert_eq!(*trie.get(b"a").unwrap().1, Box::new(426));
     assert_eq!(*trie.get(b"ab").unwrap().1, Box::new(426));
     assert_eq!(*trie.get(b"abc").unwrap().1, Box::new(426));
+    trie.prefix_of_mut(b"abc").for_each(|value| *value = 0);
+    assert_eq!(*trie.get(b"a").unwrap().1, Box::new(0));
+    assert_eq!(*trie.get(b"ab").unwrap().1, Box::new(0));
+    assert_eq!(*trie.get(b"abc").unwrap().1, Box::new(0));
 }
