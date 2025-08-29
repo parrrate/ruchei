@@ -478,18 +478,6 @@ impl<T> Avl<T> {
             None => self.remove_without_left(id),
         }
     }
-
-    pub fn remove_at(&mut self, id: NodeId) -> Option<T> {
-        if self.nodes.contains(id) {
-            Some(self.remove_node(id))
-        } else {
-            None
-        }
-    }
-
-    pub fn try_index(&self, id: NodeId) -> Option<&T> {
-        Some(&self.nodes.get(id)?.value)
-    }
 }
 
 mod private {
@@ -644,6 +632,18 @@ impl<T: Kv> Avl<T> {
             avl: self,
             id: self.root,
         }
+    }
+
+    pub fn remove_at(&mut self, id: NodeId) -> Option<T::Kv> {
+        if self.nodes.contains(id) {
+            Some(self.remove_node(id).into_kv())
+        } else {
+            None
+        }
+    }
+
+    pub fn try_index(&self, id: NodeId) -> Option<T::RefItem<'_>> {
+        Some(self.nodes.get(id)?.value.as_item())
     }
 }
 
