@@ -224,6 +224,10 @@ impl<T, const N: usize> LinkedSlab<T, N> {
         Some(value.value)
     }
 
+    pub fn get(&self, key: usize) -> Option<&T> {
+        Some(&self.slab.get(key)?.value)
+    }
+
     pub fn get_mut(&mut self, key: usize) -> Option<&mut T> {
         Some(&mut self.slab.get_mut(key)?.value)
     }
