@@ -37,7 +37,7 @@ impl<S, F> Router<S, F> {
     {
         let this = self.project();
         this.callback.on_close(error);
-        if let Some(connection) = this.connections.remove(key) {
+        if let Some(connection) = this.connections.try_remove(key) {
             connection.next.waker.wake();
             connection.ready.waker.wake();
             connection.flush.waker.wake();
