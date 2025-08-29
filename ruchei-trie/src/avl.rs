@@ -478,6 +478,13 @@ impl<T> Avl<T> {
             None => self.remove_without_left(id),
         }
     }
+
+    pub fn iter(&self) -> Iter<'_, T> {
+        Iter {
+            avl: self,
+            id: self.root,
+        }
+    }
 }
 
 impl<T: Ord> Nodes<T> {
@@ -528,7 +535,7 @@ impl<T: Ord> Avl<T> {
     }
 
     pub fn get<'a>(&'a self, value: &T) -> Option<(NodeId, &'a T)> {
-        let id = self.locate( value).ok()?;
+        let id = self.locate(value).ok()?;
         let value = &self.nodes[id].value;
         Some((id, value))
     }
