@@ -165,6 +165,10 @@ impl<T, const N: usize> LinkedSlabMultiTrie<T, N> {
             .expect("SMT expects pre-made collections")
             .0
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.collections.is_empty()
+    }
 }
 
 impl<T, const N: usize> Index<usize> for LinkedSlabMultiTrie<T, N> {
@@ -200,8 +204,8 @@ fn ab() {
     assert!(!mt.contains(&col_b, b"key-b"));
     mt.remove(&col_a, b"key-b");
     assert!(!mt.contains(&col_a, b"key-b"));
-    assert!(mt.is_empty(&col_a));
+    assert!(MultiTrie::is_empty(&mt, &col_a));
     mt.remove(&col_b, b"key-a");
     assert!(!mt.contains(&col_b, b"key-a"));
-    assert!(mt.is_empty(&col_b));
+    assert!(MultiTrie::is_empty(&mt, &col_b));
 }
