@@ -169,6 +169,10 @@ impl<T, const N: usize> LinkedSlabMultiTrie<T, N> {
     pub fn is_empty(&self) -> bool {
         self.collections.is_empty()
     }
+
+    pub fn get_mut(&mut self, key: usize) -> Option<&mut T> {
+        Some(&mut self.collections.get_mut(key)?.0)
+    }
 }
 
 impl<T, const N: usize> Index<usize> for LinkedSlabMultiTrie<T, N> {
