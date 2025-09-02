@@ -16,7 +16,7 @@ use ruchei_collections::{
 
 use crate::{
     pinned_extend::{Extending, PinnedExtend},
-    ready_slab_trie::{Connection, ConnectionWaker, Ready},
+    ready_slab::{Connection, ConnectionWaker, Ready},
 };
 
 const OP_WAKE_NEXT: usize = 0;
@@ -95,11 +95,7 @@ impl<K: AsRef<[u8]>, O, E, S: Unpin + Stream<Item = Result<SubRequest<K, O>, E>>
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.as_mut().project();
         this.next.register(cx);
-        while let Some(key) = this
-            .next
-            .as_mut()
-            .next::<OP_WAKE_NEXT, _, OP_COUNT>(this.connections)
-        {
+        while let Some(key) = this.next.as_mut().next::<OP_WAKE_NEXT>(this.connections) {
             if this.connections.link_pop_at::<OP_IS_READIED>(key) {
                 this.ready.downgrade().insert(key);
             }
@@ -158,11 +154,7 @@ impl<K: Clone + AsRef<[u8]>, O: Clone, E, S: Unpin + Sink<(K, O), Error = E>, F:
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let mut this = self.as_mut().project();
         this.ready.register(cx);
-        while let Some(key) = this
-            .ready
-            .as_mut()
-            .next::<OP_WAKE_READY, _, OP_COUNT>(this.connections)
-        {
+        while let Some(key) = this.ready.as_mut().next::<OP_WAKE_READY>(this.connections) {
             if !this.connections.link_contains::<OP_IS_READIED>(key)
                 && let Some(connection) = this.connections.get_mut(key)
                 && let Poll::Ready(r) = connection
@@ -215,11 +207,7 @@ impl<K: Clone + AsRef<[u8]>, O: Clone, E, S: Unpin + Sink<(K, O), Error = E>, F:
             this.connections
                 .link_pops::<OP_IS_STARTED, _, _>(|key, _| key),
         );
-        while let Some(key) = this
-            .flush
-            .as_mut()
-            .next::<OP_WAKE_FLUSH, _, OP_COUNT>(this.connections)
-        {
+        while let Some(key) = this.flush.as_mut().next::<OP_WAKE_FLUSH>(this.connections) {
             if let Some(connection) = this.connections.get_mut(key) {
                 this.ready.downgrade().insert(key);
                 match connection
@@ -249,11 +237,7 @@ impl<K: Clone + AsRef<[u8]>, O: Clone, E, S: Unpin + Sink<(K, O), Error = E>, F:
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let mut this = self.as_mut().project();
         this.close.register(cx);
-        while let Some(key) = this
-            .close
-            .as_mut()
-            .next::<OP_WAKE_CLOSE, _, OP_COUNT>(this.connections)
-        {
+        while let Some(key) = this.close.as_mut().next::<OP_WAKE_CLOSE>(this.connections) {
             if let Some(connection) = this.connections.get_mut(key)
                 && let Poll::Ready(r) = connection
                     .close

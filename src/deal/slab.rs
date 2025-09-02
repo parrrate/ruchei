@@ -83,11 +83,7 @@ impl<In, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stream for D
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.as_mut().project();
         this.next.register(cx);
-        while let Some(key) = this
-            .next
-            .as_mut()
-            .next::<OP_WAKE_NEXT, _, OP_COUNT>(this.connections)
-        {
+        while let Some(key) = this.next.as_mut().next::<OP_WAKE_NEXT>(this.connections) {
             if let Some(connection) = this.connections.get_mut(key)
                 && let Poll::Ready(o) = connection
                     .next
@@ -170,11 +166,7 @@ impl<Out, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> Sink<Out> for Deale
                 })
                 .flatten(),
         );
-        while let Some(key) = this
-            .flush
-            .as_mut()
-            .next::<OP_WAKE_FLUSH, _, OP_COUNT>(this.connections)
-        {
+        while let Some(key) = this.flush.as_mut().next::<OP_WAKE_FLUSH>(this.connections) {
             if let Some(connection) = this.connections.get_mut(key) {
                 match connection
                     .flush
@@ -203,11 +195,7 @@ impl<Out, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> Sink<Out> for Deale
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let mut this = self.as_mut().project();
         this.close.register(cx);
-        while let Some(key) = this
-            .close
-            .as_mut()
-            .next::<OP_WAKE_CLOSE, _, OP_COUNT>(this.connections)
-        {
+        while let Some(key) = this.close.as_mut().next::<OP_WAKE_CLOSE>(this.connections) {
             if let Some(connection) = this.connections.get_mut(key)
                 && let Poll::Ready(r) = connection
                     .close
