@@ -7,7 +7,10 @@ use std::{
 use futures_util::{Sink, SinkExt, Stream, StreamExt, stream::FusedStream};
 use pin_project::pin_project;
 use ruchei_callback::OnClose;
-use ruchei_collections::linked_slab_multi_trie::LinkedSlabMultiTrie;
+use ruchei_collections::{
+    linked_slab_multi_trie::LinkedSlabMultiTrie,
+    multi_trie::{MultiTrie, MultiTrieAddOwned},
+};
 
 use crate::{
     pinned_extend::{Extending, PinnedExtend},
@@ -22,6 +25,12 @@ const OP_IS_STARTED: usize = 4;
 const OP_IS_READIED: usize = 5;
 const OP_IS_FLUSHING: usize = 6;
 const OP_COUNT: usize = 7;
+
+pub enum SubRequest<K, O> {
+    Sub(K),
+    Unsub(K),
+    Other(O),
+}
 
 #[pin_project]
 pub struct Multicast<S, F> {
@@ -76,8 +85,10 @@ impl<S, F> Multicast<S, F> {
     }
 }
 
-impl<In, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stream for Multicast<S, F> {
-    type Item = Result<In, Infallible>;
+impl<K: AsRef<[u8]>, O, E, S: Unpin + Stream<Item = Result<SubRequest<K, O>, E>>, F: OnClose<E>>
+    Stream for Multicast<S, F>
+{
+    type Item = Result<O, Infallible>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.as_mut().project();
@@ -101,7 +112,15 @@ impl<In, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stream for M
                 match o {
                     Some(Ok(item)) => {
                         this.next.downgrade().insert(key);
-                        return Poll::Ready(Some(Ok(item)));
+                        match item {
+                            SubRequest::Sub(route) => {
+                                this.connections.add_owned(key, route.as_ref())
+                            }
+                            SubRequest::Unsub(route) => {
+                                this.connections.remove(&key, route.as_ref())
+                            }
+                            SubRequest::Other(item) => return Poll::Ready(Some(Ok(item))),
+                        }
                     }
                     Some(Err(e)) => {
                         self.as_mut().remove(key, Some(e));
@@ -121,8 +140,8 @@ impl<In, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stream for M
     }
 }
 
-impl<In, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> FusedStream
-    for Multicast<S, F>
+impl<K: AsRef<[u8]>, O, E, S: Unpin + Stream<Item = Result<SubRequest<K, O>, E>>, F: OnClose<E>>
+    FusedStream for Multicast<S, F>
 {
     fn is_terminated(&self) -> bool {
         self.connections.is_empty()
@@ -267,7 +286,9 @@ pub trait MulticastTrie: Sized {
     fn multicast_trie<F: OnClose<Self::E>>(self, callback: F) -> MulticastExtending<F, Self>;
 }
 
-impl<In, E, S: Unpin + Stream<Item = Result<In, E>>, R: FusedStream<Item = S>> MulticastTrie for R {
+impl<O, K, E, S: Unpin + Stream<Item = Result<SubRequest<K, O>, E>>, R: FusedStream<Item = S>>
+    MulticastTrie for R
+{
     type S = S;
     type E = E;
 
