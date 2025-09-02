@@ -21,10 +21,16 @@ async fn main() {
         .fuse()
         .concurrent()
         .filter_map(|r| async { r.ok() })
-        .map(|s| s.map_ok(SubRequest::<String, _>::Other))
+        .map(|s| {
+            s.map_ok(|m| {
+                futures_util::stream::iter([SubRequest::Sub("prefix"), SubRequest::Other(m)])
+                    .map(Ok)
+            })
+            .try_flatten()
+        })
         .map(|s| s.with(|(_, m)| ready(Ok(m))))
-        .multicast_trie(|_| {})
-        .map_ok(|m| ("123".to_string(), m))
+        .multicast_trie(|_: Option<async_tungstenite::tungstenite::Error>| {})
+        .map_ok(|m| ("prefix", m))
         .echo_bufferless()
         .await
         .unwrap();
