@@ -6,6 +6,7 @@ use std::{
 use slab::Slab;
 
 use crate::{
+    as_linked_slab::AsLinkedSlab,
     linked_slab::LinkedSlab,
     multi_trie::{MultiTrie, MultiTrieAddOwned, MultiTrieAddRef, MultiTriePrefix},
     nodes::NodeId,
@@ -116,94 +117,73 @@ impl<T, const N: usize> MultiTriePrefix for LinkedSlabMultiTrie<T, N> {
     }
 }
 
-impl<T, const N: usize> LinkedSlabMultiTrie<T, N> {
-    pub fn front<const M: usize>(&self) -> Option<usize> {
+impl<T, const N: usize> AsLinkedSlab for LinkedSlabMultiTrie<T, N> {
+    const N: usize = N;
+    type T = T;
+
+    fn front<const M: usize>(&self) -> Option<usize> {
         self.collections.front::<M>()
     }
 
-    pub fn link_empty<const M: usize>(&self) -> bool {
+    fn link_empty<const M: usize>(&self) -> bool {
         self.collections.link_empty::<M>()
     }
 
-    pub fn link_len<const M: usize>(&self) -> usize {
+    fn link_len<const M: usize>(&self) -> usize {
         self.collections.link_len::<M>()
     }
 
-    pub fn link_contains<const M: usize>(&self, key: usize) -> bool {
+    fn link_contains<const M: usize>(&self, key: usize) -> bool {
         self.collections.link_contains::<M>(key)
     }
 
-    pub fn link_push_back<const M: usize>(&mut self, key: usize) -> bool {
+    fn link_push_back<const M: usize>(&mut self, key: usize) -> bool {
         self.collections.link_push_back::<M>(key)
     }
 
-    pub fn link_pop_at<const M: usize>(&mut self, key: usize) -> bool {
+    fn link_pop_at<const M: usize>(&mut self, key: usize) -> bool {
         self.collections.link_pop_at::<M>(key)
     }
 
-    pub fn link_pop_front<const M: usize>(&mut self) -> Option<usize> {
+    fn link_pop_front<const M: usize>(&mut self) -> Option<usize> {
         self.collections.link_pop_front::<M>()
     }
 
-    pub fn insert(&mut self, value: T) -> usize {
+    fn insert(&mut self, value: Self::T) -> usize {
         self.collections.insert((value, Slab::new()))
     }
 
-    pub fn pop(&mut self, collection: usize) -> T {
-        self.mt_clear(&collection);
-        self.collections.remove(collection).0
+    fn vacant_key(&mut self) -> usize {
+        self.collections.vacant_key()
     }
 
-    pub fn try_remove(&mut self, collection: usize) -> Option<T> {
-        if self.collections.get(collection).is_some() {
-            Some(self.pop(collection))
+    fn remove(&mut self, key: usize) -> Self::T {
+        self.mt_clear(&key);
+        self.collections.remove(key).0
+    }
+
+    fn try_remove(&mut self, key: usize) -> Option<Self::T> {
+        if self.collections.get(key).is_some() {
+            Some(self.remove(key))
         } else {
             None
         }
     }
 
-    pub fn vacant_key(&mut self) -> usize {
-        self.collections.vacant_key()
+    fn get(&self, key: usize) -> Option<&Self::T> {
+        Some(&self.collections.get(key)?.0)
     }
 
-    pub fn get_refresh<const M: usize>(&mut self, key: usize) -> &mut T {
-        &mut self
-            .collections
-            .get_refresh::<M>(key)
-            .expect("SMT expects pre-made collections")
-            .0
-    }
-
-    pub fn len(&self) -> usize {
-        self.collections.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.collections.is_empty()
-    }
-
-    pub fn get_mut(&mut self, key: usize) -> Option<&mut T> {
+    fn get_mut(&mut self, key: usize) -> Option<&mut Self::T> {
         Some(&mut self.collections.get_mut(key)?.0)
     }
 
-    pub fn link_pops<const M: usize, U, F: FnMut(usize, &mut Self) -> U>(
-        &mut self,
-        f: F,
-    ) -> Pops<'_, T, F, N, M> {
-        Pops(self, f)
+    fn is_empty(&self) -> bool {
+        self.collections.is_empty()
     }
-}
 
-pub struct Pops<'a, T, F, const N: usize, const M: usize>(&'a mut LinkedSlabMultiTrie<T, N>, F);
-
-impl<T, U, F: FnMut(usize, &mut LinkedSlabMultiTrie<T, N>) -> U, const N: usize, const M: usize>
-    Iterator for Pops<'_, T, F, N, M>
-{
-    type Item = U;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let key = self.0.link_pop_front::<M>()?;
-        Some(self.1(key, self.0))
+    fn len(&self) -> usize {
+        self.collections.len()
     }
 }
 

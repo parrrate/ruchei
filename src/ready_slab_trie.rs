@@ -7,7 +7,9 @@ use std::{
 use futures_channel::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
 use futures_util::{Stream, task::AtomicWaker};
 use pin_project::pin_project;
-use ruchei_collections::linked_slab_multi_trie::LinkedSlabMultiTrie;
+use ruchei_collections::{
+    as_linked_slab::AsLinkedSlab, linked_slab_multi_trie::LinkedSlabMultiTrie,
+};
 
 #[derive(Default)]
 struct SlabWaker {
