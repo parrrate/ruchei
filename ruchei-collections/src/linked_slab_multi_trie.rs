@@ -27,7 +27,7 @@ impl<T, const N: usize> Default for LinkedSlabMultiTrie<T, N> {
 }
 
 impl<T, const N: usize> MultiTrie<usize> for LinkedSlabMultiTrie<T, N> {
-    fn remove(&mut self, collection: &usize, key: &[u8]) {
+    fn mt_remove(&mut self, collection: &usize, key: &[u8]) {
         let (_, slab) = self
             .collections
             .get_mut(*collection)
@@ -44,14 +44,14 @@ impl<T, const N: usize> MultiTrie<usize> for LinkedSlabMultiTrie<T, N> {
         }
     }
 
-    fn contains(&self, collection: &usize, key: &[u8]) -> bool {
+    fn mt_contains(&self, collection: &usize, key: &[u8]) -> bool {
         let Some((_, map)) = self.keys.get(key) else {
             return false;
         };
         map.contains_key(collection)
     }
 
-    fn clear(&mut self, collection: &usize) {
+    fn mt_clear(&mut self, collection: &usize) {
         let Some((_, slab)) = self.collections.get_mut(*collection) else {
             return;
         };
@@ -65,7 +65,7 @@ impl<T, const N: usize> MultiTrie<usize> for LinkedSlabMultiTrie<T, N> {
         }
     }
 
-    fn is_empty(&self, collection: &usize) -> bool {
+    fn mt_is_empty(&self, collection: &usize) -> bool {
         self.collections
             .get(*collection)
             .expect("SMT expects pre-made collections")
@@ -73,7 +73,7 @@ impl<T, const N: usize> MultiTrie<usize> for LinkedSlabMultiTrie<T, N> {
             .is_empty()
     }
 
-    fn len(&self, collection: &usize) -> usize {
+    fn mt_len(&self, collection: &usize) -> usize {
         self.collections
             .get(*collection)
             .expect("SMT expects pre-made collections")
@@ -83,13 +83,13 @@ impl<T, const N: usize> MultiTrie<usize> for LinkedSlabMultiTrie<T, N> {
 }
 
 impl<T, const N: usize> MultiTrieAddRef<usize> for LinkedSlabMultiTrie<T, N> {
-    fn add_ref(&mut self, collection: &usize, key: &[u8]) {
-        self.add_owned(*collection, key);
+    fn mt_add_ref(&mut self, collection: &usize, key: &[u8]) {
+        self.mt_add_owned(*collection, key);
     }
 }
 
 impl<T, const N: usize> MultiTrieAddOwned<usize> for LinkedSlabMultiTrie<T, N> {
-    fn add_owned(&mut self, collection: usize, key: &[u8]) {
+    fn mt_add_owned(&mut self, collection: usize, key: &[u8]) {
         if self.keys.get(key).is_none() {
             self.keys.insert(key, BTreeMap::new());
         }
@@ -105,7 +105,7 @@ impl<T, const N: usize> MultiTrieAddOwned<usize> for LinkedSlabMultiTrie<T, N> {
 impl<T, const N: usize> MultiTriePrefix for LinkedSlabMultiTrie<T, N> {
     type Collection = usize;
 
-    fn prefix_collect<'a>(
+    fn mt_prefix_collect<'a>(
         &'a self,
         suffix: &[u8],
     ) -> impl 'a + IntoIterator<Item: 'a + std::borrow::Borrow<Self::Collection>> {
@@ -150,7 +150,7 @@ impl<T, const N: usize> LinkedSlabMultiTrie<T, N> {
     }
 
     pub fn pop(&mut self, collection: usize) -> T {
-        self.clear(&collection);
+        self.mt_clear(&collection);
         self.collections.remove(collection).0
     }
 
@@ -226,22 +226,22 @@ fn ab() {
     let mut mt = LinkedSlabMultiTrie::<_, 0>::default();
     let col_a = mt.insert(b"col-a");
     let col_b = mt.insert(b"col-b");
-    mt.add_ref(&col_a, b"key-a");
-    assert!(mt.contains(&col_a, b"key-a"));
-    mt.add_ref(&col_b, b"key-b");
-    assert!(mt.contains(&col_b, b"key-b"));
-    mt.add_ref(&col_a, b"key-b");
-    assert!(mt.contains(&col_a, b"key-b"));
-    mt.add_ref(&col_b, b"key-a");
-    assert!(mt.contains(&col_b, b"key-a"));
-    mt.remove(&col_a, b"key-a");
-    assert!(!mt.contains(&col_a, b"key-a"));
-    mt.remove(&col_b, b"key-b");
-    assert!(!mt.contains(&col_b, b"key-b"));
-    mt.remove(&col_a, b"key-b");
-    assert!(!mt.contains(&col_a, b"key-b"));
-    assert!(MultiTrie::is_empty(&mt, &col_a));
-    mt.remove(&col_b, b"key-a");
-    assert!(!mt.contains(&col_b, b"key-a"));
-    assert!(MultiTrie::is_empty(&mt, &col_b));
+    mt.mt_add_ref(&col_a, b"key-a");
+    assert!(mt.mt_contains(&col_a, b"key-a"));
+    mt.mt_add_ref(&col_b, b"key-b");
+    assert!(mt.mt_contains(&col_b, b"key-b"));
+    mt.mt_add_ref(&col_a, b"key-b");
+    assert!(mt.mt_contains(&col_a, b"key-b"));
+    mt.mt_add_ref(&col_b, b"key-a");
+    assert!(mt.mt_contains(&col_b, b"key-a"));
+    mt.mt_remove(&col_a, b"key-a");
+    assert!(!mt.mt_contains(&col_a, b"key-a"));
+    mt.mt_remove(&col_b, b"key-b");
+    assert!(!mt.mt_contains(&col_b, b"key-b"));
+    mt.mt_remove(&col_a, b"key-b");
+    assert!(!mt.mt_contains(&col_a, b"key-b"));
+    assert!(MultiTrie::mt_is_empty(&mt, &col_a));
+    mt.mt_remove(&col_b, b"key-a");
+    assert!(!mt.mt_contains(&col_b, b"key-a"));
+    assert!(MultiTrie::mt_is_empty(&mt, &col_b));
 }

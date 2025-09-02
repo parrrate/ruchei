@@ -115,10 +115,10 @@ impl<K: AsRef<[u8]>, O, E, S: Unpin + Stream<Item = Result<SubRequest<K, O>, E>>
                         this.next.downgrade().insert(key);
                         match item {
                             SubRequest::Sub(route) => {
-                                this.connections.add_owned(key, route.as_ref())
+                                this.connections.mt_add_owned(key, route.as_ref())
                             }
                             SubRequest::Unsub(route) => {
-                                this.connections.remove(&key, route.as_ref())
+                                this.connections.mt_remove(&key, route.as_ref())
                             }
                             SubRequest::Other(item) => return Poll::Ready(Some(Ok(item))),
                         }
@@ -187,7 +187,7 @@ impl<K: Clone + AsRef<[u8]>, O: Clone, E, S: Unpin + Sink<(K, O), Error = E>, F:
         let mut this = self.as_mut().project();
         let keys = this
             .connections
-            .prefix_collect(msg.0.as_ref())
+            .mt_prefix_collect(msg.0.as_ref())
             .into_iter()
             .map(|item| *item.borrow())
             .collect::<Vec<usize>>();
