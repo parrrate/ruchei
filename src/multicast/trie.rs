@@ -148,7 +148,9 @@ impl<K: AsRef<[u8]>, O, E, S: Unpin + Stream<Item = Result<SubRequest<K, O>, E>>
     }
 }
 
-impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> Sink<Out> for Multicast<S, F> {
+impl<K: Clone + AsRef<[u8]>, O: Clone, E, S: Unpin + Sink<(K, O), Error = E>, F: OnClose<E>>
+    Sink<(K, O)> for Multicast<S, F>
+{
     type Error = Infallible;
 
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -180,7 +182,7 @@ impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> Sink<Out> fo
         }
     }
 
-    fn start_send(mut self: Pin<&mut Self>, msg: Out) -> Result<(), Self::Error> {
+    fn start_send(mut self: Pin<&mut Self>, msg: (K, O)) -> Result<(), Self::Error> {
         let mut this = self.as_mut().project();
         while let Some(key) = this.connections.link_pop_front::<OP_IS_READIED>() {
             if let Some(connection) = this.connections.get_mut(key) {
