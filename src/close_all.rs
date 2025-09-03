@@ -6,7 +6,7 @@ use std::{
 };
 
 use futures_util::{
-    Future, Sink, Stream,
+    Future, Sink, Stream, TryStream,
     future::FusedFuture,
     lock::{Mutex, OwnedMutexGuard, OwnedMutexLockFuture},
     ready,
@@ -27,7 +27,7 @@ pub struct CloseOne<S, Out> {
     _out: PhantomData<Out>,
 }
 
-impl<In, Out, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>> Stream
+impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>> Stream
     for CloseOne<S, Out>
 {
     type Item = Result<In, E>;
@@ -42,7 +42,7 @@ impl<In, Out, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>> Stream
             r?;
             Poll::Ready(None)
         } else {
-            Poll::Ready(match ready!(this.stream.poll_next(cx)) {
+            Poll::Ready(match ready!(this.stream.try_poll_next(cx)) {
                 Some(Ok(item)) => Some(Ok(item)),
                 Some(Err(e)) => {
                     *this.terminated = true;
@@ -57,7 +57,7 @@ impl<In, Out, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>> Stream
     }
 }
 
-impl<In, Out, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>> FusedStream
+impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>> FusedStream
     for CloseOne<S, Out>
 {
     fn is_terminated(&self) -> bool {
@@ -65,7 +65,7 @@ impl<In, Out, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>> FusedSt
     }
 }
 
-impl<In, Out, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>> Sink<Out>
+impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>> Sink<Out>
     for CloseOne<S, Out>
 {
     type Error = E;
