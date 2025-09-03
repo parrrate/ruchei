@@ -31,7 +31,7 @@ use std::{
 };
 
 use futures_util::{
-    Future, Sink, Stream,
+    Future, Sink, Stream, TryStream,
     lock::Mutex,
     ready,
     stream::{FusedStream, FuturesUnordered, SelectAll},
@@ -96,7 +96,7 @@ struct Unicast<S, Out, F> {
     callback: F,
 }
 
-impl<In, Out: Clone, E, S: Sink<Out, Error = E> + Stream<Item = Result<In, E>>, F: OnClose<E>>
+impl<In, Out: Clone, E, S: Sink<Out, Error = E> + TryStream<Ok = In, Error = E>, F: OnClose<E>>
     Unicast<S, Out, F>
 {
     fn state(self: Pin<&mut Self>) -> &mut State<Out> {
@@ -194,7 +194,7 @@ impl<In, Out: Clone, E, S: Sink<Out, Error = E> + Stream<Item = Result<In, E>>, 
 
     fn poll_inner(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Result<In, E>>> {
         let _ = self.as_mut().pre_poll(cx)?;
-        self.project().stream.poll_next(cx)
+        self.project().stream.try_poll_next(cx)
     }
 
     fn poll_pre_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), E>> {
@@ -221,7 +221,7 @@ impl<In, Out: Clone, E, S: Sink<Out, Error = E> + Stream<Item = Result<In, E>>, 
     }
 }
 
-impl<In, Out: Clone, E, S: Sink<Out, Error = E> + Stream<Item = Result<In, E>>, F: OnClose<E>>
+impl<In, Out: Clone, E, S: Sink<Out, Error = E> + TryStream<Ok = In, Error = E>, F: OnClose<E>>
     Stream for Unicast<S, Out, F>
 {
     type Item = In;
@@ -252,7 +252,7 @@ impl<
     In,
     Out: Clone,
     E,
-    S: Unpin + Sink<Out, Error = E> + Stream<Item = Result<In, E>>,
+    S: Unpin + Sink<Out, Error = E> + TryStream<Ok = In, Error = E>,
     F: OnClose<E>,
 > Finalize<S, Out, F>
 {
@@ -273,7 +273,7 @@ impl<
     In,
     Out: Clone,
     E,
-    S: Unpin + Sink<Out, Error = E> + Stream<Item = Result<In, E>>,
+    S: Unpin + Sink<Out, Error = E> + TryStream<Ok = In, Error = E>,
     F: OnClose<E>,
 > Future for Finalize<S, Out, F>
 {
@@ -303,7 +303,7 @@ impl<
     In,
     Out: Clone,
     E,
-    S: Unpin + Sink<Out, Error = E> + Stream<Item = Result<In, E>>,
+    S: Unpin + Sink<Out, Error = E> + TryStream<Ok = In, Error = E>,
     F: OnClose<E>,
 > Multicast<S, Out, F>
 {
@@ -316,7 +316,7 @@ impl<
     In,
     Out: Clone,
     E,
-    S: Unpin + Sink<Out, Error = E> + Stream<Item = Result<In, E>>,
+    S: Unpin + Sink<Out, Error = E> + TryStream<Ok = In, Error = E>,
     F: OnClose<E>,
 > Stream for Multicast<S, Out, F>
 {
@@ -331,7 +331,7 @@ impl<
     In,
     Out: Clone,
     E,
-    S: Unpin + Sink<Out, Error = E> + Stream<Item = Result<In, E>>,
+    S: Unpin + Sink<Out, Error = E> + TryStream<Ok = In, Error = E>,
     F: OnClose<E>,
 > FusedStream for Multicast<S, Out, F>
 {
@@ -344,7 +344,7 @@ impl<
     In,
     Out: Clone,
     E,
-    S: Unpin + Sink<Out, Error = E> + Stream<Item = Result<In, E>>,
+    S: Unpin + Sink<Out, Error = E> + TryStream<Ok = In, Error = E>,
     F: OnClose<E>,
 > Sink<Out> for Multicast<S, Out, F>
 {
@@ -403,7 +403,7 @@ impl<
     In,
     Out: Clone,
     E,
-    S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
+    S: Unpin + TryStream<Ok = In, Error = E> + Sink<Out, Error = E>,
     F: OnClose<E>,
 > Multicast<S, Out, F>
 {
@@ -438,7 +438,7 @@ impl<
     In,
     Out: Clone,
     E,
-    S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
+    S: Unpin + TryStream<Ok = In, Error = E> + Sink<Out, Error = E>,
     F: OnClose<E>,
 > From<F> for Multicast<S, Out, F>
 {
@@ -451,7 +451,7 @@ impl<
     In,
     Out: Clone,
     E,
-    S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
+    S: Unpin + TryStream<Ok = In, Error = E> + Sink<Out, Error = E>,
     F: Default + OnClose<E>,
 > Default for Multicast<S, Out, F>
 {
@@ -464,7 +464,7 @@ impl<
     In,
     Out: Clone,
     E,
-    S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
+    S: Unpin + TryStream<Ok = In, Error = E> + Sink<Out, Error = E>,
     F: OnClose<E>,
 > Extend<S> for Multicast<S, Out, F>
 {
@@ -479,7 +479,7 @@ impl<
     In,
     Out: Clone,
     E,
-    S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
+    S: Unpin + TryStream<Ok = In, Error = E> + Sink<Out, Error = E>,
     F: Default + OnClose<E>,
 > FromIterator<S> for Multicast<S, Out, F>
 {
@@ -509,7 +509,7 @@ impl<
     In,
     Out: Clone,
     E,
-    S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
+    S: Unpin + TryStream<Ok = In, Error = E> + Sink<Out, Error = E>,
     R: FusedStream<Item = S>,
 > MulticastReplay<Out> for R
 {
