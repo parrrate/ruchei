@@ -6,7 +6,7 @@ use std::{
 };
 
 use futures_util::{
-    Sink, SinkExt, Stream, StreamExt, ready, stream::FusedStream, task::AtomicWaker,
+    Sink, SinkExt, Stream, TryStream, TryStreamExt, ready, stream::FusedStream, task::AtomicWaker,
 };
 use linked_hash_map::LinkedHashMap;
 use linked_hash_set::LinkedHashSet;
@@ -73,7 +73,7 @@ impl<K: Key, S, F> Dealer<K, S, F> {
     }
 }
 
-impl<In, K: Key, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stream
+impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>, F: OnClose<E>> Stream
     for Dealer<K, S, F>
 {
     type Item = Result<In, Infallible>;
@@ -84,7 +84,7 @@ impl<In, K: Key, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stre
             if let Some(connection) = this.connections.get_mut(&key)
                 && let Poll::Ready(o) = connection
                     .next
-                    .poll(cx, |cx| connection.stream.poll_next_unpin(cx))
+                    .poll(cx, |cx| connection.stream.try_poll_next_unpin(cx))
             {
                 match o {
                     Some(Ok(item)) => {
@@ -108,7 +108,7 @@ impl<In, K: Key, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stre
     }
 }
 
-impl<In, K: Key, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> FusedStream
+impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>, F: OnClose<E>> FusedStream
     for Dealer<K, S, F>
 {
     fn is_terminated(&self) -> bool {
@@ -240,7 +240,7 @@ pub trait DealerKeyedExt: Sized {
     fn deal_keyed<F: OnClose<Self::E>>(self, callback: F) -> DealerExtending<F, Self>;
 }
 
-impl<In, K: Key, E, S: Unpin + Stream<Item = Result<In, E>>, R: FusedStream<Item = (K, S)>>
+impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = (K, S)>>
     DealerKeyedExt for R
 {
     type K = K;
