@@ -29,7 +29,7 @@ use std::{
 };
 
 use futures_util::{
-    Future, Sink, Stream,
+    Future, Sink, Stream, TryStream,
     stream::{FusedStream, FuturesUnordered, SelectAll},
     task::AtomicWaker,
 };
@@ -61,7 +61,7 @@ impl<S, Out, F> Unicast<S, Out, F> {
     }
 }
 
-impl<In, Out, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>, F: OnClose<E>> Stream
+impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, F: OnClose<E>> Stream
     for Unicast<S, Out, F>
 {
     type Item = In;
@@ -116,7 +116,7 @@ impl<In, Out, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>, F: OnCl
                 Poll::Pending => {}
             }
         }
-        this.stream.poll_next(cx).map(|o| match o {
+        this.stream.try_poll_next(cx).map(|o| match o {
             Some(Ok(item)) => Some(item),
             Some(Err(e)) => {
                 this.callback.on_close(Some(e));
@@ -146,7 +146,7 @@ pub struct Multicast<S, Out, F> {
     callback: F,
 }
 
-impl<In, Out, E, S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>, F: OnClose<E>>
+impl<In, Out, E, S: Unpin + TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, F: OnClose<E>>
     Multicast<S, Out, F>
 {
     fn poll_next_infallible(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<In>> {
@@ -154,7 +154,7 @@ impl<In, Out, E, S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
     }
 }
 
-impl<In, Out, E, S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>, F: OnClose<E>>
+impl<In, Out, E, S: Unpin + TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, F: OnClose<E>>
     Stream for Multicast<S, Out, F>
 {
     type Item = Result<In, Infallible>;
@@ -164,7 +164,7 @@ impl<In, Out, E, S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
     }
 }
 
-impl<In, Out, E, S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>, F: OnClose<E>>
+impl<In, Out, E, S: Unpin + TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, F: OnClose<E>>
     FusedStream for Multicast<S, Out, F>
 {
     fn is_terminated(&self) -> bool {
@@ -176,7 +176,7 @@ impl<
     In,
     Out: Clone,
     E,
-    S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
+    S: Unpin + TryStream<Ok = In, Error = E> + Sink<Out, Error = E>,
     F: OnClose<E>,
 > Sink<Out> for Multicast<S, Out, F>
 {
@@ -251,7 +251,7 @@ impl<
     }
 }
 
-impl<In, Out, E, S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>, F: OnClose<E>>
+impl<In, Out, E, S: Unpin + TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, F: OnClose<E>>
     Multicast<S, Out, F>
 {
     #[must_use]
@@ -280,7 +280,7 @@ impl<In, Out, E, S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
     }
 }
 
-impl<In, Out, E, S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>, F: OnClose<E>>
+impl<In, Out, E, S: Unpin + TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, F: OnClose<E>>
     From<F> for Multicast<S, Out, F>
 {
     fn from(callback: F) -> Self {
@@ -292,7 +292,7 @@ impl<
     In,
     Out,
     E,
-    S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
+    S: Unpin + TryStream<Ok = In, Error = E> + Sink<Out, Error = E>,
     F: Default + OnClose<E>,
 > Default for Multicast<S, Out, F>
 {
@@ -301,7 +301,7 @@ impl<
     }
 }
 
-impl<In, Out, E, S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>, F: OnClose<E>>
+impl<In, Out, E, S: Unpin + TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, F: OnClose<E>>
     Extend<S> for Multicast<S, Out, F>
 {
     fn extend<T: IntoIterator<Item = S>>(&mut self, iter: T) {
@@ -315,7 +315,7 @@ impl<
     In,
     Out,
     E,
-    S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
+    S: Unpin + TryStream<Ok = In, Error = E> + Sink<Out, Error = E>,
     F: Default + OnClose<E>,
 > FromIterator<S> for Multicast<S, Out, F>
 {
@@ -345,7 +345,7 @@ impl<
     In,
     Out,
     E,
-    S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
+    S: Unpin + TryStream<Ok = In, Error = E> + Sink<Out, Error = E>,
     R: FusedStream<Item = S>,
 > MulticastBufferless<Out> for R
 {
