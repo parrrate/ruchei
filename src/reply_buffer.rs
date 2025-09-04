@@ -92,8 +92,8 @@ impl<S: Sink<T>, T, F> ReplyBuffer<S, T, F> {
     }
 }
 
-pub trait IntoReplyBuffer<T>: Sized + Sink<T> {
-    fn into_reply_buffer<F: ReplyBufferFilter<U>, U>(
+pub trait IntoReplyBuffer<T>: Sized + Sink<T> + TryStream {
+    fn into_reply_buffer<F: ReplyBufferFilter<Self::Ok, Reply = T>>(
         self,
         buffer: Option<T>,
         filter: F,
@@ -102,7 +102,7 @@ pub trait IntoReplyBuffer<T>: Sized + Sink<T> {
     }
 }
 
-impl<S: Sink<T>, T> IntoReplyBuffer<T> for S {}
+impl<S: TryStream<Ok = U, Error = E> + Sink<T, Error = E>, T, U, E> IntoReplyBuffer<T> for S {}
 
 impl<
     S: TryStream<Ok = U, Error = E> + Sink<T, Error = E>,
