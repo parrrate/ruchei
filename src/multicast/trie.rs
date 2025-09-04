@@ -282,8 +282,13 @@ pub trait MulticastTrie: Sized {
     fn multicast_trie<F: OnClose<Self::E>>(self, callback: F) -> MulticastExtending<F, Self>;
 }
 
-impl<O, K, E, S: Unpin + TryStream<Ok = SubRequest<K, O>, Error = E>, R: FusedStream<Item = S>>
-    MulticastTrie for R
+impl<
+    O,
+    K: AsRef<[u8]>,
+    E,
+    S: Unpin + TryStream<Ok = SubRequest<K, O>, Error = E>,
+    R: FusedStream<Item = S>,
+> MulticastTrie for R
 {
     type S = S;
     type E = E;
