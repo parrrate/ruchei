@@ -7,17 +7,27 @@ use std::{
 use futures_util::{Sink, Stream, TryStream, ready, task::AtomicWaker};
 use pin_project::pin_project;
 
+pub type Filtered<F, Item> = Option<(
+    Option<<F as ReplyBufferFilter<Item>>::Reply>,
+    Option<<F as ReplyBufferFilter<Item>>::Filtered>,
+)>;
+
 pub trait ReplyBufferFilter<Item> {
+    type Filtered;
     type Reply;
-    fn reply_and_item(&mut self, item: Item) -> Option<(Option<Self::Reply>, Option<Item>)>;
+    fn reply_and_item(&mut self, item: Item) -> Filtered<Self, Item>;
 }
 
-impl<Item, Reply, F: ?Sized + FnMut(Item) -> Option<(Option<Reply>, Option<Item>)>>
+impl<Item, Reply, Filtered, F: ?Sized + FnMut(Item) -> Option<(Option<Reply>, Option<Filtered>)>>
     ReplyBufferFilter<Item> for F
 {
+    type Filtered = Filtered;
     type Reply = Reply;
 
-    fn reply_and_item(&mut self, item: Item) -> Option<(Option<Self::Reply>, Option<Item>)> {
+    fn reply_and_item(
+        &mut self,
+        item: Item,
+    ) -> Option<(Option<Self::Reply>, Option<Self::Filtered>)> {
         self(item)
     }
 }
@@ -112,7 +122,7 @@ impl<
     F: ReplyBufferFilter<U, Reply = T>,
 > Stream for ReplyBuffer<S, T, F>
 {
-    type Item = Result<U, E>;
+    type Item = Result<F::Filtered, E>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.wakers.next.register(cx.waker());
