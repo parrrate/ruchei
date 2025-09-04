@@ -22,6 +22,7 @@ pub mod poll_on_wake;
 pub mod read_callback;
 mod ready_keyed;
 mod ready_slab;
+pub mod reply_buffer;
 pub mod route;
 pub mod rw_isolation;
 pub mod switching;
