@@ -36,7 +36,6 @@ impl<Item, Reply, Filtered, F: ?Sized + FnMut(Item) -> Option<(Option<Reply>, Op
 struct Wakers {
     next: AtomicWaker,
     ready: AtomicWaker,
-    flush: AtomicWaker,
 }
 
 impl Wake for Wakers {
@@ -158,7 +157,6 @@ impl<S: Sink<T, Error = E>, T, E, F> Sink<T> for ReplyBuffer<S, T, F> {
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.wakers.flush.register(cx.waker());
         ready!(self.as_mut().flush_buffer(false))?;
         self.poll_flush_raw(cx)
     }
