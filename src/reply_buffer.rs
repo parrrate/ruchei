@@ -43,7 +43,6 @@ impl Wake for Wakers {
     fn wake(self: Arc<Self>) {
         self.next.wake();
         self.ready.wake();
-        self.flush.wake();
     }
 }
 
