@@ -8,7 +8,7 @@ use std::{
     time::Duration,
 };
 
-use futures_util::{Sink, Stream};
+use futures_util::{stream::FusedStream, Sink, Stream};
 use pin_project::pin_project;
 
 static SAMPLE: AtomicBool = AtomicBool::new(false);
@@ -81,6 +81,12 @@ impl<S: Stream> Stream for Exclude<S> {
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let _guard = crate::disable();
         self.project().0.poll_next(cx)
+    }
+}
+
+impl<S: FusedStream> FusedStream for Exclude<S> {
+    fn is_terminated(&self) -> bool {
+        self.0.is_terminated()
     }
 }
 
