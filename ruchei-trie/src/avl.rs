@@ -486,6 +486,10 @@ impl<T> Avl<T> {
             None
         }
     }
+
+    pub fn try_index(&self, id: NodeId) -> Option<&T> {
+        Some(&self.nodes.get(id)?.value)
+    }
 }
 
 mod private {
