@@ -7,7 +7,7 @@ use std::{
 use futures_util::Future;
 
 #[derive(Debug, Clone, Default)]
-pub struct Completable {
+pub(crate) struct Completable {
     waker: Arc<Mutex<Option<Waker>>>,
 }
 
@@ -24,7 +24,7 @@ impl Completable {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct CompleteOne {
+pub(crate) struct CompleteOne {
     completable: Option<Completable>,
 }
 
@@ -51,7 +51,7 @@ impl Drop for CompleteOne {
 }
 
 #[derive(Default)]
-pub struct WaitMany {
+pub(crate) struct WaitMany {
     waker: Weak<Mutex<Option<Waker>>>,
 }
 
