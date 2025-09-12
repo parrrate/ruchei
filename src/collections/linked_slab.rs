@@ -182,7 +182,8 @@ impl<T, const N: usize> LinkedSlab<T, N> {
     pub(crate) fn link_pop_front<const M: usize>(&mut self) -> Option<usize> {
         assert!(M < N);
         let key = self.first::<M>()?;
-        assert!(self.link_pop_at::<M>(key), "key not linked");
+        let popped = self.link_pop_at::<M>(key);
+        assert!(popped, "key not linked");
         Some(key)
     }
 
