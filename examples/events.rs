@@ -324,17 +324,16 @@ impl<
 #[pin_project]
 struct EventStream<S>(#[pin] S);
 
+#[derive(Debug, thiserror::Error)]
 enum EventError {
-    WebSocket(tungstenite::Error),
+    #[error(transparent)]
+    WebSocket(#[from] tungstenite::Error),
+    #[error("no command")]
     NoCommand,
+    #[error("no key")]
     NoKey,
+    #[error("unknown command")]
     UknownCommand,
-}
-
-impl From<tungstenite::Error> for EventError {
-    fn from(value: tungstenite::Error) -> Self {
-        Self::WebSocket(value)
-    }
 }
 
 impl<S: Stream<Item = Result<Message, tungstenite::Error>>> Stream for EventStream<S> {
