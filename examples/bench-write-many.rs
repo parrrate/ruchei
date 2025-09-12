@@ -21,6 +21,7 @@ async fn main() {
             .await
             .unwrap()
             .0;
+            Timer::after(Duration::from_millis(500)).await;
             let (mut writer, mut reader) = stream.split();
             let task = task::spawn(async move {
                 reader.next().await.unwrap().unwrap();
