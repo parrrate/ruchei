@@ -229,7 +229,7 @@ impl<
             } else {
                 match unicast.as_mut().poll_pre_close(cx)? {
                     Poll::Ready(()) => *this.closing = true,
-                    Poll::Pending => todo!(),
+                    Poll::Pending => break Poll::Pending,
                 }
             }
         }
