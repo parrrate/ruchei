@@ -1,10 +1,10 @@
 //! Prevent polling until the wake up.
-//! 
-//! 
+//!
+//!
 //! ```rust
 //! # use async_std::net::TcpListener;
 //! use ruchei::poll_on_wake::PollOnWakeExt;
-//! 
+//!
 //! # async fn __() {
 //! TcpListener::bind("127.0.0.1:8080")
 //!     .await
