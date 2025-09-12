@@ -3,6 +3,7 @@ pub mod avl_multi_trie;
 pub mod bytes_multi_trie;
 pub mod clone_multi_trie;
 pub mod linked_slab;
+pub mod linked_slab_multi_trie;
 pub mod multi_trie;
 mod nodes;
 pub mod slab_multi_trie;
