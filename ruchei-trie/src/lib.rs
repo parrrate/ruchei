@@ -24,7 +24,7 @@ impl<T> Default for Nodes<T> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct NodeId {
     location: usize,
     ctr: usize,
