@@ -11,3 +11,4 @@ pub mod poll_on_wake;
 pub mod read_callback;
 pub mod rw_isolation;
 mod wait_all;
+pub mod with_extra;
