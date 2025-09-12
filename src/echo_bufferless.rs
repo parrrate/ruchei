@@ -22,11 +22,6 @@ impl<T, E, S: FusedStream<Item = Result<T, E>> + Sink<T, Error = E>> Future for 
         if this.stream.is_terminated() {
             return Poll::Ready(Ok(()));
         }
-        if this.item.is_none() {
-            if let Poll::Ready(Some(t)) = this.stream.as_mut().poll_next(cx)? {
-                *this.item = Some(t);
-            }
-        }
         loop {
             match this.item.take() {
                 Some(item) => match this.stream.as_mut().poll_ready(cx)? {
@@ -63,16 +58,16 @@ impl<T, E, S: Stream<Item = Result<T, E>>> From<S> for Echo<T, S> {
     }
 }
 
-pub trait EchoSimple: Sized {
+pub trait EchoBufferless: Sized {
     type T;
 
-    fn echo_simple(self) -> Echo<Self::T, Self>;
+    fn echo_bufferless(self) -> Echo<Self::T, Self>;
 }
 
-impl<T, E, S: Stream<Item = Result<T, E>>> EchoSimple for S {
+impl<T, E, S: Stream<Item = Result<T, E>>> EchoBufferless for S {
     type T = T;
 
-    fn echo_simple(self) -> Echo<Self::T, Self> {
+    fn echo_bufferless(self) -> Echo<Self::T, Self> {
         self.into()
     }
 }
