@@ -53,15 +53,13 @@ pub struct Multicast<S, Out, F> {
     callback: F,
 }
 
-impl<In, Out: Clone, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>>
-    Multicast<S, Out, F>
-{
+impl<In, Out, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Multicast<S, Out, F> {
     fn poll_next_infallible(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<In>> {
         self.as_mut().project().select.poll_next(cx)
     }
 }
 
-impl<In, Out: Clone, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stream
+impl<In, Out, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stream
     for Multicast<S, Out, F>
 {
     type Item = Result<In, Infallible>;
@@ -71,7 +69,7 @@ impl<In, Out: Clone, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> 
     }
 }
 
-impl<In, Out: Clone, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> FusedStream
+impl<In, Out, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> FusedStream
     for Multicast<S, Out, F>
 {
     fn is_terminated(&self) -> bool {
@@ -79,13 +77,8 @@ impl<In, Out: Clone, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> 
     }
 }
 
-impl<
-        In,
-        Out: Clone,
-        E,
-        S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
-        F: OnClose<E>,
-    > Sink<Out> for Multicast<S, Out, F>
+impl<In, Out, E, S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>, F: OnClose<E>>
+    Sink<Out> for Multicast<S, Out, F>
 {
     type Error = Infallible;
 
@@ -119,13 +112,8 @@ impl<
     }
 }
 
-impl<
-        In,
-        Out: Clone,
-        E,
-        S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
-        F: OnClose<E>,
-    > Multicast<S, Out, F>
+impl<In, Out, E, S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>, F: OnClose<E>>
+    Multicast<S, Out, F>
 {
     pub fn new(callback: F) -> Self {
         Self {
@@ -143,13 +131,8 @@ impl<
     }
 }
 
-impl<
-        In,
-        Out: Clone,
-        E,
-        S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
-        F: OnClose<E>,
-    > From<F> for Multicast<S, Out, F>
+impl<In, Out, E, S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>, F: OnClose<E>>
+    From<F> for Multicast<S, Out, F>
 {
     fn from(callback: F) -> Self {
         Self::new(callback)
@@ -158,7 +141,7 @@ impl<
 
 impl<
         In,
-        Out: Clone,
+        Out,
         E,
         S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
         F: Default + OnClose<E>,
@@ -169,13 +152,8 @@ impl<
     }
 }
 
-impl<
-        In,
-        Out: Clone,
-        E,
-        S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
-        F: OnClose<E>,
-    > Extend<S> for Multicast<S, Out, F>
+impl<In, Out, E, S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>, F: OnClose<E>>
+    Extend<S> for Multicast<S, Out, F>
 {
     fn extend<T: IntoIterator<Item = S>>(&mut self, iter: T) {
         for stream in iter {
@@ -186,7 +164,7 @@ impl<
 
 impl<
         In,
-        Out: Clone,
+        Out,
         E,
         S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
         F: Default + OnClose<E>,
@@ -214,10 +192,10 @@ pub trait MulticastIgnore<Out>: Sized {
 
 impl<
         In,
-        Out: Clone,
+        Out,
         E,
         S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
-        R: Stream<Item = S>,
+        R: FusedStream<Item = S>,
     > MulticastIgnore<Out> for R
 {
     type S = S;

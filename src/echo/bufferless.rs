@@ -65,7 +65,7 @@ pub trait EchoBufferless: Sized {
     fn echo_bufferless(self) -> Echo<Self::T, Self>;
 }
 
-impl<T, E, S: Stream<Item = Result<T, E>>> EchoBufferless for S {
+impl<T, E, S: FusedStream<Item = Result<T, E>> + Sink<T, Error = E>> EchoBufferless for S {
     type T = T;
 
     fn echo_bufferless(self) -> Echo<Self::T, Self> {

@@ -298,7 +298,9 @@ pub trait RouterExt: Sized {
     fn route<F: OnClose<Self::E>>(self, callback: F) -> RouterExtending<F, Self>;
 }
 
-impl<In, K, E, S: Stream<Item = Result<In, E>>, R: Stream<Item = (K, S)>> RouterExt for R {
+impl<In, K: Key, E, S: Unpin + Stream<Item = Result<In, E>>, R: Stream<Item = (K, S)>> RouterExt
+    for R
+{
     type K = K;
     type S = S;
     type E = E;

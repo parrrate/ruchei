@@ -83,7 +83,7 @@ pub trait EchoInterleaved: Sized {
     fn echo_interleaved(self) -> Echo<Self::T, Self>;
 }
 
-impl<T, E, S: Stream<Item = Result<T, E>>> EchoInterleaved for S {
+impl<T, E, S: FusedStream<Item = Result<T, E>> + Sink<T, Error = E>> EchoInterleaved for S {
     type T = T;
 
     fn echo_interleaved(self) -> Echo<Self::T, Self> {

@@ -90,7 +90,7 @@ pub trait ConcurrentExt: Sized {
     fn concurrent(self) -> Concurrent<Self, Self::Fut>;
 }
 
-impl<Fut, R: Stream<Item = Fut>> ConcurrentExt for R {
+impl<Fut: Future, R: Stream<Item = Fut>> ConcurrentExt for R {
     type Fut = Fut;
 
     fn concurrent(self) -> Concurrent<Self, Self::Fut> {

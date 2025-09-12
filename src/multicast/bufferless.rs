@@ -343,7 +343,7 @@ impl<
         Out,
         E,
         S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
-        R: Stream<Item = S>,
+        R: FusedStream<Item = S>,
     > MulticastBufferless<Out> for R
 {
     type S = S;
