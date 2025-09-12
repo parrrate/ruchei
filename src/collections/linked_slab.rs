@@ -187,7 +187,7 @@ mod tests {
         assert!(slab.is_empty());
         let a = slab.insert(123);
         let b = slab.insert(456);
-        assert!(slab.is_empty());
+        assert!(!slab.is_empty());
         slab.link_push::<0>(a);
         slab.link_push::<0>(b);
         slab.link_push::<1>(b);
