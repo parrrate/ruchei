@@ -23,7 +23,7 @@ impl<T, E, S: FusedStream<Item = Result<T, E>> + Sink<T, Error = E>> Future for 
             return Poll::Ready(Ok(()));
         }
         if this.item.is_none() {
-            while let Poll::Ready(Some(t)) = this.stream.as_mut().poll_next(cx)? {
+            if let Poll::Ready(Some(t)) = this.stream.as_mut().poll_next(cx)? {
                 *this.item = Some(t);
             }
         }
