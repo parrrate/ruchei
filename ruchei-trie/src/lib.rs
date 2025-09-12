@@ -221,7 +221,7 @@ impl<T> Nodes<T> {
         Some((id, value))
     }
 
-    fn collect_key(&mut self, mut id: NodeId) -> Vec<u8> {
+    fn collect_key(&self, mut id: NodeId) -> Vec<u8> {
         let mut parts = Vec::new();
         while let Some((first, parent)) = &self[id].parent {
             let (prefix, child) = self[*parent].children.get(first).expect("missing child");
@@ -381,7 +381,7 @@ impl<T> Trie<T> {
         }
     }
 
-    pub fn collect_key(&mut self, id: NodeId) -> Option<Vec<u8>> {
+    pub fn collect_key(&self, id: NodeId) -> Option<Vec<u8>> {
         if self.nodes.contains(id) {
             Some(self.nodes.collect_key(id))
         } else {
