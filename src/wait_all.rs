@@ -50,7 +50,7 @@ impl Drop for CompleteOne {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub(crate) struct WaitMany {
     waker: Weak<Mutex<Option<Waker>>>,
 }

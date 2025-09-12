@@ -9,6 +9,7 @@ use futures_util::{
 };
 use pin_project::pin_project;
 
+#[derive(Debug)]
 #[pin_project]
 pub struct Concurrent<R, Fut> {
     #[pin]

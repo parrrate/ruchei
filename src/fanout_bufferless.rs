@@ -18,6 +18,7 @@ use crate::{
     wait_all::{Completable, CompleteOne, WaitMany},
 };
 
+#[derive(Debug)]
 #[pin_project]
 struct Unicast<S, Out, F> {
     #[pin]
@@ -105,6 +106,7 @@ impl<In, Out, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>, F: OnCl
     }
 }
 
+#[derive(Debug)]
 #[pin_project]
 pub struct Multicast<S, Out, F> {
     #[pin]

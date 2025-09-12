@@ -20,11 +20,13 @@ use crate::{
     pinned_extend::{AutoPinnedExtend, Extending, ExteningExt},
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Done(Arc<OwnedMutexGuard<()>>);
 
+#[derive(Debug)]
 struct Node<Out>(Out, Done, List<Out>);
 
+#[derive(Debug)]
 struct List<Out>(Option<Arc<Mutex<Option<Node<Out>>>>>);
 
 impl<Out> List<Out> {
@@ -41,7 +43,7 @@ impl<Out> Drop for List<Out> {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 enum State<Out> {
     #[default]
     Flushed,
@@ -55,6 +57,7 @@ impl<Out> State<Out> {
     }
 }
 
+#[derive(Debug)]
 #[pin_project]
 struct Unicast<S, Out, F> {
     #[pin]
@@ -168,6 +171,7 @@ impl<In, Out: Clone, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>, 
     }
 }
 
+#[derive(Debug)]
 #[pin_project]
 pub struct Multicast<S, Out, F> {
     #[pin]

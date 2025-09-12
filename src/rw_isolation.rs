@@ -16,7 +16,7 @@ use futures_util::{
 };
 use pin_project::pin_project;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct MutexWaker {
     pending: Arc<AtomicBool>,
     waker: AtomicWaker,
@@ -30,8 +30,10 @@ impl ArcWake for MutexWaker {
     }
 }
 
+#[derive(Debug)]
 struct AllowRead;
 
+#[derive(Debug)]
 #[pin_project]
 pub struct RwInner<S> {
     #[pin]
@@ -87,6 +89,7 @@ impl<Out, S: Sink<Out>> Sink<Out> for RwInner<S> {
     }
 }
 
+#[derive(Debug)]
 #[pin_project]
 pub struct RwOuter<S> {
     #[pin]

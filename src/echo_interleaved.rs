@@ -7,6 +7,7 @@ use std::{
 use futures_util::{stream::FusedStream, Future, Sink, Stream};
 use pin_project::pin_project;
 
+#[derive(Debug)]
 #[pin_project]
 pub struct Echo<T, S> {
     #[pin]

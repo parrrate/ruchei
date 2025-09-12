@@ -18,6 +18,7 @@ impl<A, S: AutoPinnedExtend + Extend<A> + Unpin> PinnedExtend<A> for S {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[pin_project]
 pub struct Extending<S, R> {
     #[pin]

@@ -37,10 +37,10 @@ impl<Out> Default for Shared<Out> {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 struct Key(usize);
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 enum State<Out> {
     #[default]
     Flushed,
@@ -58,6 +58,7 @@ impl<Out> State<Out> {
     }
 }
 
+#[derive(Debug)]
 #[pin_project]
 struct Unicast<S, Out, F> {
     #[pin]
@@ -264,6 +265,7 @@ impl<
     }
 }
 
+#[derive(Debug)]
 #[pin_project]
 pub struct Multicast<S, Out, F> {
     #[pin]
