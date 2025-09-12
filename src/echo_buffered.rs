@@ -67,16 +67,16 @@ impl<T, E, S: Stream<Item = Result<T, E>>> From<S> for Echo<T, S> {
     }
 }
 
-pub trait EchoExt: Sized {
+pub trait EchoBuffered: Sized {
     type T;
 
-    fn echo(self) -> Echo<Self::T, Self>;
+    fn echo_buffered(self) -> Echo<Self::T, Self>;
 }
 
-impl<T, E, S: Stream<Item = Result<T, E>>> EchoExt for S {
+impl<T, E, S: Stream<Item = Result<T, E>>> EchoBuffered for S {
     type T = T;
 
-    fn echo(self) -> Echo<Self::T, Self> {
+    fn echo_buffered(self) -> Echo<Self::T, Self> {
         self.into()
     }
 }
