@@ -9,15 +9,15 @@ use pin_project::pin_project;
 
 pub trait ReplyBufferFilter<Item> {
     type Reply;
-    fn reply_and_item(&mut self, item: Item) -> (Option<Self::Reply>, Option<Item>);
+    fn reply_and_item(&mut self, item: Item) -> Option<(Option<Self::Reply>, Option<Item>)>;
 }
 
-impl<Item, Reply, F: ?Sized + FnMut(Item) -> (Option<Reply>, Option<Item>)> ReplyBufferFilter<Item>
-    for F
+impl<Item, Reply, F: ?Sized + FnMut(Item) -> Option<(Option<Reply>, Option<Item>)>>
+    ReplyBufferFilter<Item> for F
 {
     type Reply = Reply;
 
-    fn reply_and_item(&mut self, item: Item) -> (Option<Self::Reply>, Option<Item>) {
+    fn reply_and_item(&mut self, item: Item) -> Option<(Option<Self::Reply>, Option<Item>)> {
         self(item)
     }
 }
@@ -121,7 +121,9 @@ impl<
             let Some(item) = ready!(self.as_mut().project().stream.try_poll_next(cx)?) else {
                 break Poll::Ready(None);
             };
-            let (reply, item) = self.as_mut().project().filter.reply_and_item(item);
+            let Some((reply, item)) = self.as_mut().project().filter.reply_and_item(item) else {
+                break Poll::Ready(None);
+            };
             if let Some(reply) = reply {
                 self.as_mut().set_buffer(reply);
             }
