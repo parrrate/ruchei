@@ -92,6 +92,7 @@ impl<In, Out, E, S: FusedStream<Item = Result<In, E>> + Sink<Out, Error = E>, F:
 }
 
 impl<In, E, S: Stream<Item = Result<In, E>>, F> ReadCallback<S, F> {
+    #[must_use]
     pub fn new(stream: S, callback: F) -> Self {
         Self { stream, callback }
     }
@@ -101,12 +102,14 @@ pub trait ReadCallbackExt: Sized {
     /// Incoming item.
     type In;
 
+    #[must_use]
     fn read_callback<F: OnItem<Self::In>>(self, callback: F) -> ReadCallback<Self, F>;
 }
 
 impl<In, E, S: FusedStream<Item = Result<In, E>>> ReadCallbackExt for S {
     type In = In;
 
+    #[must_use]
     fn read_callback<F: OnItem<Self::In>>(self, callback: F) -> ReadCallback<Self, F> {
         ReadCallback::new(self, callback)
     }
