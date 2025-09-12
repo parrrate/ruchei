@@ -623,8 +623,8 @@ impl<T: Kv> Avl<T> {
 
     pub fn get<'a>(&'a self, key: &T::K) -> Option<(NodeId, &'a T::V)> {
         let id = self.locate(key).ok()?;
-        let value = &self.nodes[id].value;
-        Some((id, value.as_v()))
+        let kv = &self.nodes[id].value;
+        Some((id, kv.as_v()))
     }
 
     pub fn iter(&self) -> Iter<'_, T> {
