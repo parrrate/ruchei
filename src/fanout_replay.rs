@@ -19,6 +19,7 @@ use crate::callback::OnClose;
 struct Shared<Out> {
     stale: HashMap<Key, Waker>,
     out: Vec<Out>,
+    flush: usize,
 }
 
 impl<Out> Default for Shared<Out> {
@@ -26,6 +27,7 @@ impl<Out> Default for Shared<Out> {
         Self {
             stale: Default::default(),
             out: Default::default(),
+            flush: 0,
         }
     }
 }
@@ -58,6 +60,7 @@ struct Unicast<S, Out, F> {
     state: State<Out>,
     shared: Arc<Mutex<Shared<Out>>>,
     index: usize,
+    flushed: usize,
     stale: bool,
     key: Key,
     callback: F,
@@ -107,12 +110,19 @@ impl<In, Out: Clone, E, S: Sink<Out, Error = E> + Stream<Item = Result<In, E>>, 
             Poll::Ready(_) => Poll::Ready(Ok(())),
             Poll::Pending => {
                 let this = self.project();
-                match this.stream.poll_flush(cx)? {
-                    Poll::Ready(()) => Poll::Ready(Ok(())),
-                    Poll::Pending => {
-                        *this.state = State::Started;
-                        Poll::Pending
+                if *this.flushed < shared.flush {
+                    match this.stream.poll_flush(cx)? {
+                        Poll::Ready(()) => {
+                            *this.flushed = *this.index;
+                            Poll::Ready(Ok(()))
+                        }
+                        Poll::Pending => {
+                            *this.state = State::Started;
+                            Poll::Pending
+                        }
                     }
+                } else {
+                    Poll::Ready(Ok(()))
                 }
             }
         }
@@ -273,6 +283,7 @@ impl<
                     state: Default::default(),
                     shared: this.shared.clone(),
                     index: 0,
+                    flushed: 0,
                     stale: false,
                     key,
                     callback: this.callback.clone(),
@@ -339,6 +350,9 @@ impl<
     }
 
     fn poll_flush(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        let this = self.project();
+        let mut shared = this.shared.try_lock().unwrap();
+        shared.flush = shared.out.len();
         Poll::Ready(Ok(()))
     }
 
