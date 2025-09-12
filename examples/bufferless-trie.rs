@@ -1,7 +1,7 @@
 //! [`ruchei::multicast::bufferless_keyed`] with [`ruchei::echo::buffered`]
 
 use async_net::TcpListener;
-use futures_util::{StreamExt, TryStreamExt};
+use futures_util::{SinkExt, StreamExt, TryStreamExt, future::ready};
 use ruchei::{
     concurrent::ConcurrentExt,
     echo::bufferless::EchoBufferless,
@@ -22,7 +22,9 @@ async fn main() {
         .concurrent()
         .filter_map(|r| async { r.ok() })
         .map(|s| s.map_ok(SubRequest::<String, _>::Other))
+        .map(|s| s.with(|(_, m)| ready(Ok(m))))
         .multicast_trie(|_| {})
+        .map_ok(|m| ("123".to_string(), m))
         .echo_bufferless()
         .await
         .unwrap();
