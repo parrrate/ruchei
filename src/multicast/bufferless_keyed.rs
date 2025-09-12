@@ -5,7 +5,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures_util::{Sink, SinkExt, Stream, StreamExt, stream::FusedStream};
+use futures_util::{Sink, SinkExt, Stream, TryStream, TryStreamExt, stream::FusedStream};
 use linked_hash_map::LinkedHashMap;
 use linked_hash_set::LinkedHashSet;
 use ruchei_callback::OnClose;
@@ -72,7 +72,7 @@ impl<K: Key, S, F> Multicast<K, S, F> {
     }
 }
 
-impl<In, K: Key, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stream
+impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>, F: OnClose<E>> Stream
     for Multicast<K, S, F>
 {
     type Item = Result<In, Infallible>;
@@ -86,7 +86,7 @@ impl<In, K: Key, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stre
                 }
                 if let Poll::Ready(o) = connection
                     .next
-                    .poll(cx, |cx| connection.stream.poll_next_unpin(cx))
+                    .poll(cx, |cx| connection.stream.try_poll_next_unpin(cx))
                 {
                     match o {
                         Some(Ok(item)) => {
@@ -111,7 +111,7 @@ impl<In, K: Key, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stre
     }
 }
 
-impl<In, K: Key, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> FusedStream
+impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>, F: OnClose<E>> FusedStream
     for Multicast<K, S, F>
 {
     fn is_terminated(&self) -> bool {
@@ -254,7 +254,7 @@ pub trait MulticastBufferlessKeyed: Sized {
     ) -> MulticastExtending<F, Self>;
 }
 
-impl<In, K: Key, E, S: Unpin + Stream<Item = Result<In, E>>, R: FusedStream<Item = (K, S)>>
+impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = (K, S)>>
     MulticastBufferlessKeyed for R
 {
     type K = K;
