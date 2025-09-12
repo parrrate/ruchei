@@ -19,9 +19,9 @@ use crate::{
 };
 
 /// Helper trait for something that can be used as a key in [`Router`].
-pub trait Key: 'static + Send + Sync + Clone + Hash + PartialEq + Eq {}
+pub trait Key: 'static + Send + Sync + Clone + Hash + Eq {}
 
-impl<K: 'static + Send + Sync + Clone + Hash + PartialEq + Eq> Key for K {}
+impl<K: 'static + Send + Sync + Clone + Hash + Eq> Key for K {}
 
 /// [`RouteSink`]/[`Stream`] implemented over the stream of incoming [`Sink`]s/[`Stream`]s.
 pub struct Router<K, S, F> {
