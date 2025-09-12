@@ -36,12 +36,14 @@ impl<Item, Reply, Filtered, F: ?Sized + FnMut(Item) -> Option<(Option<Reply>, Op
 struct Wakers {
     next: AtomicWaker,
     ready: AtomicWaker,
+    flush: AtomicWaker,
 }
 
 impl Wake for Wakers {
     fn wake(self: Arc<Self>) {
         self.next.wake();
         self.ready.wake();
+        self.flush.wake();
     }
 }
 
@@ -76,8 +78,10 @@ impl<S: Sink<T>, T, F> ReplyBuffer<S, T, F> {
     fn poll_flush_raw(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), S::Error>> {
         let this = self.project();
         ready!(this.stream.poll_flush(cx))?;
-        *this.needs_flush = false;
-        this.wakers.wake_by_ref();
+        if *this.needs_flush {
+            *this.needs_flush = false;
+            this.wakers.wake_by_ref();
+        }
         Poll::Ready(Ok(()))
     }
 
@@ -157,6 +161,7 @@ impl<S: Sink<T, Error = E>, T, E, F> Sink<T> for ReplyBuffer<S, T, F> {
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.wakers.flush.register(cx.waker());
         ready!(self.as_mut().flush_buffer(false))?;
         self.poll_flush_raw(cx)
     }
