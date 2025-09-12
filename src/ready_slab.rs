@@ -7,7 +7,7 @@ use std::{
 use futures_channel::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
 use futures_util::{Stream, task::AtomicWaker};
 use pin_project::pin_project;
-use ruchei_collections::{as_linked_slab::AsLinkedSlab, linked_slab::LinkedSlab};
+use ruchei_collections::as_linked_slab::AsLinkedSlab;
 
 #[derive(Default)]
 struct SlabWaker {
@@ -55,10 +55,7 @@ impl Ready {
         self.2.wake_by_ref();
     }
 
-    pub(crate) fn compact<const M: usize, T, const N: usize>(
-        self: Pin<&mut Self>,
-        slab: &mut LinkedSlab<T, N>,
-    ) {
+    pub(crate) fn compact<const M: usize>(self: Pin<&mut Self>, slab: &mut impl AsLinkedSlab) {
         let mut this = self.project();
         while let Poll::Ready(Some(key)) =
             this.1.as_mut().poll_next(&mut Context::from_waker(this.3))
@@ -68,11 +65,11 @@ impl Ready {
     }
 
     #[must_use]
-    pub(crate) fn next<const M: usize, T, const N: usize>(
+    pub(crate) fn next<const M: usize>(
         self: Pin<&mut Self>,
-        slab: &mut LinkedSlab<T, N>,
+        slab: &mut impl AsLinkedSlab,
     ) -> Option<usize> {
-        self.compact::<M, _, N>(slab);
+        self.compact::<M>(slab);
         slab.link_pop_front::<M>()
     }
 
