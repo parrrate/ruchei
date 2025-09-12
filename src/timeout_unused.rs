@@ -15,8 +15,9 @@ use futures_util::{
     stream::{FusedStream, Stream},
 };
 use pin_project::pin_project;
+use ruchei_extra::WithExtra;
 
-use crate::{callback::Start, with_extra::WithExtra};
+use crate::callback::Start;
 
 #[derive(Debug)]
 struct Alive;
