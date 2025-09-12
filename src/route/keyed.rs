@@ -182,7 +182,7 @@ impl<K: Key, S, F> Extend<(K, S)> for Router<K, S, F> {
     }
 }
 
-/// [`RouteSink`]/[`Stream`] Returned by [`RouterExt::route`].
+/// [`RouteSink`]/[`Stream`] Returned by [`RouterKeyedExt::route_keyed`].
 pub type RouterExtending<F, R> =
     ExtendingRoute<Router<<R as RouterKeyedExt>::K, <R as RouterKeyedExt>::S, F>, R>;
 

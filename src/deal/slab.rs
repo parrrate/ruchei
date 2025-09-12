@@ -241,7 +241,7 @@ impl<S, F> PinnedExtend<S> for Dealer<S, F> {
     }
 }
 
-/// [`Sink`]/[`Stream`] Returned by [`DealerExt::deal`].
+/// [`Sink`]/[`Stream`] Returned by [`DealerSlabExt::deal_slab`].
 pub type DealerExtending<F, R> = Extending<Dealer<<R as DealerSlabExt>::S, F>, R>;
 
 /// Extension trait to auto-extend a [`Dealer`] from a stream of connections.

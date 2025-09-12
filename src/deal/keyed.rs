@@ -223,7 +223,7 @@ impl<K: Key, S, F> Extend<(K, S)> for Dealer<K, S, F> {
     }
 }
 
-/// [`Sink`]/[`Stream`] Returned by [`DealerExt::deal`].
+/// [`Sink`]/[`Stream`] Returned by [`DealerKeyedExt::deal_keyed`].
 pub type DealerExtending<F, R> =
     Extending<Dealer<<R as DealerKeyedExt>::K, <R as DealerKeyedExt>::S, F>, R>;
 

@@ -194,7 +194,7 @@ impl<S, F> PinnedExtend<S> for Router<S, F> {
     }
 }
 
-/// [`RouteSink`]/[`Stream`] Returned by [`RouterExt::route`].
+/// [`RouteSink`]/[`Stream`] Returned by [`RouterSlabExt::route_slab`].
 pub type RouterExtending<F, R> = ExtendingRoute<Router<<R as RouterSlabExt>::S, F>, R>;
 
 /// Extension trait to auto-extend a [`Router`] from a stream of connections.
