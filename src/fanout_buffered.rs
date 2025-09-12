@@ -14,7 +14,7 @@ use futures_util::{
 };
 use pin_project::pin_project;
 
-use crate::{callback::Callback, owned_close::OwnedClose};
+use crate::{callback::OnClose, owned_close::OwnedClose};
 
 #[derive(Clone)]
 struct Done(Arc<OwnedMutexGuard<()>>);
@@ -64,7 +64,7 @@ struct Unicast<S, Out, F> {
     callback: F,
 }
 
-impl<In, Out: Clone, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>, F: Callback<E>>
+impl<In, Out: Clone, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>, F: OnClose<E>>
     Unicast<S, Out, F>
 {
     fn poll_list(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
@@ -137,7 +137,7 @@ impl<In, Out: Clone, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>, 
     }
 }
 
-impl<In, Out: Clone, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>, F: Callback<E>>
+impl<In, Out: Clone, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>, F: OnClose<E>>
     Stream for Unicast<S, Out, F>
 {
     type Item = In;
@@ -178,7 +178,7 @@ impl<
         Out: Clone,
         E,
         S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
-        F: Callback<E>,
+        F: OnClose<E>,
         R: Stream<Item = S>,
     > Multicast<S, Out, F, R>
 {
@@ -204,7 +204,7 @@ impl<
         Out: Clone,
         E,
         S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
-        F: Callback<E>,
+        F: OnClose<E>,
         R: Stream<Item = S>,
     > Stream for Multicast<S, Out, F, R>
 {
@@ -220,7 +220,7 @@ impl<
         Out: Clone,
         E,
         S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
-        F: Callback<E>,
+        F: OnClose<E>,
         R: Stream<Item = S>,
     > Sink<Out> for Multicast<S, Out, F, R>
 {
@@ -279,7 +279,7 @@ impl<
         Out: Clone,
         E,
         S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
-        F: Callback<E>,
+        F: OnClose<E>,
         R: Stream<Item = S>,
     > Multicast<S, Out, F, R>
 {
@@ -303,7 +303,7 @@ pub trait MulticastBuffered<Out>: Sized {
 
     type E;
 
-    fn multicast_buffered<F: Callback<Self::E>>(
+    fn multicast_buffered<F: OnClose<Self::E>>(
         self,
         callback: F,
     ) -> Multicast<Self::S, Out, F, Self>;
@@ -321,7 +321,7 @@ impl<
 
     type E = E;
 
-    fn multicast_buffered<F: Callback<Self::E>>(
+    fn multicast_buffered<F: OnClose<Self::E>>(
         self,
         callback: F,
     ) -> Multicast<Self::S, Out, F, Self> {

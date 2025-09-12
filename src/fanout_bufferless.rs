@@ -11,7 +11,7 @@ use futures_util::{
 use pin_project::pin_project;
 
 use crate::{
-    callback::Callback,
+    callback::OnClose,
     owned_close::OwnedClose,
     wait_all::{Completable, CompleteOne, WaitMany},
 };
@@ -36,7 +36,7 @@ impl<S, Out, F> Unicast<S, Out, F> {
     }
 }
 
-impl<In, Out, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>, F: Callback<E>> Stream
+impl<In, Out, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>, F: OnClose<E>> Stream
     for Unicast<S, Out, F>
 {
     type Item = In;
@@ -116,7 +116,7 @@ impl<
         Out,
         E,
         S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
-        F: Callback<E>,
+        F: OnClose<E>,
         R: Stream<Item = S>,
     > Multicast<S, Out, F, R>
 {
@@ -145,7 +145,7 @@ impl<
         Out,
         E,
         S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
-        F: Callback<E>,
+        F: OnClose<E>,
         R: Stream<Item = S>,
     > Stream for Multicast<S, Out, F, R>
 {
@@ -161,7 +161,7 @@ impl<
         Out: Clone,
         E,
         S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
-        F: Callback<E>,
+        F: OnClose<E>,
         R: Stream<Item = S>,
     > Sink<Out> for Multicast<S, Out, F, R>
 {
@@ -247,7 +247,7 @@ impl<
         Out,
         E,
         S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
-        F: Callback<E>,
+        F: OnClose<E>,
         R: Stream<Item = S>,
     > Multicast<S, Out, F, R>
 {
@@ -270,7 +270,7 @@ pub trait MulticastBufferless<Out>: Sized {
 
     type E;
 
-    fn multicast_bufferless<F: Callback<Self::E>>(
+    fn multicast_bufferless<F: OnClose<Self::E>>(
         self,
         callback: F,
     ) -> Multicast<Self::S, Out, F, Self>;
@@ -288,7 +288,7 @@ impl<
 
     type E = E;
 
-    fn multicast_bufferless<F: Callback<Self::E>>(
+    fn multicast_bufferless<F: OnClose<Self::E>>(
         self,
         callback: F,
     ) -> Multicast<Self::S, Out, F, Self> {
