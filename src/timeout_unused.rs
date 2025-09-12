@@ -12,7 +12,7 @@ use futures_util::{
 };
 use pin_project::pin_project;
 
-use crate::{callback::FutureFactory, with_extra::WithExtra};
+use crate::{callback::Start, with_extra::WithExtra};
 
 struct Alive;
 
@@ -32,9 +32,7 @@ pub struct WithTimeout<S, Fut, F> {
     done: bool,
 }
 
-impl<S: Stream, Fut: Future<Output = ()>, F: FutureFactory<Fut = Fut>> Stream
-    for WithTimeout<S, Fut, F>
-{
+impl<S: Stream, Fut: Future<Output = ()>, F: Start<Fut = Fut>> Stream for WithTimeout<S, Fut, F> {
     type Item = WithExtra<S::Item, KeepAlive>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -67,7 +65,7 @@ impl<S: Stream, Fut: Future<Output = ()>, F: FutureFactory<Fut = Fut>> Stream
     }
 }
 
-impl<S: FusedStream, Fut: Future<Output = ()>, F: FutureFactory<Fut = Fut>> FusedStream
+impl<S: FusedStream, Fut: Future<Output = ()>, F: Start<Fut = Fut>> FusedStream
     for WithTimeout<S, Fut, F>
 {
     fn is_terminated(&self) -> bool {
@@ -76,14 +74,14 @@ impl<S: FusedStream, Fut: Future<Output = ()>, F: FutureFactory<Fut = Fut>> Fuse
 }
 
 pub trait TimeoutUnused: Sized {
-    fn timeout_unused<Fut: Future<Output = ()>, F: FutureFactory<Fut = Fut>>(
+    fn timeout_unused<Fut: Future<Output = ()>, F: Start<Fut = Fut>>(
         self,
         start: F,
     ) -> WithTimeout<Self, Fut, F>;
 }
 
 impl<S> TimeoutUnused for S {
-    fn timeout_unused<Fut: Future<Output = ()>, F: FutureFactory<Fut = Fut>>(
+    fn timeout_unused<Fut: Future<Output = ()>, F: Start<Fut = Fut>>(
         self,
         start: F,
     ) -> WithTimeout<Self, Fut, F> {

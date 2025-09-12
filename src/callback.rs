@@ -18,13 +18,13 @@ impl<T, F: Fn(T)> OnItem<T> for F {
     }
 }
 
-pub trait FutureFactory {
+pub trait Start {
     type Fut;
 
     fn make(&mut self) -> Self::Fut;
 }
 
-impl<Fut, F: ?Sized + FnMut() -> Fut> FutureFactory for F {
+impl<Fut, F: ?Sized + FnMut() -> Fut> Start for F {
     type Fut = Fut;
 
     fn make(&mut self) -> Self::Fut {
