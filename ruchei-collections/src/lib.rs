@@ -1,3 +1,4 @@
+pub mod as_linked_slab;
 pub mod avl;
 pub mod avl_multi_trie;
 pub mod bytes_multi_trie;

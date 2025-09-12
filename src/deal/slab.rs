@@ -9,7 +9,7 @@ use futures_util::{
 };
 use pin_project::pin_project;
 use ruchei_callback::OnClose;
-use ruchei_collections::linked_slab::LinkedSlab;
+use ruchei_collections::{as_linked_slab::AsLinkedSlab, linked_slab::LinkedSlab};
 
 use crate::{
     pinned_extend::{Extending, PinnedExtend},

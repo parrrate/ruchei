@@ -9,6 +9,7 @@ use futures_util::{Sink, SinkExt, Stream, StreamExt, stream::FusedStream};
 use pin_project::pin_project;
 use ruchei_callback::OnClose;
 use ruchei_collections::{
+    as_linked_slab::AsLinkedSlab,
     linked_slab_multi_trie::LinkedSlabMultiTrie,
     multi_trie::{MultiTrie, MultiTrieAddOwned, MultiTriePrefix},
 };
