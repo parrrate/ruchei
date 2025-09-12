@@ -4,119 +4,26 @@
 //! be a reasonable abstraction around both, with some trade-offs.
 
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     convert::Infallible,
     hash::Hash,
     pin::Pin,
-    sync::{Arc, Weak},
-    task::{Context, Poll, Wake, Waker},
+    task::{Context, Poll},
 };
 
-use futures_util::{ready, task::AtomicWaker, Sink, SinkExt, Stream, StreamExt};
+use futures_util::{ready, Sink, SinkExt, Stream, StreamExt};
 pub use ruchei_route::{RouteExt, RouteSink, WithRoute};
 
 use crate::{
     callback::OnClose,
     pinned_extend::{AutoPinnedExtend, Extending, ExtendingRoute},
+    ready_weak::{Connection, ConnectionWaker, Ready},
 };
 
 /// Helper trait for something that can be used as a key in [`Router`].
 pub trait Key: 'static + Send + Sync + Clone + Hash + PartialEq + Eq {}
 
 impl<K: 'static + Send + Sync + Clone + Hash + PartialEq + Eq> Key for K {}
-
-struct Ready<K>(Arc<std::sync::Mutex<HashSet<K>>>);
-
-impl<K> Default for Ready<K> {
-    fn default() -> Self {
-        Self(Default::default())
-    }
-}
-
-struct ReadyWeak<K>(Weak<std::sync::Mutex<HashSet<K>>>);
-
-impl<K> Default for ReadyWeak<K> {
-    fn default() -> Self {
-        Self(Default::default())
-    }
-}
-
-impl<K> Ready<K> {
-    fn lock(&self) -> std::sync::MutexGuard<'_, HashSet<K>> {
-        self.0.lock().unwrap_or_else(|e| e.into_inner())
-    }
-
-    fn downgrade(&self) -> ReadyWeak<K> {
-        ReadyWeak(Arc::downgrade(&self.0))
-    }
-}
-
-impl<K> ReadyWeak<K> {
-    fn lock(&self, f: impl FnOnce(std::sync::MutexGuard<'_, HashSet<K>>)) {
-        if let Some(ready) = self.0.upgrade() {
-            f(ready.lock().unwrap_or_else(|e| e.into_inner()));
-        }
-    }
-}
-
-impl<K: Key> Ready<K> {
-    fn remove(&self, key: &K) {
-        self.lock().remove(key);
-    }
-
-    fn next(&self) -> Option<K> {
-        let mut set = self.lock();
-        let key = set.iter().next()?.clone();
-        set.remove(&key);
-        Some(key)
-    }
-}
-
-impl<K: Key> ReadyWeak<K> {
-    fn insert(&self, key: K) {
-        self.lock(|mut ready| {
-            ready.insert(key);
-        });
-    }
-}
-
-struct ConnectionWaker<K> {
-    waker: AtomicWaker,
-    ready: ReadyWeak<K>,
-    key: K,
-}
-
-impl<K> ConnectionWaker<K> {
-    fn new(key: K, ready: ReadyWeak<K>) -> Arc<Self> {
-        Arc::new(Self {
-            waker: Default::default(),
-            ready,
-            key,
-        })
-    }
-}
-
-impl<K: Key> Wake for ConnectionWaker<K> {
-    fn wake(self: Arc<Self>) {
-        self.ready.insert(self.key.clone());
-        self.waker.wake();
-    }
-}
-
-impl<K: Key> ConnectionWaker<K> {
-    fn poll<T>(self: &Arc<Self>, cx: &mut Context<'_>, f: impl FnOnce(&mut Context<'_>) -> T) -> T {
-        self.waker.register(cx.waker());
-        f(&mut Context::from_waker(&Waker::from(self.clone())))
-    }
-}
-
-struct Connection<K, S> {
-    stream: S,
-    next: Arc<ConnectionWaker<K>>,
-    ready: Arc<ConnectionWaker<K>>,
-    flush: Arc<ConnectionWaker<K>>,
-    close: Arc<ConnectionWaker<K>>,
-}
 
 /// [`RouteSink`]/[`Stream`] implemented over the stream of incoming [`Sink`]s/[`Stream`]s.
 pub struct Router<K, S, F> {
