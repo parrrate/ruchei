@@ -1,7 +1,8 @@
 //! Send-receive many messages concurrently.
 
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
+use async_io::Timer;
 use async_std::{channel::unbounded, task};
 use futures_util::{SinkExt, StreamExt};
 
@@ -26,7 +27,7 @@ async fn main() {
             let task = task::spawn(async move {
                 reader.next().await.unwrap().unwrap();
                 let start = Instant::now();
-                for _ in 1..1_000_000 {
+                for _ in 1..1_600_000 {
                     reader.next().await.unwrap().unwrap();
                 }
                 println!("{:?}", start.elapsed());
