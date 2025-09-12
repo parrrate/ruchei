@@ -1,10 +1,13 @@
-use std::collections::BTreeMap;
+use std::{
+    borrow::Borrow,
+    collections::{BTreeMap, BTreeSet},
+};
 
 use slab::Slab;
 
 use crate::{
     NodeId, Trie,
-    multi_trie::{MultiTrie, MultiTrieAddRef},
+    multi_trie::{MultiTrie, MultiTrieAddRef, MultiTriePrefix},
 };
 
 #[derive(Debug, Default)]
@@ -82,6 +85,23 @@ impl MultiTrieAddRef<[u8]> for BytesMultiTrie {
         let (collection, slab) = self.collections.get_mut(collection).expect("just inserted");
         let (id, map) = self.keys.get_mut(key).expect("just inserted");
         map.entry(collection).or_insert_with(|| slab.insert(id));
+    }
+}
+
+impl MultiTriePrefix for BytesMultiTrie {
+    type Collection = [u8];
+
+    fn prefix_collect<'a>(
+        &'a self,
+        suffix: &[u8],
+    ) -> impl 'a + IntoIterator<Item: 'a + Borrow<Self::Collection>> {
+        self.keys
+            .prefix_of(suffix)
+            .flat_map(|map| map.keys())
+            .copied()
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .map(|id| self.collections.collect_key(id).expect("invalid state"))
     }
 }
 

@@ -1,10 +1,13 @@
-use std::collections::BTreeMap;
+use std::{
+    borrow::Borrow,
+    collections::{BTreeMap, BTreeSet},
+};
 
 use slab::Slab;
 
 use crate::{
     NodeId, Trie,
-    multi_trie::{MultiTrie, MultiTrieAddOwned, MultiTrieAddRef},
+    multi_trie::{MultiTrie, MultiTrieAddOwned, MultiTrieAddRef, MultiTriePrefix},
 };
 
 pub struct CloneMultiTrie<T> {
@@ -104,6 +107,20 @@ impl<T: Clone + Ord> MultiTrieAddOwned<T> for CloneMultiTrie<T> {
             .expect("just inserted");
         let (id, map) = self.keys.get_mut(key).expect("just inserted");
         map.entry(collection).or_insert_with(|| slab.insert(id));
+    }
+}
+
+impl<T: Ord> MultiTriePrefix for CloneMultiTrie<T> {
+    type Collection = T;
+
+    fn prefix_collect<'a>(
+        &'a self,
+        suffix: &[u8],
+    ) -> impl 'a + IntoIterator<Item: 'a + Borrow<Self::Collection>> {
+        self.keys
+            .prefix_of(suffix)
+            .flat_map(|map| map.keys())
+            .collect::<BTreeSet<_>>()
     }
 }
 
