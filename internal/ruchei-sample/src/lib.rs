@@ -9,31 +9,24 @@ use std::{
 static SAMPLE: AtomicBool = AtomicBool::new(false);
 
 #[doc(hidden)]
-pub struct Enable;
+pub struct Reset(bool);
 
-impl Drop for Enable {
+impl Drop for Reset {
     fn drop(&mut self) {
-        set(false);
+        set(self.0);
     }
 }
 
-pub fn enable() -> Enable {
+pub fn enable() -> Reset {
+    let value = sample();
     set(true);
-    Enable
+    Reset(value)
 }
 
-#[doc(hidden)]
-pub struct Disable;
-
-impl Drop for Disable {
-    fn drop(&mut self) {
-        set(true);
-    }
-}
-
-pub fn disable() -> Disable {
+pub fn disable() -> Reset {
+    let value = sample();
     set(false);
-    Disable
+    Reset(value)
 }
 
 fn set(sample: bool) {
