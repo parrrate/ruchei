@@ -1,4 +1,4 @@
-//! [`ruchei::group_by_key`] and [`ruchei::timeout_unused`]
+//! [`ruchei::group_concurrent`] and [`ruchei::timeout_unused`]
 
 use std::marker::PhantomData;
 
@@ -8,7 +8,7 @@ use futures_util::{future::ready, StreamExt};
 use ruchei::{
     concurrent::ConcurrentExt,
     echo::buffered::EchoBuffered,
-    group_by_key::{Group, GroupByKey},
+    group_concurrent::{Group, GroupConcurrent},
     multicast::replay::MulticastReplay,
     poll_on_wake::PollOnWakeExt,
     timeout_unused::TimeoutUnused,
@@ -48,7 +48,7 @@ async fn main() {
         .fuse()
         .concurrent()
         .filter_map(|o| async move { o.map(|(group, s)| (group.into_data(), s.poll_on_wake())) })
-        .group_by_key(ChannelGroup(PhantomData))
+        .group_concurrent(ChannelGroup(PhantomData))
         .for_each_concurrent(None, |(receiver, guard)| async move {
             let _guard = guard;
             receiver

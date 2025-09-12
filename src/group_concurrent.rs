@@ -16,7 +16,7 @@
 //! # use ruchei::{
 //! #     concurrent::ConcurrentExt,
 //! #     echo::buffered::EchoBuffered,
-//! #     group_by_key::{Group, GroupByKey},
+//! #     group_concurrent::{Group, GroupConcurrent},
 //! #     multicast::replay::MulticastReplay,
 //! #     poll_on_wake::PollOnWakeExt,
 //! #     timeout_unused::TimeoutUnused,
@@ -60,7 +60,7 @@
 //!         .filter_map(|o| async move {
 //!             o.map(|(group, s)| (group.into_data(), s.poll_on_wake()))
 //!         })
-//!         .group_by_key(ChannelGroup(PhantomData))
+//!         .group_concurrent(ChannelGroup(PhantomData))
 //!         .for_each_concurrent(None, |(receiver, guard)| async move {
 //!             let _guard = guard;
 //!             receiver
@@ -163,24 +163,24 @@ impl<
     }
 }
 
-pub trait GroupByKey: Sized {
+pub trait GroupConcurrent: Sized {
     type Item;
 
     type Key;
 
     #[must_use]
-    fn group_by_key<G: Group<Item = Self::Item>>(
+    fn group_concurrent<G: Group<Item = Self::Item>>(
         self,
         group: G,
     ) -> Grouped<Self, G::Sender, Self::Key, G>;
 }
 
-impl<Item, K: Eq + Hash + Clone, S: Stream<Item = (K, Item)>> GroupByKey for S {
+impl<Item, K: Eq + Hash + Clone, S: Stream<Item = (K, Item)>> GroupConcurrent for S {
     type Item = Item;
 
     type Key = K;
 
-    fn group_by_key<G: Group<Item = Self::Item>>(
+    fn group_concurrent<G: Group<Item = Self::Item>>(
         self,
         group: G,
     ) -> Grouped<Self, G::Sender, Self::Key, G> {
