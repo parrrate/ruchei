@@ -8,7 +8,11 @@ use futures_util::task::AtomicWaker;
 
 use crate::{collections::linked_hash_set::LinkedHashSet, route::Key};
 
-pub(crate) struct Ready<K>(Arc<std::sync::Mutex<LinkedHashSet<K>>>);
+type Mutex<K> = std::sync::Mutex<LinkedHashSet<K>>;
+
+type Guard<'a, K> = std::sync::MutexGuard<'a, LinkedHashSet<K>>;
+
+pub(crate) struct Ready<K>(Arc<Mutex<K>>);
 
 impl<K: Hash + Eq> Default for Ready<K> {
     fn default() -> Self {
@@ -16,7 +20,7 @@ impl<K: Hash + Eq> Default for Ready<K> {
     }
 }
 
-pub(crate) struct ReadyWeak<K>(Weak<std::sync::Mutex<LinkedHashSet<K>>>);
+pub(crate) struct ReadyWeak<K>(Weak<Mutex<K>>);
 
 impl<K> Default for ReadyWeak<K> {
     fn default() -> Self {
@@ -25,7 +29,7 @@ impl<K> Default for ReadyWeak<K> {
 }
 
 impl<K> Ready<K> {
-    pub(crate) fn lock(&self) -> std::sync::MutexGuard<'_, LinkedHashSet<K>> {
+    pub(crate) fn lock(&self) -> Guard<'_, K> {
         self.0.lock().unwrap_or_else(|e| e.into_inner())
     }
 
@@ -35,7 +39,7 @@ impl<K> Ready<K> {
 }
 
 impl<K> ReadyWeak<K> {
-    pub(crate) fn lock(&self, f: impl FnOnce(std::sync::MutexGuard<'_, LinkedHashSet<K>>)) {
+    pub(crate) fn lock(&self, f: impl FnOnce(Guard<'_, K>)) {
         if let Some(ready) = self.0.upgrade() {
             f(Ready(ready).lock());
         }
