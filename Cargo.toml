@@ -32,7 +32,7 @@ futures-util = { version = "0.3.30", features = ["sink"] }
 pin-project = "1"
 
 [dependencies]
-ruchei-extra.path = "ruchei-extra"
+ruchei-extra = { path = "ruchei-extra", version = "0.1.0" }
 
 futures-util.workspace = true
 pin-project.workspace = true
