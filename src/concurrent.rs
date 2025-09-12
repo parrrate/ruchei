@@ -75,6 +75,7 @@ impl<Fut: Future, R: FusedStream<Item = Fut>> FusedStream for Concurrent<R, Fut>
 }
 
 impl<Fut, R> From<R> for Concurrent<R, Fut> {
+    #[must_use]
     fn from(stream: R) -> Self {
         Self {
             stream,
@@ -88,12 +89,14 @@ pub trait ConcurrentExt: Sized {
     /// Single [`Future`].
     type Fut;
 
+    #[must_use]
     fn concurrent(self) -> Concurrent<Self, Self::Fut>;
 }
 
 impl<Fut: Future, R: FusedStream<Item = Fut>> ConcurrentExt for R {
     type Fut = Fut;
 
+    #[must_use]
     fn concurrent(self) -> Concurrent<Self, Self::Fut> {
         self.into()
     }
