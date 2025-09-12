@@ -1,6 +1,6 @@
 //! [`ruchei::multicast::bufferless`] with [`ruchei::echo::buffered`]
 
-use async_std::net::TcpListener;
+use async_net::TcpListener;
 use futures_util::StreamExt;
 use ruchei::{
     concurrent::ConcurrentExt, echo::buffered::EchoBuffered,

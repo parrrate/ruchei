@@ -2,7 +2,7 @@
 //!
 //!
 //! ```rust
-//! # use async_std::net::TcpListener;
+//! # use async_net::TcpListener;
 //! use ruchei::poll_on_wake::PollOnWakeExt;
 //!
 //! # async fn __() {
