@@ -11,7 +11,7 @@ use futures_util::{
 #[pin_project::pin_project]
 pub struct Concurrent<R, Fut> {
     #[pin]
-    streams: Fuse<R>,
+    stream: Fuse<R>,
     #[pin]
     futures: FuturesUnordered<Fut>,
 }
@@ -21,20 +21,29 @@ impl<Fut: Future, R: Stream<Item = Fut>> Stream for Concurrent<R, Fut> {
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
-        while let Poll::Ready(Some(future)) = this.streams.as_mut().poll_next(cx) {
+        while let Poll::Ready(Some(future)) = this.stream.as_mut().poll_next(cx) {
             this.futures.push(future)
         }
         match this.futures.poll_next(cx) {
-            Poll::Ready(None) if !this.streams.is_done() => Poll::Pending,
+            Poll::Ready(None) if !this.stream.is_done() => Poll::Pending,
             poll => poll,
         }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (lo, hi) = self.stream.size_hint();
+        let extra = self.futures.len();
+        (
+            lo.saturating_add(extra),
+            hi.and_then(|hi| hi.checked_add(extra)),
+        )
     }
 }
 
 impl<Fut, R: Stream<Item = Fut>> From<R> for Concurrent<R, Fut> {
     fn from(streams: R) -> Self {
         Self {
-            streams: streams.fuse(),
+            stream: streams.fuse(),
             futures: Default::default(),
         }
     }
