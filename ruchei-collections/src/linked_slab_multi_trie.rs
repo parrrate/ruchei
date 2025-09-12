@@ -185,6 +185,26 @@ impl<T, const N: usize> LinkedSlabMultiTrie<T, N> {
     pub fn get_mut(&mut self, key: usize) -> Option<&mut T> {
         Some(&mut self.collections.get_mut(key)?.0)
     }
+
+    pub fn link_pops<const M: usize, U, F: FnMut(usize, &mut Self) -> U>(
+        &mut self,
+        f: F,
+    ) -> Pops<'_, T, F, N, M> {
+        Pops(self, f)
+    }
+}
+
+pub struct Pops<'a, T, F, const N: usize, const M: usize>(&'a mut LinkedSlabMultiTrie<T, N>, F);
+
+impl<T, U, F: FnMut(usize, &mut LinkedSlabMultiTrie<T, N>) -> U, const N: usize, const M: usize>
+    Iterator for Pops<'_, T, F, N, M>
+{
+    type Item = U;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let key = self.0.link_pop_front::<M>()?;
+        Some(self.1(key, self.0))
+    }
 }
 
 impl<T, const N: usize> Index<usize> for LinkedSlabMultiTrie<T, N> {
