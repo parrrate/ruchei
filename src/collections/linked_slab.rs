@@ -68,31 +68,32 @@ impl<T, const N: usize> LinkedSlab<T, N> {
     #[inline(always)]
     fn unlink(&mut self, link: Link, n: usize, key: usize) {
         assert!(n < N);
-        assert!(self.lens[n] > 0);
+        assert_ne!(self.lens[n], 0);
         self.lens[n] -= 1;
+        assert!(self.lens[n] <= self.len());
         let (prev_next, next_prev) = match link {
             Link::EMPTY => {
-                assert!(self.lens[n] == 0);
+                assert_eq!(self.lens[n], 0);
                 let prev_next = &mut self.links[n].next;
                 let next_prev = &mut self.links[n].prev;
                 (prev_next, next_prev)
             }
             Link { prev: EMPTY, next } => {
-                assert!(self.lens[n] > 0);
+                assert_ne!(self.lens[n], 0);
                 let next = self.slab.get_mut(next).expect("next not found");
                 let next_prev = &mut next.links[n].as_mut().expect("next not linked").prev;
                 let prev_next = &mut self.links[n].next;
                 (prev_next, next_prev)
             }
             Link { prev, next: EMPTY } => {
-                assert!(self.lens[n] > 0);
+                assert_ne!(self.lens[n], 0);
                 let prev = self.slab.get_mut(prev).expect("prev not found");
                 let prev_next = &mut prev.links[n].as_mut().expect("prev not linked").next;
                 let next_prev = &mut self.links[n].prev;
                 (prev_next, next_prev)
             }
             Link { prev, next } => {
-                assert!(self.lens[n] > 0);
+                assert_ne!(self.lens[n], 0);
                 let (prev, next) = self
                     .slab
                     .get2_mut(prev, next)
@@ -157,14 +158,15 @@ impl<T, const N: usize> LinkedSlab<T, N> {
         if !self.linkable::<M>(key) {
             return false;
         }
+        assert!(self.lens[M] < self.len());
         let link = match self.link::<M>() {
             None => {
-                assert!(self.lens[M] == 0);
+                assert_eq!(self.lens[M], 0);
                 self.links[M] = Link::new(key);
                 Link::EMPTY
             }
             Some((prev, _)) => {
-                assert!(self.lens[M] > 0);
+                assert_ne!(self.lens[M], 0);
                 self.slab.get_mut(prev).expect("last not found").links[M]
                     .as_mut()
                     .expect("last not linked")
