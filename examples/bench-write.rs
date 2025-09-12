@@ -28,4 +28,5 @@ async fn main() {
         .unwrap();
     println!("{:?}", start.elapsed());
     task.await;
+    writer.close().await.unwrap();
 }
