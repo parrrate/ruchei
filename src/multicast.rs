@@ -1,4 +1,4 @@
-//! Convert a [`Stream`] of [`Stream`]+[`Sink`]s into single [`Stream`]+[`Sink`].
+//! Convert a [`Stream`] of [`Stream`]`+`[`Sink`]s into single [`Stream`]`+`[`Sink`].
 //!
 //! ## A Warning
 //!
