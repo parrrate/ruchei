@@ -1,3 +1,27 @@
+//! Uses an unlimited linked-list buffer.
+//!
+//! ```rust
+//! # use async_std::net::TcpListener;
+//! # use futures_util::StreamExt;
+//! # use ruchei::concurrent::ConcurrentExt;
+//! # use ruchei::poll_on_wake::PollOnWakeExt;
+//! use ruchei::multicast::buffered::MulticastBuffered;
+//!
+//! # async fn __() {
+//! TcpListener::bind("127.0.0.1:8080")
+//!     .await
+//!     .unwrap()
+//!     .incoming()
+//!     .poll_on_wake()
+//!     .filter_map(|r| async { r.ok() })
+//!     .map(async_tungstenite::accept_async)
+//!     .fuse()
+//!     .concurrent()
+//!     .filter_map(|r| async { r.ok() })
+//!     .multicast_buffered(|_| {}); // ignore errors
+//! # }
+//! ```
+
 use std::{
     convert::Infallible,
     pin::Pin,
