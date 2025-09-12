@@ -2,30 +2,42 @@ use std::{
     collections::HashMap,
     convert::Infallible,
     pin::Pin,
-    task::{Context, Poll},
+    sync::Arc,
+    task::{Context, Poll, Waker},
 };
 
-use futures_channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
 use futures_util::{
+    lock::Mutex,
     ready,
     stream::{FusedStream, FuturesUnordered, SelectAll},
     Future, Sink, Stream,
 };
 use pin_project::pin_project;
 
-use crate::{callback::OnClose, key_drop::KeyDropCopy};
+use crate::callback::OnClose;
+
+struct Shared<Out> {
+    stale: HashMap<Key, Waker>,
+    out: Vec<Out>,
+}
+
+impl<Out> Default for Shared<Out> {
+    fn default() -> Self {
+        Self {
+            stale: Default::default(),
+            out: Default::default(),
+        }
+    }
+}
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
 struct Key(usize);
-
-#[derive(Clone, Copy)]
-struct Index(usize);
 
 #[derive(Default)]
 enum State<Out> {
     #[default]
     Flushed,
-    Readying(Out, Index),
+    Readying(Out),
     Started,
 }
 
@@ -39,65 +51,59 @@ impl<Out> State<Out> {
     }
 }
 
-type Done<Out> = (Key, Index, UnboundedSender<(Out, Index)>);
-
 #[pin_project]
 struct Unicast<S, Out, F> {
     #[pin]
     stream: S,
-    #[pin]
-    out_r: UnboundedReceiver<(Out, Index)>,
     state: State<Out>,
-    out_s: UnboundedSender<(Out, Index)>,
-    done_s: UnboundedSender<Done<Out>>,
-    key_drop: KeyDropCopy<Key>,
+    shared: Arc<Mutex<Shared<Out>>>,
+    index: usize,
+    stale: bool,
+    key: Key,
     callback: F,
 }
 
-impl<In, Out, E, S: Sink<Out, Error = E> + Stream<Item = Result<In, E>>, F: OnClose<E>>
+impl<In, Out: Clone, E, S: Sink<Out, Error = E> + Stream<Item = Result<In, E>>, F: OnClose<E>>
     Unicast<S, Out, F>
 {
     fn state(self: Pin<&mut Self>) -> &mut State<Out> {
         self.project().state
     }
 
-    fn poll_out(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+    fn poll_out(self: Pin<&mut Self>, cx: &mut Context<'_>, shared: &mut Shared<Out>) -> Poll<()> {
         let this = self.project();
-        match this.out_r.poll_next(cx) {
-            Poll::Ready(Some((out, ix))) => {
-                *this.state = State::Readying(out, ix);
-                Poll::Ready(())
-            }
-            Poll::Ready(None) => Poll::Pending,
-            Poll::Pending => Poll::Pending,
+        if let Some(out) = shared.out.get(*this.index) {
+            *this.state = State::Readying(out.clone());
+            *this.index += 1;
+            Poll::Ready(())
+        } else {
+            shared.stale.insert(*this.key, cx.waker().clone());
+            *this.stale = true;
+            Poll::Pending
         }
     }
 
-    fn poll_send(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        out: Out,
-        ix: Index,
-    ) -> Poll<Result<(), E>> {
+    fn poll_send(self: Pin<&mut Self>, cx: &mut Context<'_>, out: Out) -> Poll<Result<(), E>> {
         let mut this = self.project();
         match this.stream.as_mut().poll_ready(cx)? {
             Poll::Ready(()) => {
                 this.stream.start_send(out)?;
                 *this.state = State::Started;
-                _ = this
-                    .done_s
-                    .unbounded_send((this.key_drop.key(), ix, this.out_s.clone()));
                 Poll::Ready(Ok(()))
             }
             Poll::Pending => {
-                *this.state = State::Readying(out, ix);
+                *this.state = State::Readying(out);
                 Poll::Pending
             }
         }
     }
 
-    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), E>> {
-        match self.as_mut().poll_out(cx) {
+    fn poll_flush(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        shared: &mut Shared<Out>,
+    ) -> Poll<Result<(), E>> {
+        match self.as_mut().poll_out(cx, shared) {
             Poll::Ready(_) => Poll::Ready(Ok(())),
             Poll::Pending => {
                 let this = self.project();
@@ -113,11 +119,33 @@ impl<In, Out, E, S: Sink<Out, Error = E> + Stream<Item = Result<In, E>>, F: OnCl
     }
 
     fn pre_poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<Infallible, E>> {
+        *self.as_mut().project().stale = false;
+        let mut shared = None;
         loop {
             match self.as_mut().state().take() {
-                State::Flushed => ready!(self.as_mut().poll_out(cx)),
-                State::Readying(out, done) => ready!(self.as_mut().poll_send(cx, out, done))?,
-                State::Started => ready!(self.as_mut().poll_flush(cx))?,
+                State::Flushed => {
+                    let shared = shared.get_or_insert_with(|| {
+                        self.as_mut()
+                            .project()
+                            .shared
+                            .clone()
+                            .try_lock_owned()
+                            .unwrap()
+                    });
+                    ready!(self.as_mut().poll_out(cx, shared))
+                }
+                State::Readying(out) => ready!(self.as_mut().poll_send(cx, out))?,
+                State::Started => {
+                    let shared = shared.get_or_insert_with(|| {
+                        self.as_mut()
+                            .project()
+                            .shared
+                            .clone()
+                            .try_lock_owned()
+                            .unwrap()
+                    });
+                    ready!(self.as_mut().poll_flush(cx, shared))?
+                }
             }
         }
     }
@@ -140,12 +168,12 @@ impl<In, Out, E, S: Sink<Out, Error = E> + Stream<Item = Result<In, E>>, F: OnCl
     }
 
     fn is_terminated(&self) -> bool {
-        self.out_r.is_terminated() && self.state.is_empty()
+        self.stale && self.state.is_empty()
     }
 }
 
-impl<In, Out, E, S: Sink<Out, Error = E> + Stream<Item = Result<In, E>>, F: OnClose<E>> Stream
-    for Unicast<S, Out, F>
+impl<In, Out: Clone, E, S: Sink<Out, Error = E> + Stream<Item = Result<In, E>>, F: OnClose<E>>
+    Stream for Unicast<S, Out, F>
 {
     type Item = In;
 
@@ -219,16 +247,9 @@ pub struct Multicast<S, Out, F, R> {
     #[pin]
     select: SelectAll<Unicast<S, Out, F>>,
     #[pin]
-    done_r: UnboundedReceiver<Done<Out>>,
-    #[pin]
-    key_r: UnboundedReceiver<Key>,
-    #[pin]
     finalizing: FuturesUnordered<Finalize<S, Out, F>>,
-    stale: HashMap<Key, UnboundedSender<(Out, Index)>>,
-    out: Vec<Out>,
+    shared: Arc<Mutex<Shared<Out>>>,
     key: usize,
-    done_s: UnboundedSender<Done<Out>>,
-    key_s: UnboundedSender<Key>,
     callback: F,
 }
 
@@ -247,49 +268,18 @@ impl<
             while let Poll::Ready(Some(stream)) = this.streams.as_mut().poll_next(cx) {
                 *this.key += 1;
                 let key = Key(*this.key);
-                let (out_s, out_r) = unbounded();
                 this.select.push(Unicast {
                     stream,
-                    out_r,
                     state: Default::default(),
-                    out_s: out_s.clone(),
-                    done_s: this.done_s.clone(),
-                    key_drop: KeyDropCopy::new(key, this.key_s.clone()),
+                    shared: this.shared.clone(),
+                    index: 0,
+                    stale: false,
+                    key,
                     callback: this.callback.clone(),
                 });
-                if let Some(out) = this.out.first() {
-                    let _ = out_s.unbounded_send((out.clone(), Index(0)));
-                } else {
-                    this.stale.insert(key, out_s);
-                }
             }
         }
-        loop {
-            if let Poll::Ready(Some(item)) = this.select.as_mut().poll_next(cx) {
-                break Poll::Ready(Some(item));
-            }
-            let mut any = false;
-            while let Poll::Ready(Some((key, index, out_s))) = this.done_r.as_mut().poll_next(cx) {
-                any = true;
-                let index = index.0 + 1;
-                if let Some(out) = this.out.get(index) {
-                    let _ = out_s.unbounded_send((out.clone(), Index(index)));
-                } else {
-                    assert!(this.stale.insert(key, out_s).is_none());
-                }
-            }
-            while let Poll::Ready(Some(key)) = this.key_r.as_mut().poll_next(cx) {
-                any = true;
-                this.stale.remove(&key);
-            }
-            if !any {
-                break if this.select.is_empty() && this.streams.is_terminated() {
-                    Poll::Ready(None)
-                } else {
-                    Poll::Pending
-                };
-            }
-        }
+        this.select.as_mut().poll_next(cx)
     }
 }
 
@@ -340,12 +330,11 @@ impl<
 
     fn start_send(self: Pin<&mut Self>, item: Out) -> Result<(), Self::Error> {
         let this = self.project();
-        let index = Index(this.out.len());
-        for sender in this.stale.values() {
-            let _ = sender.unbounded_send((item.clone(), index));
+        let mut shared = this.shared.try_lock().unwrap();
+        shared.out.push(item);
+        for (_, waker) in shared.stale.drain() {
+            waker.wake();
         }
-        this.stale.clear();
-        this.out.push(item);
         Ok(())
     }
 
@@ -355,7 +344,6 @@ impl<
 
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let mut this = self.project();
-        this.key_s.close_channel();
         if !this.select.is_empty() {
             for unicast in std::mem::take(this.select.get_mut()) {
                 this.finalizing.push(Finalize {
@@ -364,32 +352,16 @@ impl<
                 });
             }
         }
-        loop {
-            if !this.stale.is_empty() {
-                for sender in std::mem::take(this.stale).into_values() {
-                    sender.close_channel();
-                }
-            }
-            while let Poll::Ready(poll) = this.finalizing.as_mut().poll_next(cx) {
-                match poll {
-                    Some(()) => {}
-                    None => return Poll::Ready(Ok(())),
-                }
-            }
-            let mut any = false;
-            while let Poll::Ready(Some((_, index, out_s))) = this.done_r.as_mut().poll_next(cx) {
-                any = true;
-                let index = index.0 + 1;
-                if let Some(out) = this.out.get(index) {
-                    let _ = out_s.unbounded_send((out.clone(), Index(index)));
-                } else {
-                    out_s.close_channel();
-                }
-            }
-            if !any {
-                break Poll::Pending;
+        for (_, waker) in this.shared.try_lock().unwrap().stale.drain() {
+            waker.wake();
+        }
+        while let Poll::Ready(poll) = this.finalizing.as_mut().poll_next(cx) {
+            match poll {
+                Some(()) => {}
+                None => return Poll::Ready(Ok(())),
             }
         }
+        Poll::Pending
     }
 }
 
@@ -403,19 +375,12 @@ impl<
     > Multicast<S, Out, F, R>
 {
     pub fn new(streams: R, callback: F) -> Self {
-        let (done_s, done_r) = unbounded();
-        let (key_s, key_r) = unbounded();
         Self {
             streams,
             select: Default::default(),
-            done_r,
-            key_r,
             finalizing: Default::default(),
-            stale: Default::default(),
-            out: Default::default(),
+            shared: Default::default(),
             key: 0,
-            done_s,
-            key_s,
             callback,
         }
     }
