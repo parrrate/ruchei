@@ -17,6 +17,7 @@ async fn main() {
         .fuse()
         .concurrent()
         .filter_map(|r| async { r.ok() })
+        .map(|s| s.poll_on_wake())
         .multicast_bufferless(|_| {})
         .echo()
         .await
