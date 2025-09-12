@@ -1,82 +1,16 @@
-use std::{
-    collections::BTreeMap,
-    ops::{Index, IndexMut},
-};
+use std::collections::BTreeMap;
 
-use slab::Slab;
+use crate::nodes::NodeId;
 
-#[derive(Debug)]
-struct Nodes<T> {
-    slab: Slab<(usize, Node<T>)>,
-    roots: usize,
-    ctr: usize,
-}
-
-impl<T> Default for Nodes<T> {
-    fn default() -> Self {
-        Self {
-            slab: Default::default(),
-            roots: Default::default(),
-            ctr: Default::default(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct NodeId {
-    location: usize,
-    ctr: usize,
-}
+type Nodes<T> = crate::nodes::Nodes<Node<T>>;
 
 impl<T> Nodes<T> {
-    fn get(&self, id: NodeId) -> Option<&Node<T>> {
-        let (ctr, node) = self.slab.get(id.location)?;
-        (*ctr == id.ctr).then_some(node)
-    }
-
-    fn get_mut(&mut self, id: NodeId) -> Option<&mut Node<T>> {
-        let (ctr, node) = self.slab.get_mut(id.location)?;
-        (*ctr == id.ctr).then_some(node)
-    }
-
-    fn contains(&self, id: NodeId) -> bool {
-        self.get(id).is_some()
-    }
-
-    fn next_ctr(&mut self) -> usize {
-        let next_ctr = self.ctr.wrapping_add(1);
-        std::mem::replace(&mut self.ctr, next_ctr)
-    }
-
-    fn push(&mut self, node: Node<T>) -> NodeId {
-        self.increment_roots();
-        let ctr = self.next_ctr();
-        NodeId {
-            location: self.slab.insert((ctr, node)),
-            ctr,
-        }
-    }
-
-    fn pop_at(&mut self, id: NodeId) {
-        let (ctr, _) = self.slab.remove(id.location);
-        assert_eq!(ctr, id.ctr);
-        self.decrement_roots();
-    }
-
     fn pop(&mut self, id: NodeId) {
         let node = &self[id];
         assert!(node.parent.is_none());
         assert!(node.value.is_none());
         assert!(node.children.is_empty());
         self.pop_at(id);
-    }
-
-    fn increment_roots(&mut self) {
-        self.roots = self.roots.checked_add(1).expect("root count overflow");
-    }
-
-    fn decrement_roots(&mut self) {
-        self.roots = self.roots.checked_sub(1).expect("root count underflow");
     }
 
     fn push_value(&mut self, value: T) -> NodeId {
@@ -235,24 +169,6 @@ impl<T> Nodes<T> {
     }
 }
 
-impl<T> Index<NodeId> for Nodes<T> {
-    type Output = Node<T>;
-
-    fn index(&self, id: NodeId) -> &Self::Output {
-        let (ctr, node) = self.slab.get(id.location).expect("invalid node id");
-        assert_eq!(*ctr, id.ctr);
-        node
-    }
-}
-
-impl<T> IndexMut<NodeId> for Nodes<T> {
-    fn index_mut(&mut self, id: NodeId) -> &mut Self::Output {
-        let (ctr, node) = self.slab.get_mut(id.location).expect("invalid node id");
-        assert_eq!(*ctr, id.ctr);
-        node
-    }
-}
-
 /// Has `value` and/or one of its descendants has `value`
 #[derive(Debug)]
 struct Node<T> {
@@ -347,7 +263,7 @@ impl<T> Trie<T> {
 
     pub fn insert(&mut self, key: &[u8], value: T) -> (NodeId, Option<T>) {
         let result = self.nodes.insert(self.root, key, value);
-        assert_eq!(self.nodes.roots, 1);
+        assert_eq!(self.nodes.roots(), 1);
         result
     }
 
@@ -361,7 +277,7 @@ impl<T> Trie<T> {
 
     pub fn remove(&mut self, key: &[u8]) -> Option<(NodeId, T)> {
         let result = self.nodes.remove(self.root, key);
-        assert_eq!(self.nodes.roots, 1);
+        assert_eq!(self.nodes.roots(), 1);
         result
     }
 
@@ -522,5 +438,5 @@ fn insert_remove_ab() {
     assert_eq!(trie.remove(b"+b").unwrap().1, 456);
     assert!(trie.get(b"+a").is_none());
     assert!(trie.get(b"+b").is_none());
-    assert_eq!(trie.nodes.slab.len(), 1);
+    assert_eq!(trie.nodes.len(), 1);
 }
