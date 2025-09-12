@@ -1,11 +1,12 @@
 use std::{
     convert::Infallible,
     pin::Pin,
-    task::{Context, Poll, Waker},
+    task::{Context, Poll},
 };
 
 use futures_util::{
     stream::{FusedStream, FuturesUnordered, SelectAll},
+    task::AtomicWaker,
     Future, Sink, Stream,
 };
 use pin_project::pin_project;
@@ -20,7 +21,7 @@ use crate::{
 struct Unicast<S, Out, F> {
     #[pin]
     stream: S,
-    waker: Option<Waker>,
+    waker: AtomicWaker,
     readying: CompleteOne,
     flushing: CompleteOne,
     ready: bool,
@@ -30,9 +31,7 @@ struct Unicast<S, Out, F> {
 
 impl<S, Out, F> Unicast<S, Out, F> {
     fn wake(&mut self) {
-        if let Some(waker) = self.waker.take() {
-            waker.wake();
-        }
+        self.waker.wake();
     }
 }
 
@@ -43,6 +42,7 @@ impl<In, Out, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>, F: OnCl
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
+        this.waker.register(cx.waker());
         if *this.ready {
             if let Some(out) = this.started.take() {
                 match this.stream.as_mut().start_send(out) {
@@ -90,7 +90,6 @@ impl<In, Out, E, S: Stream<Item = Result<In, E>> + Sink<Out, Error = E>, F: OnCl
                 Poll::Pending => {}
             }
         }
-        *this.waker = Some(cx.waker().clone());
         this.stream.poll_next(cx).map(|o| match o {
             Some(Ok(item)) => Some(item),
             Some(Err(e)) => {
@@ -137,7 +136,7 @@ impl<
             while let Poll::Ready(Some(stream)) = this.streams.as_mut().poll_next(cx) {
                 this.select.push(Unicast {
                     stream,
-                    waker: None,
+                    waker: Default::default(),
                     readying: Default::default(),
                     flushing: Default::default(),
                     ready: false,
