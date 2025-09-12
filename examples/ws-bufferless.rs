@@ -2,7 +2,7 @@ use async_std::net::TcpListener;
 use futures_util::StreamExt;
 use ruchei::{
     concurrent::ConcurrentExt, echo::EchoExt, fanout_bufferless::MulticastBufferless,
-    select_one::SelectOne,
+    poll_on_wake::PollOnWakeExt,
 };
 
 #[async_std::main]
@@ -11,7 +11,7 @@ async fn main() {
         .await
         .unwrap()
         .incoming()
-        .select_one()
+        .poll_on_wake()
         .filter_map(|r| async { r.ok() })
         .map(async_tungstenite::accept_async)
         .fuse()

@@ -6,7 +6,7 @@ pub mod fanout_buffered;
 pub mod fanout_bufferless;
 pub mod fanout_replay;
 mod owned_close;
+pub mod poll_on_wake;
 pub mod read_callback;
 pub mod rw_isolation;
-pub mod select_one;
 mod wait_all;
