@@ -5,7 +5,7 @@ use std::{
 };
 
 use futures_util::{
-    Sink, SinkExt, Stream, StreamExt, ready, stream::FusedStream, task::AtomicWaker,
+    Sink, SinkExt, Stream, TryStream, TryStreamExt, ready, stream::FusedStream, task::AtomicWaker,
 };
 use pin_project::pin_project;
 use ruchei_callback::OnClose;
@@ -77,7 +77,7 @@ impl<S, F> Dealer<S, F> {
     }
 }
 
-impl<In, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stream for Dealer<S, F> {
+impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, F: OnClose<E>> Stream for Dealer<S, F> {
     type Item = Result<In, Infallible>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -87,7 +87,7 @@ impl<In, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stream for D
             if let Some(connection) = this.connections.get_mut(key)
                 && let Poll::Ready(o) = connection
                     .next
-                    .poll(cx, |cx| connection.stream.poll_next_unpin(cx))
+                    .poll(cx, |cx| connection.stream.try_poll_next_unpin(cx))
             {
                 match o {
                     Some(Ok(item)) => {
@@ -112,7 +112,7 @@ impl<In, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stream for D
     }
 }
 
-impl<In, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> FusedStream for Dealer<S, F> {
+impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, F: OnClose<E>> FusedStream for Dealer<S, F> {
     fn is_terminated(&self) -> bool {
         self.connections.is_empty()
     }
@@ -243,7 +243,9 @@ pub trait DealerSlabExt: Sized {
     fn deal_slab<F: OnClose<Self::E>>(self, callback: F) -> DealerExtending<F, Self>;
 }
 
-impl<In, E, S: Unpin + Stream<Item = Result<In, E>>, R: FusedStream<Item = S>> DealerSlabExt for R {
+impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = S>> DealerSlabExt
+    for R
+{
     type S = S;
     type E = E;
 
