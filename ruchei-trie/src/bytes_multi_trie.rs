@@ -6,8 +6,8 @@ use std::{
 use slab::Slab;
 
 use crate::{
-    NodeId, Trie,
     multi_trie::{MultiTrie, MultiTrieAddRef, MultiTriePrefix},
+    trie::{NodeId, Trie},
 };
 
 #[derive(Debug, Default)]
