@@ -25,8 +25,8 @@ use std::{
 };
 
 use futures_util::{
-    stream::{FusedStream, FuturesUnordered},
     Future, Stream,
+    stream::{FusedStream, FuturesUnordered},
 };
 use pin_project::pin_project;
 

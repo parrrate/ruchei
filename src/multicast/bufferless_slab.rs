@@ -4,7 +4,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures_util::{stream::FusedStream, Sink, SinkExt, Stream, StreamExt};
+use futures_util::{Sink, SinkExt, Stream, StreamExt, stream::FusedStream};
 use pin_project::pin_project;
 use ruchei_callback::OnClose;
 
@@ -90,22 +90,21 @@ impl<In, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stream for M
             if this.connections.link_pop_at::<OP_IS_READIED>(key) {
                 this.ready.downgrade().insert(key);
             }
-            if let Some(connection) = this.connections.get_mut(key) {
-                if let Poll::Ready(o) = connection
+            if let Some(connection) = this.connections.get_mut(key)
+                && let Poll::Ready(o) = connection
                     .next
                     .poll(cx, |cx| connection.stream.poll_next_unpin(cx))
-                {
-                    match o {
-                        Some(Ok(item)) => {
-                            this.next.downgrade().insert(key);
-                            return Poll::Ready(Some(Ok(item)));
-                        }
-                        Some(Err(e)) => {
-                            self.as_mut().remove(key, Some(e));
-                        }
-                        None => {
-                            self.as_mut().remove(key, None);
-                        }
+            {
+                match o {
+                    Some(Ok(item)) => {
+                        this.next.downgrade().insert(key);
+                        return Poll::Ready(Some(Ok(item)));
+                    }
+                    Some(Err(e)) => {
+                        self.as_mut().remove(key, Some(e));
+                    }
+                    None => {
+                        self.as_mut().remove(key, None);
                     }
                 }
             }
@@ -138,18 +137,16 @@ impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> Sink<Out> fo
             .as_mut()
             .next::<OP_WAKE_READY, _, OP_COUNT>(this.connections)
         {
-            if !this.connections.link_contains::<OP_IS_READIED>(key) {
-                if let Some(connection) = this.connections.get_mut(key) {
-                    if let Poll::Ready(r) = connection
-                        .ready
-                        .poll(cx, |cx| connection.stream.poll_ready_unpin(cx))
-                    {
-                        if let Err(e) = r {
-                            self.as_mut().remove(key, Some(e));
-                        } else {
-                            this.connections.link_push_back::<OP_IS_READIED>(key);
-                        }
-                    }
+            if !this.connections.link_contains::<OP_IS_READIED>(key)
+                && let Some(connection) = this.connections.get_mut(key)
+                && let Poll::Ready(r) = connection
+                    .ready
+                    .poll(cx, |cx| connection.stream.poll_ready_unpin(cx))
+            {
+                if let Err(e) = r {
+                    self.as_mut().remove(key, Some(e));
+                } else {
+                    this.connections.link_push_back::<OP_IS_READIED>(key);
                 }
             }
             this = self.as_mut().project();
@@ -228,18 +225,17 @@ impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> Sink<Out> fo
             .as_mut()
             .next::<OP_WAKE_CLOSE, _, OP_COUNT>(this.connections)
         {
-            if let Some(connection) = this.connections.get_mut(key) {
-                if let Poll::Ready(r) = connection
+            if let Some(connection) = this.connections.get_mut(key)
+                && let Poll::Ready(r) = connection
                     .close
                     .poll(cx, |cx| connection.stream.poll_close_unpin(cx))
-                {
-                    match r {
-                        Ok(()) => {
-                            self.as_mut().remove(key, None);
-                        }
-                        Err(e) => {
-                            self.as_mut().remove(key, Some(e));
-                        }
+            {
+                match r {
+                    Ok(()) => {
+                        self.as_mut().remove(key, None);
+                    }
+                    Err(e) => {
+                        self.as_mut().remove(key, Some(e));
                     }
                 }
             }

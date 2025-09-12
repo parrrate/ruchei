@@ -12,15 +12,17 @@ use ruchei::{
 #[async_std::main]
 async fn main() {
     let streams = TcpListener::bind("127.0.0.1:8080").await.unwrap();
-    let mut sink = pin!(streams
-        .incoming()
-        .filter_map(|r| async { r.ok() })
-        .map(async_tungstenite::accept_async)
-        .fuse()
-        .concurrent()
-        .filter_map(|r| async { r.ok() })
-        .multicast_buffered(|_| {})
-        .read_callback(|message| print!("{message}")));
+    let mut sink = pin!(
+        streams
+            .incoming()
+            .filter_map(|r| async { r.ok() })
+            .map(async_tungstenite::accept_async)
+            .fuse()
+            .concurrent()
+            .filter_map(|r| async { r.ok() })
+            .multicast_buffered(|_| {})
+            .read_callback(|message| print!("{message}"))
+    );
     loop {
         sink.send("ping".into()).await.unwrap();
         sleep(Duration::from_secs(5)).await;

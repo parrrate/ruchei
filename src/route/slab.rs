@@ -4,7 +4,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures_util::{ready, stream::FusedStream, Sink, SinkExt, Stream, StreamExt};
+use futures_util::{Sink, SinkExt, Stream, StreamExt, ready, stream::FusedStream};
 use pin_project::pin_project;
 pub use ruchei_route::{RouteExt, RouteSink, Unroute, WithRoute};
 
@@ -75,22 +75,21 @@ impl<In, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stream for R
             .as_mut()
             .next::<OP_WAKE_NEXT, _, OP_COUNT>(this.connections)
         {
-            if let Some(connection) = this.connections.get_mut(key) {
-                if let Poll::Ready(o) = connection
+            if let Some(connection) = this.connections.get_mut(key)
+                && let Poll::Ready(o) = connection
                     .next
                     .poll(cx, |cx| connection.stream.poll_next_unpin(cx))
-                {
-                    match o {
-                        Some(Ok(item)) => {
-                            this.next.downgrade().insert(key);
-                            return Poll::Ready(Some(Ok((key, item))));
-                        }
-                        Some(Err(e)) => {
-                            self.as_mut().remove(key, Some(e));
-                        }
-                        None => {
-                            self.as_mut().remove(key, None);
-                        }
+            {
+                match o {
+                    Some(Ok(item)) => {
+                        this.next.downgrade().insert(key);
+                        return Poll::Ready(Some(Ok((key, item))));
+                    }
+                    Some(Err(e)) => {
+                        self.as_mut().remove(key, Some(e));
+                    }
+                    None => {
+                        self.as_mut().remove(key, None);
                     }
                 }
             }
@@ -115,23 +114,24 @@ impl<Out, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> RouteSink<usize, Ou
         cx: &mut Context<'_>,
     ) -> Poll<Result<(), Self::Error>> {
         let this = self.as_mut().project();
-        if let Some(connection) = this.connections.get_mut(*key) {
-            if let Err(e) = ready!(connection
-                .ready
-                .poll(cx, |cx| connection.stream.poll_ready_unpin(cx)))
-            {
-                self.remove(*key, Some(e));
-            }
+        if let Some(connection) = this.connections.get_mut(*key)
+            && let Err(e) = ready!(
+                connection
+                    .ready
+                    .poll(cx, |cx| connection.stream.poll_ready_unpin(cx))
+            )
+        {
+            self.remove(*key, Some(e));
         }
         Poll::Ready(Ok(()))
     }
 
     fn start_send(mut self: Pin<&mut Self>, key: usize, msg: Out) -> Result<(), Self::Error> {
         let this = self.as_mut().project();
-        if let Some(connection) = this.connections.get_mut(key) {
-            if let Err(e) = connection.stream.start_send_unpin(msg) {
-                self.remove(key, Some(e));
-            }
+        if let Some(connection) = this.connections.get_mut(key)
+            && let Err(e) = connection.stream.start_send_unpin(msg)
+        {
+            self.remove(key, Some(e));
         }
         Ok(())
     }
@@ -142,13 +142,14 @@ impl<Out, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> RouteSink<usize, Ou
         cx: &mut Context<'_>,
     ) -> Poll<Result<(), Self::Error>> {
         let this = self.as_mut().project();
-        if let Some(connection) = this.connections.get_mut(*key) {
-            if let Err(e) = ready!(connection
-                .flush
-                .poll(cx, |cx| connection.stream.poll_flush_unpin(cx)))
-            {
-                self.remove(*key, Some(e));
-            }
+        if let Some(connection) = this.connections.get_mut(*key)
+            && let Err(e) = ready!(
+                connection
+                    .flush
+                    .poll(cx, |cx| connection.stream.poll_flush_unpin(cx))
+            )
+        {
+            self.remove(*key, Some(e));
         }
         Poll::Ready(Ok(()))
     }
@@ -161,18 +162,17 @@ impl<Out, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> RouteSink<usize, Ou
             .as_mut()
             .next::<OP_WAKE_CLOSE, _, OP_COUNT>(this.connections)
         {
-            if let Some(connection) = this.connections.get_mut(key) {
-                if let Poll::Ready(r) = connection
+            if let Some(connection) = this.connections.get_mut(key)
+                && let Poll::Ready(r) = connection
                     .close
                     .poll(cx, |cx| connection.stream.poll_close_unpin(cx))
-                {
-                    match r {
-                        Ok(()) => {
-                            self.as_mut().remove(key, None);
-                        }
-                        Err(e) => {
-                            self.as_mut().remove(key, Some(e));
-                        }
+            {
+                match r {
+                    Ok(()) => {
+                        self.as_mut().remove(key, None);
+                    }
+                    Err(e) => {
+                        self.as_mut().remove(key, Some(e));
                     }
                 }
             }

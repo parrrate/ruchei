@@ -1,18 +1,18 @@
 use std::{
     pin::Pin,
     sync::{
-        atomic::{AtomicBool, Ordering},
         Arc,
+        atomic::{AtomicBool, Ordering},
     },
     task::{Context, Poll, Wake},
 };
 
 use futures_util::{
+    Future, Sink, Stream,
     lock::{Mutex, OwnedMutexGuard, OwnedMutexLockFuture},
     ready,
     stream::FusedStream,
     task::AtomicWaker,
-    Future, Sink, Stream,
 };
 use pin_project::pin_project;
 
@@ -56,10 +56,11 @@ impl<S: Stream> Stream for RwInner<S> {
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
         this.waker.waker.register(cx.waker());
-        ready!(this
-            .read_future
-            .as_mut()
-            .poll(&mut Context::from_waker(&this.waker.clone().into())));
+        ready!(
+            this.read_future
+                .as_mut()
+                .poll(&mut Context::from_waker(&this.waker.clone().into()))
+        );
         *this.read_future = this.read_mutex.clone().lock_owned();
         let poll = this.stream.poll_next(cx);
         this.waker

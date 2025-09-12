@@ -6,11 +6,11 @@ use std::{
 };
 
 use futures_util::{
+    Future, Sink, Stream,
     future::FusedFuture,
     lock::{Mutex, OwnedMutexGuard, OwnedMutexLockFuture},
     ready,
     stream::FusedStream,
-    Future, Sink, Stream,
 };
 use pin_project::pin_project;
 

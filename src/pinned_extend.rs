@@ -8,7 +8,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures_util::{stream::FusedStream, Sink, Stream};
+use futures_util::{Sink, Stream, stream::FusedStream};
 use pin_project::pin_project;
 use ruchei_route::RouteSink;
 

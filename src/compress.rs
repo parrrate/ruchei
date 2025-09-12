@@ -3,7 +3,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures_util::{ready, Stream};
+use futures_util::{Stream, ready};
 use pin_project::pin_project;
 
 #[pin_project]
@@ -58,12 +58,8 @@ mod private {
 
 use private::FromPin;
 
-impl<
-        T: IntoIterator + Extend<T::Item>,
-        U: FromPin<C>,
-        S: Stream<Item = T>,
-        C: Stream<Item = U>,
-    > Stream for Compress<S, C>
+impl<T: IntoIterator + Extend<T::Item>, U: FromPin<C>, S: Stream<Item = T>, C: Stream<Item = U>>
+    Stream for Compress<S, C>
 {
     type Item = U::Item<T>;
 
@@ -74,7 +70,7 @@ impl<
                 match this.item.take() {
                     Some(mut item) => match credits.poll_next(cx) {
                         Poll::Ready(credit) => {
-                            break Poll::Ready(credit.map(|credit| credit.item(item)))
+                            break Poll::Ready(credit.map(|credit| credit.item(item)));
                         }
                         Poll::Pending => {
                             break loop {
@@ -84,7 +80,7 @@ impl<
                                         None => {
                                             break Poll::Ready(Some(
                                                 U::from_pin(this.credits).item(item),
-                                            ))
+                                            ));
                                         }
                                     },
                                     Poll::Pending => {
@@ -92,7 +88,7 @@ impl<
                                         break Poll::Pending;
                                     }
                                 }
-                            }
+                            };
                         }
                     },
                     None => match ready!(this.stream.as_mut().poll_next(cx)) {

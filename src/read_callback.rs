@@ -4,7 +4,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures_util::{ready, stream::FusedStream, Sink, Stream};
+use futures_util::{Sink, Stream, ready, stream::FusedStream};
 use pin_project::pin_project;
 
 use crate::callback::OnItem;

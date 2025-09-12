@@ -3,7 +3,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures_util::{ready, stream::FusedStream, Stream};
+use futures_util::{Stream, ready, stream::FusedStream};
 use pin_project::pin_project;
 
 #[pin_project]

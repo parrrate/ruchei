@@ -14,12 +14,11 @@ pub(crate) struct Completable {
 
 impl Completable {
     fn complete(self) {
-        if let Some(waker) = Arc::into_inner(self.waker) {
-            if let Ok(mut waker) = waker.try_lock() {
-                if let Some(waker) = waker.take() {
-                    waker.wake();
-                }
-            }
+        if let Some(waker) = Arc::into_inner(self.waker)
+            && let Ok(mut waker) = waker.try_lock()
+            && let Some(waker) = waker.take()
+        {
+            waker.wake();
         }
     }
 }

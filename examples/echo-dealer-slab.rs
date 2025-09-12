@@ -1,7 +1,7 @@
 //! [`ruchei::deal`] with [`ruchei::echo::buffered`]
 
 use async_net::TcpListener;
-use futures_util::{future::ready, StreamExt};
+use futures_util::{StreamExt, future::ready};
 use ruchei::{
     concurrent::ConcurrentExt, deal::slab::DealerSlabExt, echo::bufferless::EchoBufferless,
     poll_on_wake::PollOnWakeExt,

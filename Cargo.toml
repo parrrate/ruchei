@@ -7,12 +7,12 @@ members = [
 ]
 
 [workspace.package]
-edition = "2021"
+edition = "2024"
 publish = true
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/parrrate/ruchei"
 authors = ["Alisa Feistel <alisafeistel@gmail.com>"]
-rust-version = "1.79"
+rust-version = "1.88"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
