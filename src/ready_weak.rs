@@ -96,6 +96,10 @@ impl<K: Key> ConnectionWaker<K> {
         f: impl FnOnce(&mut Context<'_>) -> T,
     ) -> T {
         self.waker.register(cx.waker());
+        self.poll_detached(f)
+    }
+
+    pub(crate) fn poll_detached<T>(self: &Arc<Self>, f: impl FnOnce(&mut Context<'_>) -> T) -> T {
         f(&mut Context::from_waker(&Waker::from(self.clone())))
     }
 }
