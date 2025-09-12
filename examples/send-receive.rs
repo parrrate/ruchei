@@ -8,10 +8,15 @@ use futures_util::SinkExt;
 #[async_std::main]
 async fn main() {
     let mut stream = pin!(
-        async_tungstenite::async_std::connect_async("ws://127.0.0.1:8080/")
-            .await
-            .unwrap()
-            .0
+        async_tungstenite::client_async(
+            "ws://127.0.0.1:8080/",
+            async_net::TcpStream::connect("127.0.0.1:8080")
+                .await
+                .unwrap()
+        )
+        .await
+        .unwrap()
+        .0
     );
     stream.send("hi".into()).await.unwrap();
     loop {

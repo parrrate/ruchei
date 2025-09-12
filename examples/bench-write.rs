@@ -7,10 +7,15 @@ use futures_util::{SinkExt, StreamExt};
 
 #[async_std::main]
 async fn main() {
-    let stream = async_tungstenite::async_std::connect_async("ws://127.0.0.1:8080/")
-        .await
-        .unwrap()
-        .0;
+    let stream = async_tungstenite::client_async(
+        "ws://127.0.0.1:8080/",
+        async_net::TcpStream::connect("127.0.0.1:8080")
+            .await
+            .unwrap(),
+    )
+    .await
+    .unwrap()
+    .0;
     let (mut writer, mut reader) = stream.split();
     let task = task::spawn(async move {
         reader.next().await.unwrap().unwrap();

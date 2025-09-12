@@ -55,7 +55,7 @@ pin-project.workspace = true
 async-io = "2.3.2"
 async-net = "2.0.0"
 async-std = { version = "1.12.0", features = ["attributes"] }
-async-tungstenite = { version = "0.26.1", features = ["async-std-runtime"] }
+async-tungstenite = { version = "0.26.1" }
 futures-channel = "0.3.30"
 rand = "0.8.5"
 thiserror = "1"
