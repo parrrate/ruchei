@@ -16,6 +16,12 @@ use pin_project::pin_project;
 
 pub struct GroupGuard<K>(OwnedMutexGuard<K>);
 
+impl<K> AsRef<K> for GroupGuard<K> {
+    fn as_ref(&self) -> &K {
+        &self.0
+    }
+}
+
 pub trait Group {
     type Item;
 
