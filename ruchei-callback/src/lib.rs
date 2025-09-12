@@ -54,7 +54,6 @@ pub trait Start {
 impl<Fut, F: FnMut() -> Fut> Start for F {
     type Fut = Fut;
 
-    #[must_use]
     fn make(&mut self) -> Self::Fut {
         self()
     }

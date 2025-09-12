@@ -282,7 +282,6 @@ impl<In, E, S: Unpin + Stream<Item = Result<In, E>>, R: FusedStream<Item = S>>
     type S = S;
     type E = E;
 
-    #[must_use]
     fn multicast_bufferless_slab<F: OnClose<Self::E>>(
         self,
         callback: F,

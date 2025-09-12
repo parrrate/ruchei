@@ -207,7 +207,6 @@ impl<In, K: Key, E, S: Unpin + Stream<Item = Result<In, E>>, R: FusedStream<Item
     type S = S;
     type E = E;
 
-    #[must_use]
     fn route_keyed<F: OnClose<Self::E>>(self, callback: F) -> RouterExtending<F, Self> {
         ExtendingRoute(Extending::new(
             self,

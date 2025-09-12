@@ -213,7 +213,6 @@ impl<In, E, S: Unpin + Stream<Item = Result<In, E>>, R: FusedStream<Item = S>> R
     type S = S;
     type E = E;
 
-    #[must_use]
     fn route_slab<F: OnClose<Self::E>>(self, callback: F) -> RouterExtending<F, Self> {
         ExtendingRoute(Extending::new(
             self,

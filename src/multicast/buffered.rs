@@ -352,7 +352,6 @@ impl<
         F: OnClose<E>,
     > From<F> for Multicast<S, Out, F>
 {
-    #[must_use]
     fn from(callback: F) -> Self {
         Self::new(callback)
     }
@@ -366,7 +365,6 @@ impl<
         F: Default + OnClose<E>,
     > Default for Multicast<S, Out, F>
 {
-    #[must_use]
     fn default() -> Self {
         Self::new(F::default())
     }
@@ -395,7 +393,6 @@ impl<
         F: Default + OnClose<E>,
     > FromIterator<S> for Multicast<S, Out, F>
 {
-    #[must_use]
     fn from_iter<T: IntoIterator<Item = S>>(iter: T) -> Self {
         let mut this = Self::default();
         this.extend(iter);
@@ -430,7 +427,6 @@ impl<
 
     type E = E;
 
-    #[must_use]
     fn multicast_buffered<F: OnClose<Self::E>>(
         self,
         callback: F,

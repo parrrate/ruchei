@@ -196,7 +196,6 @@ pub trait IsolateInner<Out>: Sized {
 }
 
 impl<Out, S: Stream + Sink<Out>> IsolateInner<Out> for S {
-    #[must_use]
     fn isolate_inner(self, inner: CtxInner) -> RwInner<Self> {
         RwInner {
             stream: self,
@@ -213,7 +212,6 @@ pub trait IsolateOuter<Out>: Sized {
 }
 
 impl<Out, S: Stream + Sink<Out>> IsolateOuter<Out> for S {
-    #[must_use]
     fn isolate_outer(self, outer: CtxOuter) -> RwOuter<Self> {
         RwOuter {
             stream: self,
