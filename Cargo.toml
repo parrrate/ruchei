@@ -2,7 +2,7 @@
 members = ["internal/ruchei-sample", "ruchei-extra", "ruchei-route"]
 
 [workspace.package]
-version = "0.0.76"
+version = "0.0.77"
 edition = "2021"
 publish = true
 license = "MIT OR Apache-2.0"
@@ -43,3 +43,4 @@ async-io = "2.3.2"
 async-std = { version = "1.12.0", features = ["attributes"] }
 async-tungstenite = { version = "0.24.0", features = ["async-std-runtime"] }
 futures-channel = "0.3.30"
+rand = "0.8.5"

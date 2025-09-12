@@ -17,6 +17,7 @@ mod owned_close;
 pub mod pinned_extend;
 pub mod poll_on_wake;
 pub mod read_callback;
+pub mod route;
 pub mod rw_isolation;
 pub mod timeout_unused;
 mod wait_all;
