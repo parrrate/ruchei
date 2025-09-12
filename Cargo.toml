@@ -4,7 +4,7 @@ members = ["internal/ruchei-sample"]
 [workspace.package]
 version = "0.0.44" # ad7038ef3b571dc133c108e14e6bb0f8cdcd812d and earlier have invalid versions
 edition = "2021"
-publish = false
+publish = true
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/parrrate/ruchei"
 authors = ["Alisa Feistel <alisafeistel@gmail.com>", "Timofey Prikhodko <tim@ongoteam.yaconnect.com>"]
@@ -22,6 +22,7 @@ publish.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
+rust-version = "1.72"
 
 [dependencies]
 futures-util = { version = "0.3.30", features = ["sink"] }
