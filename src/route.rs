@@ -19,10 +19,20 @@ pub type Router<K, S, F> = keyed::Router<K, S, F>;
 pub type RouterExtending<F, R> = keyed::RouterExtending<F, R>;
 
 #[deprecated]
-pub trait RouterExt: keyed::RouterKeyedExt {
+pub trait RouterExt:
+    keyed::RouterKeyedExt<
+    K = <Self as RouterExt>::K,
+    S = <Self as RouterExt>::S,
+    E = <Self as RouterExt>::E,
+>
+{
+    type K;
+    type S;
+    type E;
+
     #[must_use]
     #[deprecated]
-    fn route<F: crate::callback::OnClose<Self::E>>(
+    fn route<F: crate::callback::OnClose<<Self as keyed::RouterKeyedExt>::E>>(
         self,
         callback: F,
     ) -> keyed::RouterExtending<F, Self>;
@@ -30,8 +40,12 @@ pub trait RouterExt: keyed::RouterKeyedExt {
 
 #[allow(deprecated)]
 impl<R: keyed::RouterKeyedExt> RouterExt for R {
+    type K = <R as keyed::RouterKeyedExt>::K;
+    type S = <R as keyed::RouterKeyedExt>::S;
+    type E = <R as keyed::RouterKeyedExt>::E;
+
     #[must_use]
-    fn route<F: crate::callback::OnClose<Self::E>>(
+    fn route<F: crate::callback::OnClose<<Self as keyed::RouterKeyedExt>::E>>(
         self,
         callback: F,
     ) -> keyed::RouterExtending<F, Self> {
