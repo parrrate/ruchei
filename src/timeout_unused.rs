@@ -20,6 +20,7 @@ use ruchei_extra::WithExtra;
 use crate::callback::Start;
 
 #[derive(Debug)]
+#[must_use]
 struct Alive;
 
 /// Handle indicating the value from [`WithTimeout`] is used.
@@ -46,28 +47,33 @@ pub struct WithTimeout<S, Fut, F> {
 
 impl<S, Fut, F> WithTimeout<S, Fut, F> {
     /// Pinned mutable reference to the inner stream.
+    #[must_use]
     pub fn as_pin_mut(self: Pin<&mut Self>) -> Pin<&mut S> {
         self.project().stream
     }
 
     /// Shared reference to the timer future factory. **Does not start the timer.**
+    #[must_use]
     pub fn start(&self) -> &F {
         &self.start
     }
 
     /// Mutable reference to the timer future factory. **Does not start the timer.**
+    #[must_use]
     pub fn start_mut(&mut self) -> &mut F {
         &mut self.start
     }
 }
 
 impl<S, Fut, F> AsRef<S> for WithTimeout<S, Fut, F> {
+    #[must_use]
     fn as_ref(&self) -> &S {
         &self.stream
     }
 }
 
 impl<S, Fut, F> AsMut<S> for WithTimeout<S, Fut, F> {
+    #[must_use]
     fn as_mut(&mut self) -> &mut S {
         &mut self.stream
     }
@@ -115,6 +121,7 @@ impl<S: FusedStream, Fut: Future<Output = ()>, F: Start<Fut = Fut>> FusedStream
 }
 
 impl<S, Fut, F> WithTimeout<S, Fut, F> {
+    #[must_use]
     fn new(stream: S, start: F) -> Self {
         let mutex = Arc::new(Mutex::new(Alive));
         let locking = mutex.clone().lock_owned();
@@ -132,6 +139,7 @@ impl<S, Fut, F> WithTimeout<S, Fut, F> {
 
 /// Extension trait combinator for closing [`Stream`]s on timeout.
 pub trait TimeoutUnused: Sized {
+    #[must_use]
     fn timeout_unused<Fut: Future<Output = ()>, F: Start<Fut = Fut>>(
         self,
         start: F,
@@ -139,6 +147,7 @@ pub trait TimeoutUnused: Sized {
 }
 
 impl<S: Stream> TimeoutUnused for S {
+    #[must_use]
     fn timeout_unused<Fut: Future<Output = ()>, F: Start<Fut = Fut>>(
         self,
         start: F,
@@ -150,6 +159,7 @@ impl<S: Stream> TimeoutUnused for S {
 impl<S, Fut: Future<Output = ()>, F: Default + Start<Fut = Fut>> From<S>
     for WithTimeout<S, Fut, F>
 {
+    #[must_use]
     fn from(stream: S) -> Self {
         Self::new(stream, Default::default())
     }
@@ -158,6 +168,7 @@ impl<S, Fut: Future<Output = ()>, F: Default + Start<Fut = Fut>> From<S>
 impl<S: Default, Fut: Future<Output = ()>, F: Default + Start<Fut = Fut>> Default
     for WithTimeout<S, Fut, F>
 {
+    #[must_use]
     fn default() -> Self {
         S::default().into()
     }
