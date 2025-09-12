@@ -188,20 +188,14 @@ impl<
         R: FusedStream<Item = S>,
     > Multicast<S, Out, F, R>
 {
-    fn poll_next_infallible(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<In>> {
-        let mut this = self.project();
-        if !this.streams.is_terminated() {
-            while let Poll::Ready(Some(stream)) = this.streams.as_mut().poll_next(cx) {
-                this.select.push(Unicast {
-                    stream,
-                    list: this.list_mutex.clone().lock_owned(),
-                    state: Default::default(),
-                    callback: this.callback.clone(),
-                });
+    fn poll_next_infallible(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<In>> {
+        if !self.streams.is_terminated() {
+            while let Poll::Ready(Some(stream)) = self.as_mut().project().streams.poll_next(cx) {
+                self.as_mut().push(stream);
             }
         }
-        match this.select.poll_next(cx) {
-            Poll::Ready(None) if !this.streams.is_terminated() => Poll::Pending,
+        match self.as_mut().project().select.poll_next(cx) {
+            Poll::Ready(None) if !self.streams.is_terminated() => Poll::Pending,
             poll => poll,
         }
     }
@@ -317,6 +311,16 @@ impl<
             list_mutex,
             callback,
         }
+    }
+
+    pub fn push(self: Pin<&mut Self>, stream: S) {
+        let mut this = self.project();
+        this.select.push(Unicast {
+            stream,
+            list: this.list_mutex.clone().lock_owned(),
+            state: Default::default(),
+            callback: this.callback.clone(),
+        });
     }
 }
 
