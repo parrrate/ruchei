@@ -19,16 +19,18 @@ impl<T> Default for CloneMultiTrie<T> {
 }
 
 impl<T: Clone + Ord> CloneMultiTrie<T> {
-    pub fn add(&mut self, collection: T, key: &[u8]) {
-        if !self.collections.contains_key(&collection) {
+    pub fn add(&mut self, collection: &T, key: &[u8]) {
+        if !self.collections.contains_key(collection) {
             self.collections.insert(collection.clone(), Slab::new());
         }
         if self.keys.get(key).is_none() {
             self.keys.insert(key, BTreeMap::new());
         }
-        let slab = self.collections.get_mut(&collection).expect("just inserted");
+        let slab = self.collections.get_mut(collection).expect("just inserted");
         let (id, map) = self.keys.get_mut(key).expect("just inserted");
-        map.entry(collection).or_insert_with(|| slab.insert(id));
+        if !map.contains_key(collection) {
+            map.insert(collection.clone(), slab.insert(id));
+        }
     }
 
     pub fn remove(&mut self, collection: &T, key: &[u8]) {
