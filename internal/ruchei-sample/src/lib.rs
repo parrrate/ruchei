@@ -1,4 +1,4 @@
-//! Utility for debugging `ruchei`
+//! Ad hoc utility for debugging `ruchei`. Not thread safe
 
 use std::{
     pin::Pin,
@@ -22,12 +22,14 @@ impl Drop for Reset {
     }
 }
 
+/// Create an RAII guard for enabling sampling, resetting to previous value on drop
 pub fn enable() -> Reset {
     let value = sample();
     set(true);
     Reset(value)
 }
 
+/// Create an RAII guard for disabling sampling, resetting to previous value on drop
 pub fn disable() -> Reset {
     let value = sample();
     set(false);
@@ -72,6 +74,7 @@ pub fn start() {
     thread::spawn(run);
 }
 
+#[doc(hidden)]
 #[pin_project]
 pub struct Exclude<S>(#[pin] pub S);
 
