@@ -54,10 +54,11 @@ impl<Node> Nodes<Node> {
         }
     }
 
-    pub(crate) fn pop_at(&mut self, id: NodeId) {
-        let (ctr, _) = self.slab.remove(id.location);
+    pub(crate) fn pop_at(&mut self, id: NodeId) -> Node {
+        let (ctr, node) = self.slab.remove(id.location);
         assert_eq!(ctr, id.ctr);
         self.decrement_roots();
+        node
     }
 
     pub(crate) fn increment_roots(&mut self) {
