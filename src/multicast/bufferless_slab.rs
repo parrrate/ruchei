@@ -4,7 +4,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures_util::{Sink, SinkExt, Stream, StreamExt, stream::FusedStream};
+use futures_util::{Sink, SinkExt, Stream, TryStream, TryStreamExt, stream::FusedStream};
 use pin_project::pin_project;
 use ruchei_callback::OnClose;
 use ruchei_collections::{as_linked_slab::AsLinkedSlab, linked_slab::LinkedSlab};
@@ -76,7 +76,7 @@ impl<S, F> Multicast<S, F> {
     }
 }
 
-impl<In, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stream for Multicast<S, F> {
+impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, F: OnClose<E>> Stream for Multicast<S, F> {
     type Item = Result<In, Infallible>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -92,7 +92,7 @@ impl<In, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stream for M
             if let Some(connection) = this.connections.get_mut(key)
                 && let Poll::Ready(o) = connection
                     .next
-                    .poll(cx, |cx| connection.stream.poll_next_unpin(cx))
+                    .poll(cx, |cx| connection.stream.try_poll_next_unpin(cx))
             {
                 match o {
                     Some(Ok(item)) => {
@@ -117,7 +117,7 @@ impl<In, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stream for M
     }
 }
 
-impl<In, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> FusedStream
+impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, F: OnClose<E>> FusedStream
     for Multicast<S, F>
 {
     fn is_terminated(&self) -> bool {
@@ -254,7 +254,7 @@ pub trait MulticastBufferlessSlab: Sized {
     ) -> MulticastExtending<F, Self>;
 }
 
-impl<In, E, S: Unpin + Stream<Item = Result<In, E>>, R: FusedStream<Item = S>>
+impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = S>>
     MulticastBufferlessSlab for R
 {
     type S = S;
