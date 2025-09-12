@@ -1,3 +1,19 @@
+//! Prevent polling until the wake up.
+//! 
+//! 
+//! ```rust
+//! # use async_std::net::TcpListener;
+//! use ruchei::poll_on_wake::PollOnWakeExt;
+//! 
+//! # async fn __() {
+//! TcpListener::bind("127.0.0.1:8080")
+//!     .await
+//!     .unwrap()
+//!     .incoming() // tends to be CPU-intensive on excessive poll
+//!     .poll_on_wake();
+//! # }
+//! ```
+
 use std::{
     pin::Pin,
     sync::{
@@ -15,6 +31,9 @@ use futures_util::{
 };
 use pin_project::pin_project;
 
+/// Adapter to reduce polling of [`Future`]s, [`Stream`]s and [`Sink`]s.
+///
+/// See [module-level docs](`crate::poll_on_wake`) for examples.
 #[derive(Debug, Default)]
 #[pin_project]
 pub struct PollOnWake<S> {
@@ -154,6 +173,9 @@ impl<S> PollOnWake<S> {
     }
 }
 
+/// Extension trait combinator to reduce polling of [`Future`]s, [`Stream`]s and [`Sink`]s.
+///
+/// See [module-level docs](`crate::poll_on_wake`) for examples.
 pub trait PollOnWakeExt: Sized {
     fn poll_on_wake(self) -> PollOnWake<Self>;
 }
