@@ -129,6 +129,49 @@ impl<T> Nodes<T> {
         Some(id)
     }
 
+    fn insert(&mut self, mut id: NodeId, mut key: &[u8], value: T) -> (NodeId, Option<T>) {
+        let value = loop {
+            let Some((first, rest)) = key.split_first() else {
+                break self[id].value.replace(value);
+            };
+            let Some((prefix, sub_id)) = self[id].children.get_mut(first) else {
+                id = self.add_value(id, *first, rest.into(), value);
+                break None;
+            };
+            let sub_id = *sub_id;
+            if let Some(sub_key) = rest.strip_prefix(prefix.as_slice()) {
+                assert!(sub_key.len() < key.len());
+                id = sub_id;
+                key = sub_key;
+                continue;
+            }
+            id = if let Some(old_sub) = prefix.strip_prefix(rest) {
+                assert!(!old_sub.is_empty());
+                let (old_first, old_rest) = old_sub.split_first().expect("not an empty string");
+                let old_first = *old_first;
+                let old_rest = old_rest.into();
+                self.disown(sub_id);
+                let middle = self.add_value(id, *first, rest.into(), value);
+                self.add_child(middle, old_first, old_rest, sub_id);
+                middle
+            } else {
+                let (common, new, old) = common_prefix(rest, prefix);
+                assert!(!new.is_empty());
+                assert!(!old.is_empty());
+                let (new_first, new_rest) = new.split_first().expect("not an empty string");
+                let (old_first, old_rest) = old.split_first().expect("not an empty string");
+                let old_first = *old_first;
+                let old_rest = old_rest.into();
+                self.disown(sub_id);
+                let common =
+                    self.add_grandchild(id, *first, common.into(), old_first, old_rest, sub_id);
+                self.add_value(common, *new_first, new_rest.into(), value)
+            };
+            break None;
+        };
+        (id, value)
+    }
+
     fn remove(&mut self, mut id: NodeId, key: &[u8]) -> Option<T> {
         id = self.locate(id, key)?;
         let value = self[id].value.take()?;
@@ -219,70 +262,6 @@ impl<T> Node<T> {
     }
 }
 
-struct NodeMut<'a, T> {
-    nodes: &'a mut Nodes<T>,
-    id: NodeId,
-}
-
-impl<'a, T> NodeMut<'a, T> {
-    fn as_mut(&mut self) -> &mut Node<T> {
-        &mut self.nodes[self.id]
-    }
-
-    fn into_mut(self) -> &'a mut Node<T> {
-        &mut self.nodes[self.id]
-    }
-
-    fn insert(mut self, mut key: &[u8], value: T) -> (NodeId, Option<T>) {
-        loop {
-            let Some((first, rest)) = key.split_first() else {
-                break (self.id, self.into_mut().value.replace(value));
-            };
-            let Some((prefix, id)) = self.as_mut().children.get_mut(first) else {
-                let id = self.nodes.add_value(self.id, *first, rest.into(), value);
-                break (id, None);
-            };
-            let id = *id;
-            if let Some(sub_key) = rest.strip_prefix(prefix.as_slice()) {
-                assert!(sub_key.len() < key.len());
-                self.id = id;
-                key = sub_key;
-                continue;
-            }
-            let id = if let Some(old_sub) = prefix.strip_prefix(rest) {
-                assert!(!old_sub.is_empty());
-                let (old_first, old_rest) = old_sub.split_first().expect("not an empty string");
-                let old_first = *old_first;
-                let old_rest = old_rest.into();
-                self.nodes.disown(id);
-                let middle = self.nodes.add_value(self.id, *first, rest.into(), value);
-                self.nodes.add_child(middle, old_first, old_rest, id);
-                middle
-            } else {
-                let (common, new, old) = common_prefix(rest, prefix);
-                assert!(!new.is_empty());
-                assert!(!old.is_empty());
-                let (new_first, new_rest) = new.split_first().expect("not an empty string");
-                let (old_first, old_rest) = old.split_first().expect("not an empty string");
-                let old_first = *old_first;
-                let old_rest = old_rest.into();
-                self.nodes.disown(id);
-                let common = self.nodes.add_grandchild(
-                    self.id,
-                    *first,
-                    common.into(),
-                    old_first,
-                    old_rest,
-                    id,
-                );
-                self.nodes
-                    .add_value(common, *new_first, new_rest.into(), value)
-            };
-            break (id, None);
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct Trie<T> {
     nodes: Nodes<T>,
@@ -314,11 +293,7 @@ impl<T> Trie<T> {
     }
 
     pub fn insert(&mut self, key: &[u8], value: T) -> Option<T> {
-        let (_, value) = NodeMut {
-            nodes: &mut self.nodes,
-            id: self.root,
-        }
-        .insert(key, value);
+        let (_, value) = self.nodes.insert(self.root, key, value);
         assert_eq!(self.nodes.roots, 1);
         value
     }
