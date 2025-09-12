@@ -11,6 +11,26 @@ pub(crate) struct LinkedHashSet<T> {
     map: LinkedHashMap<T, ()>,
 }
 
+pub(crate) struct IntoIter<T>(linked_hash_map::IntoIter<T, ()>);
+
+impl<T> Iterator for IntoIter<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().map(|(k, ())| k)
+    }
+}
+
+impl<T: Hash + Eq> IntoIterator for LinkedHashSet<T> {
+    type Item = T;
+
+    type IntoIter = IntoIter<T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        IntoIter(self.map.into_iter())
+    }
+}
+
 impl<T: Hash + Eq> Default for LinkedHashSet<T> {
     fn default() -> Self {
         Self::new()
