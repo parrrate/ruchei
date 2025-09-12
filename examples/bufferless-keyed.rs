@@ -1,4 +1,4 @@
-//! [`ruchei::multicast::bufferless`] with [`ruchei::echo::buffered`]
+//! [`ruchei::multicast::bufferless_keyed`] with [`ruchei::echo::buffered`]
 
 use async_net::TcpListener;
 use futures_util::StreamExt;
