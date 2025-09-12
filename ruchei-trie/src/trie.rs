@@ -17,7 +17,7 @@ impl<T> Nodes<T> {
         self.push(Node::new_value(value))
     }
 
-    fn connect(&mut self, parent: NodeId, first: u8, child: NodeId) {
+    fn adopt(&mut self, parent: NodeId, first: u8, child: NodeId) {
         let child = &mut self[child];
         assert!(child.parent.is_none());
         child.parent = Some((first, parent));
@@ -26,13 +26,13 @@ impl<T> Nodes<T> {
 
     fn push_child(&mut self, first: u8, rest: Vec<u8>, child: NodeId) -> NodeId {
         let parent = self.push(Node::new_child(first, rest, child));
-        self.connect(parent, first, child);
+        self.adopt(parent, first, child);
         parent
     }
 
     fn add_child(&mut self, parent: NodeId, first: u8, rest: Vec<u8>, child: NodeId) {
         self[parent].children.insert(first, (rest, child));
-        self.connect(parent, first, child);
+        self.adopt(parent, first, child);
     }
 
     fn add_value(&mut self, parent: NodeId, first: u8, rest: Vec<u8>, value: T) -> NodeId {
