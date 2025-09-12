@@ -54,4 +54,8 @@ impl<T: Clone + Ord> MultiTrie<T> {
             }
         }
     }
+
+    pub fn is_empty(&self, collection: &T) -> bool {
+        !self.map.contains_key(collection)
+    }
 }
