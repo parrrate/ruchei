@@ -132,6 +132,18 @@ impl<T> Nodes<T> {
         assert_eq!(child, c);
         (parent, first, prefix)
     }
+
+    fn locate(&self, mut id: NodeId, mut key: &[u8]) -> Option<NodeId> {
+        while let Some((first, rest)) = key.split_first() {
+            let (prefix, sub_id) = self.get(id).children.get(first)?;
+            let sub_key = rest.strip_prefix(prefix.as_slice())?;
+            assert!(sub_key.len() < key.len());
+            id = *sub_id;
+            key = sub_key;
+        }
+        assert!(key.is_empty());
+        Some(id)
+    }
 }
 
 /// Has `value` and/or one of its descendants has `value`
@@ -183,31 +195,6 @@ impl<T> Node<T> {
     }
 }
 
-#[derive(Clone, Copy)]
-struct NodeRef<'a, T> {
-    nodes: &'a Nodes<T>,
-    id: NodeId,
-}
-
-impl<'a, T> NodeRef<'a, T> {
-    fn as_ref(&self) -> &'a Node<T> {
-        self.nodes.get(self.id)
-    }
-
-    fn get(mut self, mut key: &[u8]) -> Option<&'a T> {
-        loop {
-            let Some((first, rest)) = key.split_first() else {
-                break self.as_ref().value.as_ref();
-            };
-            let (prefix, id) = self.as_ref().children.get(first)?;
-            let sub_key = rest.strip_prefix(prefix.as_slice())?;
-            assert!(sub_key.len() < key.len());
-            key = sub_key;
-            self.id = *id;
-        }
-    }
-}
-
 struct NodeMut<'a, T> {
     nodes: &'a mut Nodes<T>,
     id: NodeId,
@@ -220,19 +207,6 @@ impl<'a, T> NodeMut<'a, T> {
 
     fn into_mut(self) -> &'a mut Node<T> {
         self.nodes.get_mut(self.id)
-    }
-
-    fn get_mut(mut self, mut key: &[u8]) -> Option<&'a mut T> {
-        loop {
-            let Some((first, rest)) = key.split_first() else {
-                break self.into_mut().value.as_mut();
-            };
-            let (prefix, id) = self.as_mut().children.get(first)?;
-            let sub_key = rest.strip_prefix(prefix.as_slice())?;
-            assert!(sub_key.len() < key.len());
-            self.id = *id;
-            key = sub_key;
-        }
     }
 
     fn insert(mut self, mut key: &[u8], value: T) -> Option<T> {
@@ -337,19 +311,17 @@ impl<T> Default for Trie<T> {
 
 impl<T> Trie<T> {
     pub fn get<'a>(&'a self, key: &[u8]) -> Option<&'a T> {
-        NodeRef {
-            nodes: &self.nodes,
-            id: self.root,
-        }
-        .get(key)
+        self.nodes
+            .get(self.nodes.locate(self.root, key)?)
+            .value
+            .as_ref()
     }
 
     pub fn get_mut<'a>(&'a mut self, key: &[u8]) -> Option<&'a mut T> {
-        NodeMut {
-            nodes: &mut self.nodes,
-            id: self.root,
-        }
-        .get_mut(key)
+        self.nodes
+            .get_mut(self.nodes.locate(self.root, key)?)
+            .value
+            .as_mut()
     }
 
     pub fn insert(&mut self, key: &[u8], value: T) -> Option<T> {
