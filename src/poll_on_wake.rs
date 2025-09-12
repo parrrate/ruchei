@@ -20,14 +20,14 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
-    task::{Context, Poll},
+    task::{Context, Poll, Wake},
 };
 
 use futures_util::{
     future::{FusedFuture, Future},
     sink::Sink,
     stream::{FusedStream, Stream},
-    task::{waker, ArcWake, AtomicWaker},
+    task::AtomicWaker,
 };
 use pin_project::pin_project;
 
@@ -61,10 +61,14 @@ impl Default for SetFlag {
     }
 }
 
-impl ArcWake for SetFlag {
-    fn wake_by_ref(arc_self: &Arc<Self>) {
-        arc_self.flag.store(true, Ordering::Release);
-        arc_self.waker.wake()
+impl Wake for SetFlag {
+    fn wake(self: Arc<Self>) {
+        self.wake_by_ref()
+    }
+
+    fn wake_by_ref(self: &Arc<Self>) {
+        self.flag.store(true, Ordering::Release);
+        self.waker.wake()
     }
 }
 
@@ -76,7 +80,7 @@ impl SetFlag {
     ) -> Poll<T> {
         self.waker.register(cx.waker());
         if self.flag.swap(false, Ordering::AcqRel) {
-            match f(&mut Context::from_waker(&waker(self.clone()))) {
+            match f(&mut Context::from_waker(&self.clone().into())) {
                 poll @ Poll::Ready(_) => {
                     self.flag.store(true, Ordering::Release);
                     poll

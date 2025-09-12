@@ -4,14 +4,14 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
-    task::{Context, Poll},
+    task::{Context, Poll, Wake},
 };
 
 use futures_util::{
     lock::{Mutex, OwnedMutexGuard, OwnedMutexLockFuture},
     ready,
     stream::FusedStream,
-    task::{waker, ArcWake, AtomicWaker},
+    task::AtomicWaker,
     Future, Sink, Stream,
 };
 use pin_project::pin_project;
@@ -22,10 +22,14 @@ struct MutexWaker {
     waker: AtomicWaker,
 }
 
-impl ArcWake for MutexWaker {
-    fn wake_by_ref(arc_self: &Arc<Self>) {
-        if !arc_self.pending.load(Ordering::Acquire) {
-            arc_self.waker.wake();
+impl Wake for MutexWaker {
+    fn wake(self: Arc<Self>) {
+        self.wake_by_ref()
+    }
+
+    fn wake_by_ref(self: &Arc<Self>) {
+        if !self.pending.load(Ordering::Acquire) {
+            self.waker.wake();
         }
     }
 }
@@ -53,7 +57,7 @@ impl<S: Stream> Stream for RwInner<S> {
         ready!(this
             .read_future
             .as_mut()
-            .poll(&mut Context::from_waker(&waker(this.waker.clone()))));
+            .poll(&mut Context::from_waker(&this.waker.clone().into())));
         *this.read_future = this.read_mutex.clone().lock_owned();
         let poll = this.stream.poll_next(cx);
         this.waker
