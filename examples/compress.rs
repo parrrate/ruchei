@@ -12,7 +12,6 @@ async fn main() {
     inner
         .map(|_| vec![0])
         .compress(credits.map(|_| Credit))
-        .map(|(vec, _)| vec)
         .for_each(|vec| println!("{vec:?}"))
         .await;
 }

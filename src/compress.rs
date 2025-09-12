@@ -23,19 +23,35 @@ mod private {
     use super::{Credit, Credited, Pin};
 
     pub trait FromPin<C> {
+        type Item<T>;
+
         fn from_pin(pinned: Pin<&mut Option<C>>) -> Self;
+
+        fn item<T>(self, item: T) -> Self::Item<T>;
     }
 
     impl<C> FromPin<C> for Credit {
+        type Item<T> = T;
+
         fn from_pin(pinned: Pin<&mut Option<C>>) -> Self {
             let _ = pinned;
             Self
         }
+
+        fn item<T>(self, item: T) -> Self::Item<T> {
+            item
+        }
     }
 
     impl<C: Unpin> FromPin<C> for Credited<C> {
+        type Item<T> = (T, C);
+
         fn from_pin(mut pinned: Pin<&mut Option<C>>) -> Self {
             Self(pinned.take().unwrap())
+        }
+
+        fn item<T>(self, item: T) -> Self::Item<T> {
+            (item, self.0)
         }
     }
 }
@@ -49,7 +65,7 @@ impl<
         C: Stream<Item = U>,
     > Stream for Compress<S, C>
 {
-    type Item = (T, U);
+    type Item = U::Item<T>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
@@ -58,7 +74,7 @@ impl<
                 match this.item.take() {
                     Some(mut item) => match credits.poll_next(cx) {
                         Poll::Ready(credit) => {
-                            break Poll::Ready(credit.map(|credit| (item, credit)))
+                            break Poll::Ready(credit.map(|credit| credit.item(item)))
                         }
                         Poll::Pending => {
                             break loop {
@@ -66,10 +82,9 @@ impl<
                                     Poll::Ready(next) => match next {
                                         Some(next) => item.extend(next),
                                         None => {
-                                            break Poll::Ready(Some((
-                                                item,
-                                                U::from_pin(this.credits),
-                                            )))
+                                            break Poll::Ready(Some(
+                                                U::from_pin(this.credits).item(item),
+                                            ))
                                         }
                                     },
                                     Poll::Pending => {
