@@ -6,8 +6,16 @@ use std::{
 use futures_util::{stream::FusedStream, Sink, Stream};
 use pin_project::pin_project;
 
+pub trait AutoPinnedExtend {}
+
 pub trait PinnedExtend<A> {
     fn extend_pinned<T: IntoIterator<Item = A>>(self: Pin<&mut Self>, iter: T);
+}
+
+impl<A, S: AutoPinnedExtend + Extend<A> + Unpin> PinnedExtend<A> for S {
+    fn extend_pinned<T: IntoIterator<Item = A>>(self: Pin<&mut Self>, iter: T) {
+        self.get_mut().extend(iter)
+    }
 }
 
 #[pin_project]
@@ -16,6 +24,12 @@ pub struct Extending<S, R> {
     incoming: R,
     #[pin]
     inner: S,
+}
+
+impl<S, R> Extending<S, R> {
+    pub fn new(incoming: R, inner: S) -> Self {
+        Self { incoming, inner }
+    }
 }
 
 struct PollIter<'a, 'cx, R> {
@@ -77,5 +91,15 @@ impl<Item, S: Sink<Item>, R> Sink<Item> for Extending<S, R> {
 
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.project().inner.poll_close(cx)
+    }
+}
+
+pub trait ExteningExt: Sized {
+    fn extending<S>(self, inner: S) -> Extending<S, Self>;
+}
+
+impl<R> ExteningExt for R {
+    fn extending<S>(self, inner: S) -> Extending<S, Self> {
+        Extending::new(self, inner)
     }
 }
