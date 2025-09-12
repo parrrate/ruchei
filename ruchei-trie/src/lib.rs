@@ -185,20 +185,20 @@ impl<T> Nodes<T> {
     fn remove_at(&mut self, mut id: NodeId) -> Option<T> {
         let value = self[id].value.take()?;
         while self[id].is_collapsible() {
-            if let Some(child) = self[id].only_child() {
+            let parent = if let Some(child) = self[id].only_child() {
                 let (middle, ifirst, mut irest) = self.disown(child);
                 assert_eq!(middle, id);
                 let (parent, ofirst, mut orest) = self.disown(id);
                 orest.push(ifirst);
                 orest.append(&mut irest);
                 self.add_child(parent, ofirst, orest, child);
-                self.pop(id);
-                id = parent;
+                parent
             } else {
                 let (parent, _, _) = self.disown(id);
-                self.pop(id);
-                id = parent;
-            }
+                parent
+            };
+            self.pop(id);
+            id = parent;
         }
         Some(value)
     }
