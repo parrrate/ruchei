@@ -12,21 +12,30 @@ use crate::collections::linked_slab::LinkedSlab;
 
 #[must_use]
 #[pin_project]
-pub(crate) struct Ready(UnboundedSender<usize>, #[pin] UnboundedReceiver<usize>);
+pub(crate) struct Ready(
+    UnboundedSender<usize>,
+    #[pin] UnboundedReceiver<usize>,
+    AtomicWaker,
+);
 
 impl Default for Ready {
     fn default() -> Self {
         let (sender, receiver) = unbounded();
-        Self(sender, receiver)
+        Self(sender, receiver, Default::default())
     }
 }
 
 #[must_use]
-pub(crate) struct ReadyWeak(UnboundedSender<usize>);
+#[derive(Default)]
+pub(crate) struct ReadyWeak(Option<UnboundedSender<usize>>);
 
 impl Ready {
     pub(crate) fn downgrade(&self) -> ReadyWeak {
-        ReadyWeak(self.0.clone())
+        ReadyWeak(Some(self.0.clone()))
+    }
+
+    pub(crate) fn waker(&self) -> &AtomicWaker {
+        &self.2
     }
 }
 
@@ -46,7 +55,9 @@ impl Ready {
 
 impl ReadyWeak {
     pub(crate) fn insert(&self, key: usize) {
-        let _ = self.0.unbounded_send(key);
+        if let Some(sender) = self.0.as_ref() {
+            let _ = sender.unbounded_send(key);
+        }
     }
 }
 

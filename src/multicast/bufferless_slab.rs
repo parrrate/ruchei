@@ -59,9 +59,6 @@ impl<S, F> Multicast<S, F> {
         let ready = this.ready.downgrade();
         let flush = this.flush.downgrade();
         let close = this.close.downgrade();
-        next.insert(key);
-        ready.insert(key);
-        close.insert(key);
         let connection = Connection {
             stream,
             next: ConnectionWaker::new(key, next),
@@ -70,6 +67,12 @@ impl<S, F> Multicast<S, F> {
             close: ConnectionWaker::new(key, close),
         };
         assert_eq!(this.connections.insert(connection), key);
+        this.connections.link_push_back::<OP_WAKE_NEXT>(key);
+        this.connections.link_push_back::<OP_WAKE_READY>(key);
+        this.connections.link_push_back::<OP_WAKE_CLOSE>(key);
+        this.next.waker().wake();
+        this.ready.waker().wake();
+        this.close.waker().wake();
     }
 }
 
@@ -78,6 +81,7 @@ impl<In, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stream for M
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.as_mut().project();
+        this.next.waker().register(cx.waker());
         while let Some(key) = this
             .next
             .as_mut()
@@ -128,6 +132,7 @@ impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> Sink<Out> fo
 
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let mut this = self.as_mut().project();
+        this.ready.waker().register(cx.waker());
         while let Some(key) = this
             .ready
             .as_mut()
@@ -174,6 +179,7 @@ impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> Sink<Out> fo
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let mut this = self.as_mut().project();
+        this.flush.waker().register(cx.waker());
         this.flush.downgrade().extend(
             this.connections
                 .link_pops::<OP_IS_STARTED, _, _>(|key, connection| {
@@ -216,6 +222,7 @@ impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> Sink<Out> fo
 
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let mut this = self.as_mut().project();
+        this.close.waker().register(cx.waker());
         while let Some(key) = this
             .close
             .as_mut()
