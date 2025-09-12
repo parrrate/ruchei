@@ -8,6 +8,7 @@ pub mod fanout_bufferless;
 pub mod fanout_replay;
 pub mod group_by_key;
 mod owned_close;
+pub mod pinned_extend;
 pub mod poll_on_wake;
 pub mod read_callback;
 pub mod rw_isolation;
