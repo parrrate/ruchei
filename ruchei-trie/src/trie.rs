@@ -291,19 +291,21 @@ impl<T> Trie<T> {
         }
     }
 
-    pub fn prefix_of_mut<'a, 'b>(&'a mut self, suffix: &'b [u8]) -> PrefixOfMut<'a, 'b, T> {
-        PrefixOfMut {
-            nodes: &mut self.nodes,
-            id: Some(self.root),
-            suffix,
-        }
-    }
-
     pub fn collect_key(&self, id: NodeId) -> Option<Vec<u8>> {
         if self.nodes.contains(id) {
             Some(self.nodes.collect_key(id))
         } else {
             None
+        }
+    }
+}
+
+impl<T: ?Sized> Trie<Box<T>> {
+    pub fn prefix_of_mut<'a, 'b>(&'a mut self, suffix: &'b [u8]) -> PrefixOfMut<'a, 'b, T> {
+        PrefixOfMut {
+            nodes: &mut self.nodes,
+            id: Some(self.root),
+            suffix,
         }
     }
 }
@@ -335,14 +337,16 @@ impl<'a, 'b, T> Iterator for PrefixOf<'a, 'b, T> {
     }
 }
 
-pub struct PrefixOfMut<'a, 'b, T> {
-    nodes: &'a mut Nodes<T>,
+pub struct PrefixOfMut<'a, 'b, T: ?Sized> {
+    nodes: &'a mut Nodes<Box<T>>,
     id: Option<NodeId>,
     suffix: &'b [u8],
 }
 
-impl<'a, 'b, T> PrefixOfMut<'a, 'b, T> {
-    pub fn borrow_next(&mut self) -> Option<&mut T> {
+impl<'a, 'b, T: ?Sized> Iterator for PrefixOfMut<'a, 'b, T> {
+    type Item = &'a mut T;
+
+    fn next(&mut self) -> Option<Self::Item> {
         loop {
             let id = self.id.take()?;
             if let Some((first, rest)) = self.suffix.split_first()
@@ -354,7 +358,11 @@ impl<'a, 'b, T> PrefixOfMut<'a, 'b, T> {
                 self.suffix = suffix;
             }
             if self.nodes[id].value.is_some() {
-                break self.nodes[id].value.as_mut();
+                let value = self.nodes[id]
+                    .value
+                    .as_deref_mut()
+                    .map(|value| std::ptr::from_mut(value))?;
+                break Some(unsafe { value.as_mut()? });
             }
         }
     }
@@ -441,4 +449,19 @@ fn insert_remove_ab() {
     assert!(trie.get(b"+a").is_none());
     assert!(trie.get(b"+b").is_none());
     assert_eq!(trie.nodes.len(), 1);
+}
+
+#[test]
+fn prefix_of_mut() {
+    let mut trie = Trie::<Box<i32>>::default();
+    trie.insert(b"a", Box::new(123));
+    trie.insert(b"ab", Box::new(456));
+    trie.insert(b"abc", Box::new(789));
+    trie.prefix_of_mut(b"abc")
+        .collect::<Vec<_>>()
+        .into_iter()
+        .for_each(|value| *value = 426);
+    assert_eq!(*trie.get(b"a").unwrap().1, Box::new(426));
+    assert_eq!(*trie.get(b"ab").unwrap().1, Box::new(426));
+    assert_eq!(*trie.get(b"abc").unwrap().1, Box::new(426));
 }
