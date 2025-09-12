@@ -2,9 +2,9 @@
 members = [
     "internal/ruchei-sample",
     "ruchei-callback",
+    "ruchei-collections",
     "ruchei-extra",
     "ruchei-route",
-    "ruchei-trie",
 ]
 
 [workspace.package]
