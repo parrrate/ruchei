@@ -13,6 +13,7 @@ async fn main() {
         .incoming()
         .filter_map(|r| async { r.ok() })
         .map(async_tungstenite::accept_async)
+        .fuse()
         .concurrent()
         .filter_map(|r| async { r.ok() })
         .multicast_buffered(|_| {})
