@@ -94,7 +94,7 @@ struct PollIter<'a, 'cx, R> {
     incoming: Pin<&'a mut R>,
 }
 
-impl<'a, 'cx, R: Stream> Iterator for PollIter<'a, 'cx, R> {
+impl<R: Stream> Iterator for PollIter<'_, '_, R> {
     type Item = R::Item;
 
     fn next(&mut self) -> Option<Self::Item> {

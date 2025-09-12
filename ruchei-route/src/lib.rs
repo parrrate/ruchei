@@ -243,10 +243,10 @@ pub struct WithRoute<'a, T: ?Sized, Route> {
     route: Route,
 }
 
-impl<'a, T: ?Sized, Route> Unpin for WithRoute<'a, T, Route> {}
+impl<T: ?Sized, Route> Unpin for WithRoute<'_, T, Route> {}
 
-impl<'a, Route: Clone, Msg, E, T: ?Sized + RouteSink<Route, Msg, Error = E>> Sink<Msg>
-    for WithRoute<'a, T, Route>
+impl<Route: Clone, Msg, E, T: ?Sized + RouteSink<Route, Msg, Error = E>> Sink<Msg>
+    for WithRoute<'_, T, Route>
 {
     type Error = E;
 

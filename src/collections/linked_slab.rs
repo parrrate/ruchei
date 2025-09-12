@@ -246,8 +246,8 @@ impl<T, const N: usize> LinkedSlab<T, N> {
 
 pub(crate) struct Pops<'a, T, F, const N: usize, const M: usize>(&'a mut LinkedSlab<T, N>, F);
 
-impl<'a, T, U, F: FnMut(usize, &mut LinkedSlab<T, N>) -> U, const N: usize, const M: usize> Iterator
-    for Pops<'a, T, F, N, M>
+impl<T, U, F: FnMut(usize, &mut LinkedSlab<T, N>) -> U, const N: usize, const M: usize> Iterator
+    for Pops<'_, T, F, N, M>
 {
     type Item = U;
 
