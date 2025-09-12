@@ -3,7 +3,7 @@ use futures_util::StreamExt;
 use ruchei::{
     concurrent::ConcurrentExt,
     echo::bufferless::EchoBufferless,
-    fanout_bufferless::MulticastBufferless,
+    fanout::bufferless::MulticastBufferless,
     poll_on_wake::PollOnWakeExt,
     rw_isolation::{isolation, IsolateInner, IsolateOuter},
 };
