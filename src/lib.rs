@@ -7,4 +7,5 @@ pub mod fanout_replay;
 mod key_drop;
 mod owned_close;
 pub mod read_callback;
+pub mod rw_isolation;
 mod wait_all;
