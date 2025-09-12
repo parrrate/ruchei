@@ -20,14 +20,17 @@ pub struct WithExtra<T, Ex> {
 }
 
 impl<T, Ex> WithExtra<T, Ex> {
-    pub fn new(inner: T, extra: Ex) -> Self {
+    #[must_use]
+    pub const fn new(inner: T, extra: Ex) -> Self {
         Self { inner, extra }
     }
 
+    #[must_use]
     pub fn into_inner(self) -> (T, Ex) {
         (self.inner, self.extra)
     }
 
+    #[must_use]
     pub fn as_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T> {
         self.project().inner
     }
