@@ -58,4 +58,11 @@ impl<T: Clone + Ord> MultiTrie<T> {
     pub fn is_empty(&self, collection: &T) -> bool {
         !self.map.contains_key(collection)
     }
+
+    pub fn len(&self, collection: &T) -> usize {
+        self.map
+            .get(collection)
+            .map(|slab| slab.len())
+            .unwrap_or_default()
+    }
 }
