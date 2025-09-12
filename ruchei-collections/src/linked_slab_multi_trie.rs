@@ -154,6 +154,14 @@ impl<T, const N: usize> LinkedSlabMultiTrie<T, N> {
         self.collections.remove(collection).0
     }
 
+    pub fn try_remove(&mut self, collection: usize) -> Option<T> {
+        if self.collections.get(collection).is_some() {
+            Some(self.pop(collection))
+        } else {
+            None
+        }
+    }
+
     pub fn vacant_key(&mut self) -> usize {
         self.collections.vacant_key()
     }
