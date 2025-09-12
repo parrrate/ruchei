@@ -190,7 +190,6 @@ impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> Sink<Out> fo
             .next::<OP_WAKE_FLUSH, _, OP_COUNT>(this.connections)
         {
             if let Some(connection) = this.connections.get_mut(key) {
-                this.next.downgrade().insert(key);
                 this.ready.downgrade().insert(key);
                 match connection
                     .flush
