@@ -1,4 +1,5 @@
 use std::{
+    borrow::Borrow,
     convert::Infallible,
     pin::Pin,
     task::{Context, Poll},
@@ -9,7 +10,7 @@ use pin_project::pin_project;
 use ruchei_callback::OnClose;
 use ruchei_collections::{
     linked_slab_multi_trie::LinkedSlabMultiTrie,
-    multi_trie::{MultiTrie, MultiTrieAddOwned},
+    multi_trie::{MultiTrie, MultiTrieAddOwned, MultiTriePrefix},
 };
 
 use crate::{
@@ -184,8 +185,16 @@ impl<K: Clone + AsRef<[u8]>, O: Clone, E, S: Unpin + Sink<(K, O), Error = E>, F:
 
     fn start_send(mut self: Pin<&mut Self>, msg: (K, O)) -> Result<(), Self::Error> {
         let mut this = self.as_mut().project();
-        while let Some(key) = this.connections.link_pop_front::<OP_IS_READIED>() {
-            if let Some(connection) = this.connections.get_mut(key) {
+        let keys = this
+            .connections
+            .prefix_collect(msg.0.as_ref())
+            .into_iter()
+            .map(|item| *item.borrow())
+            .collect::<Vec<usize>>();
+        for key in keys {
+            if this.connections.link_pop_at::<OP_IS_READIED>(key)
+                && let Some(connection) = this.connections.get_mut(key)
+            {
                 if let Err(e) = connection.stream.start_send_unpin(msg.clone()) {
                     self.as_mut().remove(key, Some(e));
                 } else {
