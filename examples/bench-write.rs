@@ -20,10 +20,19 @@ async fn main() {
     let task = task::spawn(async move {
         reader.next().await.unwrap().unwrap();
         let start = Instant::now();
-        for _ in 1..1_000_000 {
-            reader.next().await.unwrap().unwrap();
+        for i in 1..1_000_000 {
+            let n: i32 = reader
+                .next()
+                .await
+                .unwrap()
+                .unwrap()
+                .into_text()
+                .unwrap()
+                .parse()
+                .unwrap();
+            assert_eq!(i, n);
         }
-        println!("{:?}", start.elapsed());
+        println!("r {:?}", start.elapsed());
     });
     writer.send("0".into()).await.unwrap();
     let start = Instant::now();
@@ -33,7 +42,7 @@ async fn main() {
         ))
         .await
         .unwrap();
-    println!("{:?}", start.elapsed());
+    println!("w {:?}", start.elapsed());
     task.await;
     writer.close().await.unwrap();
 }
