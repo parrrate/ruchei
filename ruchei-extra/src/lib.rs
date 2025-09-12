@@ -1,4 +1,4 @@
-//! Store extra data alongside a [`Future`]/`Stream`/`Sink`.
+//! Store extra data alongside a [`Future`]/[`Stream`]/[`Sink`].
 //!
 //! Commonly used for storing types with [`Drop`] logic.
 
