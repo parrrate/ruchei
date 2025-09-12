@@ -11,4 +11,5 @@
 
 pub mod buffered;
 pub mod bufferless;
+pub mod ignore;
 pub mod replay;
