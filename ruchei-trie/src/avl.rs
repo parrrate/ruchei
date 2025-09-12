@@ -655,6 +655,10 @@ impl<K: Ord, V> Avl<(K, V)> {
         let value = &mut self.nodes[id].value.1;
         Some((id, value))
     }
+
+    pub fn contains_key(&self, key: &K) -> bool {
+        self.locate(key).is_ok()
+    }
 }
 
 pub struct Iter<'a, T> {
