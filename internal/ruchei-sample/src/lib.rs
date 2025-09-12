@@ -1,10 +1,15 @@
 //! Utility for debugging `ruchei`
 
 use std::{
+    pin::Pin,
     sync::atomic::{AtomicBool, Ordering},
+    task::{Context, Poll},
     thread,
     time::Duration,
 };
+
+use futures_util::{Sink, Stream};
+use pin_project::pin_project;
 
 static SAMPLE: AtomicBool = AtomicBool::new(false);
 
@@ -65,4 +70,40 @@ fn run() {
 #[doc(hidden)]
 pub fn start() {
     thread::spawn(run);
+}
+
+#[pin_project]
+pub struct Exclude<S>(#[pin] pub S);
+
+impl<S: Stream> Stream for Exclude<S> {
+    type Item = S::Item;
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let _guard = crate::disable();
+        self.project().0.poll_next(cx)
+    }
+}
+
+impl<Item, S: Sink<Item>> Sink<Item> for Exclude<S> {
+    type Error = S::Error;
+
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        let _guard = crate::disable();
+        self.project().0.poll_ready(cx)
+    }
+
+    fn start_send(self: Pin<&mut Self>, item: Item) -> Result<(), Self::Error> {
+        let _guard = crate::disable();
+        self.project().0.start_send(item)
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        let _guard = crate::disable();
+        self.project().0.poll_flush(cx)
+    }
+
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        let _guard = crate::disable();
+        self.project().0.poll_close(cx)
+    }
 }
