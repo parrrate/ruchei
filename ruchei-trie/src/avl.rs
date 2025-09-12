@@ -639,6 +639,10 @@ impl<T: Ord> Avl<(T,)> {
     pub fn insert(&mut self, value: T) -> (NodeId, Option<T>) {
         self.insert_kv(value)
     }
+
+    pub fn contains(&self, value: &T) -> bool {
+        self.locate(value).is_ok()
+    }
 }
 
 impl<K: Ord, V> Avl<(K, V)> {
