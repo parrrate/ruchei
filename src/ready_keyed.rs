@@ -5,8 +5,9 @@ use std::{
 };
 
 use futures_util::task::AtomicWaker;
+use linked_hash_set::LinkedHashSet;
 
-use crate::{collections::linked_hash_set::LinkedHashSet, route::Key};
+use crate::route::Key;
 
 type Mutex<K> = std::sync::Mutex<LinkedHashSet<K>>;
 

@@ -43,6 +43,7 @@ futures-core = "0.3.31"
 futures-sink = "0.3.31"
 futures-util = { version = "0.3.31", features = ["sink"] }
 linked-hash-map = "0.5.6"
+linked_hash_set = "0.1.5"
 pin-project = "1"
 slab = "0.4.9"
 
@@ -54,6 +55,7 @@ ruchei-route = { workspace = true, features = ["unroute"] }
 futures-channel.workspace = true
 futures-util.workspace = true
 linked-hash-map.workspace = true
+linked_hash_set.workspace = true
 pin-project.workspace = true
 slab.workspace = true
 
