@@ -27,7 +27,7 @@ impl<T> Default for AvlMultiTrie<T> {
 }
 
 impl<T: Ord> MultiTrie<T> for AvlMultiTrie<T> {
-    fn remove(&mut self, collection: &T, key: &[u8]) {
+    fn mt_remove(&mut self, collection: &T, key: &[u8]) {
         let Some((collection, slab)) = self.collections.get_mut(collection) else {
             return;
         };
@@ -46,7 +46,7 @@ impl<T: Ord> MultiTrie<T> for AvlMultiTrie<T> {
         }
     }
 
-    fn contains(&self, collection: &T, key: &[u8]) -> bool {
+    fn mt_contains(&self, collection: &T, key: &[u8]) -> bool {
         let Some((collection, _)) = self.collections.get(collection) else {
             return false;
         };
@@ -56,7 +56,7 @@ impl<T: Ord> MultiTrie<T> for AvlMultiTrie<T> {
         map.contains_key(&collection)
     }
 
-    fn clear(&mut self, collection: &T) {
+    fn mt_clear(&mut self, collection: &T) {
         let Some((collection, slab)) = self.collections.remove(collection) else {
             return;
         };
@@ -70,11 +70,11 @@ impl<T: Ord> MultiTrie<T> for AvlMultiTrie<T> {
         }
     }
 
-    fn is_empty(&self, collection: &T) -> bool {
+    fn mt_is_empty(&self, collection: &T) -> bool {
         !self.collections.contains_key(collection)
     }
 
-    fn len(&self, collection: &T) -> usize {
+    fn mt_len(&self, collection: &T) -> usize {
         self.collections
             .get(collection)
             .map(|(_, slab)| slab.len())
@@ -83,7 +83,7 @@ impl<T: Ord> MultiTrie<T> for AvlMultiTrie<T> {
 }
 
 impl<T: Ord> MultiTrieAddOwned<T> for AvlMultiTrie<T> {
-    fn add_owned(&mut self, collection: T, key: &[u8]) {
+    fn mt_add_owned(&mut self, collection: T, key: &[u8]) {
         let collection = match self.collections.get(&collection) {
             Some((collection, _)) => collection,
             None => self.collections.insert(collection, Slab::new()).0,
@@ -101,7 +101,7 @@ impl<T: Ord> MultiTrieAddOwned<T> for AvlMultiTrie<T> {
 }
 
 impl<T: Ord + Clone> MultiTrieAddRef<T> for AvlMultiTrie<T> {
-    fn add_ref(&mut self, collection: &T, key: &[u8]) {
+    fn mt_add_ref(&mut self, collection: &T, key: &[u8]) {
         let collection = match self.collections.get(collection) {
             Some((collection, _)) => collection,
             None => self.collections.insert(collection.clone(), Slab::new()).0,
@@ -121,7 +121,7 @@ impl<T: Ord + Clone> MultiTrieAddRef<T> for AvlMultiTrie<T> {
 impl<T: Ord> MultiTriePrefix for AvlMultiTrie<T> {
     type Collection = T;
 
-    fn prefix_collect<'a>(
+    fn mt_prefix_collect<'a>(
         &'a self,
         suffix: &[u8],
     ) -> impl 'a + IntoIterator<Item: 'a + Borrow<Self::Collection>> {
@@ -138,22 +138,22 @@ impl<T: Ord> MultiTriePrefix for AvlMultiTrie<T> {
 #[test]
 fn ab() {
     let mut mt = AvlMultiTrie::default();
-    mt.add_ref(b"col-a", b"key-a");
-    assert!(mt.contains(b"col-a", b"key-a"));
-    mt.add_ref(b"col-b", b"key-b");
-    assert!(mt.contains(b"col-b", b"key-b"));
-    mt.add_ref(b"col-a", b"key-b");
-    assert!(mt.contains(b"col-a", b"key-b"));
-    mt.add_ref(b"col-b", b"key-a");
-    assert!(mt.contains(b"col-b", b"key-a"));
-    mt.remove(b"col-a", b"key-a");
-    assert!(!mt.contains(b"col-a", b"key-a"));
-    mt.remove(b"col-b", b"key-b");
-    assert!(!mt.contains(b"col-b", b"key-b"));
-    mt.remove(b"col-a", b"key-b");
-    assert!(!mt.contains(b"col-a", b"key-b"));
-    assert!(mt.is_empty(b"col-a"));
-    mt.remove(b"col-b", b"key-a");
-    assert!(!mt.contains(b"col-b", b"key-a"));
-    assert!(mt.is_empty(b"col-b"));
+    mt.mt_add_ref(b"col-a", b"key-a");
+    assert!(mt.mt_contains(b"col-a", b"key-a"));
+    mt.mt_add_ref(b"col-b", b"key-b");
+    assert!(mt.mt_contains(b"col-b", b"key-b"));
+    mt.mt_add_ref(b"col-a", b"key-b");
+    assert!(mt.mt_contains(b"col-a", b"key-b"));
+    mt.mt_add_ref(b"col-b", b"key-a");
+    assert!(mt.mt_contains(b"col-b", b"key-a"));
+    mt.mt_remove(b"col-a", b"key-a");
+    assert!(!mt.mt_contains(b"col-a", b"key-a"));
+    mt.mt_remove(b"col-b", b"key-b");
+    assert!(!mt.mt_contains(b"col-b", b"key-b"));
+    mt.mt_remove(b"col-a", b"key-b");
+    assert!(!mt.mt_contains(b"col-a", b"key-b"));
+    assert!(mt.mt_is_empty(b"col-a"));
+    mt.mt_remove(b"col-b", b"key-a");
+    assert!(!mt.mt_contains(b"col-b", b"key-a"));
+    assert!(mt.mt_is_empty(b"col-b"));
 }

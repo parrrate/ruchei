@@ -18,7 +18,7 @@ pub struct BytesMultiTrie {
 }
 
 impl MultiTrie<[u8]> for BytesMultiTrie {
-    fn remove(&mut self, collection: &[u8], key: &[u8]) {
+    fn mt_remove(&mut self, collection: &[u8], key: &[u8]) {
         let Some((collection, slab)) = self.collections.get_mut(collection) else {
             return;
         };
@@ -39,7 +39,7 @@ impl MultiTrie<[u8]> for BytesMultiTrie {
         }
     }
 
-    fn contains(&self, collection: &[u8], key: &[u8]) -> bool {
+    fn mt_contains(&self, collection: &[u8], key: &[u8]) -> bool {
         let Some((collection, _)) = self.collections.get(collection) else {
             return false;
         };
@@ -49,7 +49,7 @@ impl MultiTrie<[u8]> for BytesMultiTrie {
         map.contains_key(&collection)
     }
 
-    fn clear(&mut self, collection: &[u8]) {
+    fn mt_clear(&mut self, collection: &[u8]) {
         let Some((collection, slab)) = self.collections.remove(collection) else {
             return;
         };
@@ -63,11 +63,11 @@ impl MultiTrie<[u8]> for BytesMultiTrie {
         }
     }
 
-    fn is_empty(&self, collection: &[u8]) -> bool {
+    fn mt_is_empty(&self, collection: &[u8]) -> bool {
         !self.collections.contains_key(collection)
     }
 
-    fn len(&self, collection: &[u8]) -> usize {
+    fn mt_len(&self, collection: &[u8]) -> usize {
         self.collections
             .get(collection)
             .map(|(_, slab)| slab.len())
@@ -76,7 +76,7 @@ impl MultiTrie<[u8]> for BytesMultiTrie {
 }
 
 impl MultiTrieAddRef<[u8]> for BytesMultiTrie {
-    fn add_ref(&mut self, collection: &[u8], key: &[u8]) {
+    fn mt_add_ref(&mut self, collection: &[u8], key: &[u8]) {
         if !self.collections.contains_key(collection) {
             self.collections.insert(collection, Slab::new());
         }
@@ -92,7 +92,7 @@ impl MultiTrieAddRef<[u8]> for BytesMultiTrie {
 impl MultiTriePrefix for BytesMultiTrie {
     type Collection = [u8];
 
-    fn prefix_collect<'a>(
+    fn mt_prefix_collect<'a>(
         &'a self,
         suffix: &[u8],
     ) -> impl 'a + IntoIterator<Item: 'a + Borrow<Self::Collection>> {
@@ -109,22 +109,22 @@ impl MultiTriePrefix for BytesMultiTrie {
 #[test]
 fn ab() {
     let mut mt = BytesMultiTrie::default();
-    mt.add_ref(b"col-a", b"key-a");
-    assert!(mt.contains(b"col-a", b"key-a"));
-    mt.add_ref(b"col-b", b"key-b");
-    assert!(mt.contains(b"col-b", b"key-b"));
-    mt.add_ref(b"col-a", b"key-b");
-    assert!(mt.contains(b"col-a", b"key-b"));
-    mt.add_ref(b"col-b", b"key-a");
-    assert!(mt.contains(b"col-b", b"key-a"));
-    mt.remove(b"col-a", b"key-a");
-    assert!(!mt.contains(b"col-a", b"key-a"));
-    mt.remove(b"col-b", b"key-b");
-    assert!(!mt.contains(b"col-b", b"key-b"));
-    mt.remove(b"col-a", b"key-b");
-    assert!(!mt.contains(b"col-a", b"key-b"));
-    assert!(mt.is_empty(b"col-a"));
-    mt.remove(b"col-b", b"key-a");
-    assert!(!mt.contains(b"col-b", b"key-a"));
-    assert!(mt.is_empty(b"col-b"));
+    mt.mt_add_ref(b"col-a", b"key-a");
+    assert!(mt.mt_contains(b"col-a", b"key-a"));
+    mt.mt_add_ref(b"col-b", b"key-b");
+    assert!(mt.mt_contains(b"col-b", b"key-b"));
+    mt.mt_add_ref(b"col-a", b"key-b");
+    assert!(mt.mt_contains(b"col-a", b"key-b"));
+    mt.mt_add_ref(b"col-b", b"key-a");
+    assert!(mt.mt_contains(b"col-b", b"key-a"));
+    mt.mt_remove(b"col-a", b"key-a");
+    assert!(!mt.mt_contains(b"col-a", b"key-a"));
+    mt.mt_remove(b"col-b", b"key-b");
+    assert!(!mt.mt_contains(b"col-b", b"key-b"));
+    mt.mt_remove(b"col-a", b"key-b");
+    assert!(!mt.mt_contains(b"col-a", b"key-b"));
+    assert!(mt.mt_is_empty(b"col-a"));
+    mt.mt_remove(b"col-b", b"key-a");
+    assert!(!mt.mt_contains(b"col-b", b"key-a"));
+    assert!(mt.mt_is_empty(b"col-b"));
 }
