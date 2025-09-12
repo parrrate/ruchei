@@ -220,6 +220,19 @@ impl<T> Nodes<T> {
         let value = self.remove_at(id)?;
         Some((id, value))
     }
+
+    fn collect_key(&mut self, mut id: NodeId) -> Vec<u8> {
+        let mut parts = Vec::new();
+        while let Some((first, parent)) = &self[id].parent {
+            let (prefix, child) = self[*parent].children.get(first).expect("missing child");
+            assert_eq!(*child, id);
+            parts.push(prefix.as_slice());
+            parts.push(std::array::from_ref(first));
+            id = *parent;
+        }
+        parts.reverse();
+        parts.concat()
+    }
 }
 
 impl<T> Index<NodeId> for Nodes<T> {
@@ -367,6 +380,14 @@ impl<T> Trie<T> {
             suffix,
         }
     }
+
+    pub fn collect_key(&mut self, id: NodeId) -> Option<Vec<u8>> {
+        if self.nodes.contains(id) {
+            Some(self.nodes.collect_key(id))
+        } else {
+            None
+        }
+    }
 }
 
 pub struct PrefixOf<'a, 'b, T> {
@@ -468,15 +489,20 @@ fn insert_common_ab() {
 #[test]
 fn insert_nested_abc() {
     let mut trie = Trie::<i32>::default();
-    trie.insert(b"ab", 456);
-    trie.insert(b"a", 123);
-    trie.insert(b"abc", 789);
+    let (ab, _) = trie.insert(b"ab", 456);
+    let (a, _) = trie.insert(b"a", 123);
+    let (abc, _) = trie.insert(b"abc", 789);
     assert_eq!(*trie.get(b"a").unwrap().1, 123);
     assert_eq!(*trie.get(b"ab").unwrap().1, 456);
     assert_eq!(*trie.get(b"abc").unwrap().1, 789);
     assert!(trie.get(b"").is_none());
     assert!(trie.get(b"b").is_none());
     assert!(trie.get(b"c").is_none());
+    assert_eq!(trie.collect_key(a).unwrap(), b"a");
+    assert_eq!(trie.collect_key(ab).unwrap(), b"ab");
+    assert_eq!(trie.collect_key(abc).unwrap(), b"abc");
+    trie.remove(b"ab").unwrap();
+    assert_eq!(trie.collect_key(abc).unwrap(), b"abc");
 }
 
 #[test]
