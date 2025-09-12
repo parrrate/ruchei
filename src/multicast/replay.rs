@@ -247,6 +247,7 @@ struct Finalize<S, Out, F> {
     unicast: Unicast<S, Out, F>,
     closing: bool,
 }
+
 impl<
         In,
         Out: Clone,
@@ -261,12 +262,9 @@ impl<
         loop {
             if *this.closing {
                 break unicast.poll_close(cx);
-            } else {
-                match unicast.as_mut().poll_pre_close(cx)? {
-                    Poll::Ready(()) => *this.closing = true,
-                    Poll::Pending => break Poll::Pending,
-                }
             }
+            ready!(unicast.as_mut().poll_pre_close(cx))?;
+            *this.closing = true;
         }
     }
 }
