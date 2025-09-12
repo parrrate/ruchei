@@ -14,6 +14,7 @@ pub mod concurrent;
 pub mod deal;
 pub mod echo;
 pub mod group_concurrent;
+pub mod group_sequential;
 pub mod multicast;
 mod owned_close;
 pub mod pinned_extend;
