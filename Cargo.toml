@@ -1,9 +1,10 @@
 [package]
 name = "ruchei"
-version = "0.1.7"
+version = "0.1.8"
 edition = "2021"
 
 [dependencies]
+futures-channel = "0.3.30"
 futures-util = { version = "0.3.30", features = ["sink"] }
 pin-project = "1"
 
