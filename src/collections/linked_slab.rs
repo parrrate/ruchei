@@ -171,6 +171,10 @@ impl<T, const N: usize> LinkedSlab<T, N> {
     pub(crate) fn get_mut(&mut self, key: usize) -> Option<&mut T> {
         Some(&mut self.slab.get_mut(key)?.value)
     }
+
+    pub(crate) fn is_empty(&self) -> bool {
+        self.slab.is_empty()
+    }
 }
 
 #[cfg(test)]
@@ -180,8 +184,10 @@ mod tests {
     #[test]
     fn test() {
         let mut slab = LinkedSlab::<i32, 3>::new();
+        assert!(slab.is_empty());
         let a = slab.insert(123);
         let b = slab.insert(456);
+        assert!(slab.is_empty());
         slab.link_push::<0>(a);
         slab.link_push::<0>(b);
         slab.link_push::<1>(b);
@@ -199,5 +205,7 @@ mod tests {
         assert!(slab.link_pop::<2>().is_none());
         assert!(slab.get_mut(a).is_none());
         assert_eq!(*slab.get_mut(b).unwrap(), 456);
+        slab.remove(b).unwrap();
+        assert!(slab.is_empty());
     }
 }
