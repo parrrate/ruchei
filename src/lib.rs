@@ -1,4 +1,4 @@
-mod callback;
+pub mod callback;
 pub mod concurrent;
 pub mod echo_buffered;
 pub mod echo_bufferless;
