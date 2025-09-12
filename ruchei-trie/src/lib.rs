@@ -257,18 +257,9 @@ impl<'a, T> NodeMut<'a, T> {
         }
     }
 
-    fn remove(mut self, mut key: &[u8]) -> Option<T> {
-        let value = loop {
-            let Some((first, rest)) = key.split_first() else {
-                break self.as_mut().value.take()?;
-            };
-            let (prefix, id) = self.as_mut().children.get_mut(first)?;
-            let sub_key = rest.strip_prefix(prefix.as_slice())?;
-            assert!(sub_key.len() < key.len());
-            self.id = *id;
-            key = sub_key;
-        };
-        assert!(key.is_empty());
+    fn remove(mut self, key: &[u8]) -> Option<T> {
+        self.id = self.nodes.locate(self.id, key)?;
+        let value = self.nodes.get_mut(self.id).value.take()?;
         while let node = self.as_mut()
             && node.is_collapsible()
         {
