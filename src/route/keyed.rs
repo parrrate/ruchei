@@ -5,7 +5,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures_util::{Sink, SinkExt, Stream, StreamExt, ready, stream::FusedStream};
+use futures_util::{Sink, SinkExt, Stream, TryStream, TryStreamExt, ready, stream::FusedStream};
 pub use ruchei_route::{RouteExt, RouteSink, Unroute, WithRoute};
 
 use crate::{
@@ -61,7 +61,7 @@ impl<K: Key, S, F> Router<K, S, F> {
     }
 }
 
-impl<In, K: Key, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stream
+impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>, F: OnClose<E>> Stream
     for Router<K, S, F>
 {
     type Item = Result<(K, In), Infallible>;
@@ -72,7 +72,7 @@ impl<In, K: Key, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stre
             if let Some(connection) = this.connections.get_mut(&key)
                 && let Poll::Ready(o) = connection
                     .next
-                    .poll(cx, |cx| connection.stream.poll_next_unpin(cx))
+                    .poll(cx, |cx| connection.stream.try_poll_next_unpin(cx))
             {
                 match o {
                     Some(Ok(item)) => {
@@ -200,7 +200,7 @@ pub trait RouterKeyedExt: Sized {
     fn route_keyed<F: OnClose<Self::E>>(self, callback: F) -> RouterExtending<F, Self>;
 }
 
-impl<In, K: Key, E, S: Unpin + Stream<Item = Result<In, E>>, R: FusedStream<Item = (K, S)>>
+impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = (K, S)>>
     RouterKeyedExt for R
 {
     type K = K;
