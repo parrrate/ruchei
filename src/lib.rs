@@ -1,5 +1,7 @@
 #![deny(unsafe_code)]
 
+extern crate self as ruchei;
+
 pub mod callback;
 pub mod concurrent;
 pub mod echo;
