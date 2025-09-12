@@ -65,6 +65,7 @@ impl<T, const N: usize> LinkedSlab<T, N> {
         Self::default()
     }
 
+    #[inline(always)]
     fn unlink(&mut self, link: Link, n: usize) {
         assert!(n < N);
         self.lens[n] -= 1;
