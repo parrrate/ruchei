@@ -119,7 +119,7 @@ impl<T, const N: usize> LinkedSlab<T, N> {
         }
     }
 
-    fn first<const M: usize>(&mut self) -> Option<usize> {
+    pub(crate) fn front<const M: usize>(&self) -> Option<usize> {
         assert!(M < N);
         let (_, next) = self.link::<M>()?;
         Some(next)
@@ -182,7 +182,7 @@ impl<T, const N: usize> LinkedSlab<T, N> {
 
     pub(crate) fn link_pop_front<const M: usize>(&mut self) -> Option<usize> {
         assert!(M < N);
-        let key = self.first::<M>()?;
+        let key = self.front::<M>()?;
         let popped = self.link_pop_at::<M>(key);
         assert!(popped, "key not linked");
         Some(key)
@@ -215,6 +215,12 @@ impl<T, const N: usize> LinkedSlab<T, N> {
 
     pub(crate) fn get_mut(&mut self, key: usize) -> Option<&mut T> {
         Some(&mut self.slab.get_mut(key)?.value)
+    }
+
+    pub(crate) fn get_refresh<const M: usize>(&mut self, key: usize) -> Option<&mut T> {
+        self.link_pop_at::<M>(key);
+        self.link_push_back::<M>(key);
+        self.get_mut(key)
     }
 
     pub(crate) fn is_empty(&self) -> bool {
