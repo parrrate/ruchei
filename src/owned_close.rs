@@ -9,6 +9,7 @@ use pin_project::pin_project;
 
 #[derive(Debug)]
 #[pin_project]
+#[must_use]
 pub(crate) struct OwnedClose<S, Out> {
     #[pin]
     sink: S,
