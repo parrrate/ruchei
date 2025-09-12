@@ -70,9 +70,9 @@ impl<S, F> Multicast<S, F> {
         this.connections.link_push_back::<OP_WAKE_NEXT>(key);
         this.connections.link_push_back::<OP_WAKE_READY>(key);
         this.connections.link_push_back::<OP_WAKE_CLOSE>(key);
-        this.next.waker().wake();
-        this.ready.waker().wake();
-        this.close.waker().wake();
+        this.next.wake();
+        this.ready.wake();
+        this.close.wake();
     }
 }
 
@@ -81,11 +81,11 @@ impl<In, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stream for M
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.as_mut().project();
-        this.next.waker().register(cx.waker());
+        this.next.register(cx);
         while let Some(key) = this
             .next
             .as_mut()
-            .next::<OP_WAKE_NEXT, _, OP_COUNT>(this.connections, cx)
+            .next::<OP_WAKE_NEXT, _, OP_COUNT>(this.connections)
         {
             if this.connections.link_pop_at::<OP_IS_READIED>(key) {
                 this.ready.downgrade().insert(key);
@@ -132,11 +132,11 @@ impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> Sink<Out> fo
 
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let mut this = self.as_mut().project();
-        this.ready.waker().register(cx.waker());
+        this.ready.register(cx);
         while let Some(key) = this
             .ready
             .as_mut()
-            .next::<OP_WAKE_READY, _, OP_COUNT>(this.connections, cx)
+            .next::<OP_WAKE_READY, _, OP_COUNT>(this.connections)
         {
             if !this.connections.link_contains::<OP_IS_READIED>(key) {
                 if let Some(connection) = this.connections.get_mut(key) {
@@ -179,7 +179,7 @@ impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> Sink<Out> fo
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let mut this = self.as_mut().project();
-        this.flush.waker().register(cx.waker());
+        this.flush.register(cx);
         this.flush.downgrade().extend(
             this.connections
                 .link_pops::<OP_IS_STARTED, _, _>(|key, connection| {
@@ -190,7 +190,7 @@ impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> Sink<Out> fo
         while let Some(key) = this
             .flush
             .as_mut()
-            .next::<OP_WAKE_FLUSH, _, OP_COUNT>(this.connections, cx)
+            .next::<OP_WAKE_FLUSH, _, OP_COUNT>(this.connections)
         {
             if this.connections.link_pop_at::<OP_IS_READIED>(key) {
                 this.ready.downgrade().insert(key);
@@ -222,11 +222,11 @@ impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> Sink<Out> fo
 
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let mut this = self.as_mut().project();
-        this.close.waker().register(cx.waker());
+        this.close.register(cx);
         while let Some(key) = this
             .close
             .as_mut()
-            .next::<OP_WAKE_CLOSE, _, OP_COUNT>(this.connections, cx)
+            .next::<OP_WAKE_CLOSE, _, OP_COUNT>(this.connections)
         {
             if let Some(connection) = this.connections.get_mut(key) {
                 if let Poll::Ready(r) = connection

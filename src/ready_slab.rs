@@ -10,18 +10,36 @@ use pin_project::pin_project;
 
 use crate::collections::linked_slab::LinkedSlab;
 
+#[derive(Default)]
+struct SlabWaker {
+    waker: AtomicWaker,
+}
+
+impl Wake for SlabWaker {
+    fn wake(self: Arc<Self>) {
+        self.wake_by_ref();
+    }
+
+    fn wake_by_ref(self: &Arc<Self>) {
+        self.waker.wake();
+    }
+}
+
 #[must_use]
 #[pin_project]
 pub(crate) struct Ready(
     UnboundedSender<usize>,
     #[pin] UnboundedReceiver<usize>,
-    AtomicWaker,
+    Arc<SlabWaker>,
+    Waker,
 );
 
 impl Default for Ready {
     fn default() -> Self {
         let (sender, receiver) = unbounded();
-        Self(sender, receiver, Default::default())
+        let inner = Arc::<SlabWaker>::default();
+        let waker = inner.clone().into();
+        Self(sender, receiver, inner, waker)
     }
 }
 
@@ -34,22 +52,33 @@ impl Ready {
         ReadyWeak(Some(self.0.clone()))
     }
 
-    pub(crate) fn waker(&self) -> &AtomicWaker {
-        &self.2
+    pub(crate) fn wake(&self) {
+        self.2.wake_by_ref();
     }
-}
 
-impl Ready {
-    #[must_use]
-    pub(crate) fn next<const M: usize, T, const N: usize>(
-        mut self: Pin<&mut Self>,
+    pub(crate) fn compact<const M: usize, T, const N: usize>(
+        self: Pin<&mut Self>,
         slab: &mut LinkedSlab<T, N>,
-        cx: &mut Context<'_>,
-    ) -> Option<usize> {
-        while let Poll::Ready(Some(key)) = self.as_mut().project().1.poll_next(cx) {
+    ) {
+        let mut this = self.project();
+        while let Poll::Ready(Some(key)) =
+            this.1.as_mut().poll_next(&mut Context::from_waker(this.3))
+        {
             slab.link_push_back::<M>(key);
         }
+    }
+
+    #[must_use]
+    pub(crate) fn next<const M: usize, T, const N: usize>(
+        self: Pin<&mut Self>,
+        slab: &mut LinkedSlab<T, N>,
+    ) -> Option<usize> {
+        self.compact::<M, _, N>(slab);
         slab.link_pop_front::<M>()
+    }
+
+    pub(crate) fn register(&self, cx: &mut Context<'_>) {
+        self.2.waker.register(cx.waker());
     }
 }
 

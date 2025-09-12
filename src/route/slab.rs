@@ -69,10 +69,11 @@ impl<In, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stream for R
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.as_mut().project();
+        this.next.register(cx);
         while let Some(key) = this
             .next
             .as_mut()
-            .next::<OP_WAKE_NEXT, _, OP_COUNT>(this.connections, cx)
+            .next::<OP_WAKE_NEXT, _, OP_COUNT>(this.connections)
         {
             if let Some(connection) = this.connections.get_mut(key) {
                 if let Poll::Ready(o) = connection
@@ -154,10 +155,11 @@ impl<Out, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> RouteSink<usize, Ou
 
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let mut this = self.as_mut().project();
+        this.close.register(cx);
         while let Some(key) = this
             .close
             .as_mut()
-            .next::<OP_WAKE_CLOSE, _, OP_COUNT>(this.connections, cx)
+            .next::<OP_WAKE_CLOSE, _, OP_COUNT>(this.connections)
         {
             if let Some(connection) = this.connections.get_mut(key) {
                 if let Poll::Ready(r) = connection
