@@ -18,6 +18,7 @@ use crate::callback::OnClose;
 
 struct Shared<Out> {
     stale: HashMap<Key, Waker>,
+    fstale: HashMap<Key, Waker>,
     out: Vec<Out>,
     flush: usize,
 }
@@ -26,6 +27,7 @@ impl<Out> Default for Shared<Out> {
     fn default() -> Self {
         Self {
             stale: Default::default(),
+            fstale: Default::default(),
             out: Default::default(),
             flush: 0,
         }
@@ -107,14 +109,14 @@ impl<In, Out: Clone, E, S: Sink<Out, Error = E> + Stream<Item = Result<In, E>>, 
         shared: &mut Shared<Out>,
     ) -> Poll<Result<(), E>> {
         match self.as_mut().poll_out(cx, shared) {
-            Poll::Ready(_) => Poll::Ready(Ok(())),
+            Poll::Ready(()) => Poll::Ready(Ok(())),
             Poll::Pending => {
                 let this = self.project();
                 if *this.flushed < shared.flush {
                     match this.stream.poll_flush(cx)? {
                         Poll::Ready(()) => {
                             *this.flushed = *this.index;
-                            Poll::Ready(Ok(()))
+                            Poll::Pending
                         }
                         Poll::Pending => {
                             *this.state = State::Started;
@@ -122,7 +124,9 @@ impl<In, Out: Clone, E, S: Sink<Out, Error = E> + Stream<Item = Result<In, E>>, 
                         }
                     }
                 } else {
-                    Poll::Ready(Ok(()))
+                    shared.fstale.insert(*this.key, cx.waker().clone());
+                    *this.state = State::Started;
+                    Poll::Pending
                 }
             }
         }
@@ -355,7 +359,12 @@ impl<
     fn poll_flush(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let this = self.project();
         let mut shared = this.shared.try_lock().unwrap();
-        shared.flush = shared.out.len();
+        if shared.flush < shared.out.len() {
+            shared.flush = shared.out.len();
+            for (_, waker) in shared.fstale.drain() {
+                waker.wake();
+            }
+        }
         Poll::Ready(Ok(()))
     }
 
