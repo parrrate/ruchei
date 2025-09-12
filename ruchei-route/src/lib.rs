@@ -300,3 +300,41 @@ impl<T: ?Sized + Unpin, Route> RouteExt<Route> for &'_ mut T {
         }
     }
 }
+
+/// Assert that [`RouteSink`] is derived from [`Sink`].
+#[cfg(feature = "unroute")]
+#[pin_project::pin_project]
+pub struct Unroute<S>(#[pin] pub S);
+
+#[cfg(feature = "unroute")]
+impl<S: futures_core::Stream> futures_core::Stream for Unroute<S> {
+    type Item = S::Item;
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        self.project().0.poll_next(cx)
+    }
+}
+
+#[cfg(feature = "unroute")]
+impl<Route, Msg, S: RouteSink<Route, Msg>> Sink<(Route, Msg)> for Unroute<S> {
+    type Error = S::Error;
+
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        debug_assert!(!self.0.is_routing());
+        self.project().0.poll_ready_any(cx)
+    }
+
+    fn start_send(self: Pin<&mut Self>, (route, msg): (Route, Msg)) -> Result<(), Self::Error> {
+        debug_assert!(!self.0.is_routing());
+        self.project().0.start_send(route, msg)
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        debug_assert!(!self.0.is_routing());
+        self.project().0.poll_flush_all(cx)
+    }
+
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.project().0.poll_close(cx)
+    }
+}
