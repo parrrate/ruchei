@@ -2,6 +2,41 @@
 //!
 //! This model sits somewhere between explicit connection management and ZMQ-like routing trying to
 //! be a reasonable abstraction around both, with some trade-offs.
+//!
+//! ## [`Sink`]s
+//!
+//! - [`RouteSink::poll_ready_any`]
+//! - [`RouteSink::start_send`]
+//! - [`RouteSink::poll_flush_all`]
+//! - [`RouteSink::poll_close`]
+//!
+//! ## Proper [`RouteSink`]s
+//!
+//! - [`RouteSink::poll_ready`]
+//! - [`RouteSink::start_send`]
+//! - [`RouteSink::poll_flush`]
+//! - [`RouteSink::poll_close`]
+//!
+//! ## [`RouteSink`] as a trait union
+//!
+//! - [`RouteSink::is_routing`]
+//!
+//! ## Dynamicity
+//!
+//! ### Object safety
+//!
+//! [`RouteSink`] method is object safe.
+//!
+//! *However*, we don't provide any methods to upcast to [`Sink`], since we believe plain [`Sink`]
+//! and [`RouteSink`] traits don't represent our target usecases, *specifically networking*, which
+//! involve *`Stream`s* as a necessary component of the object. Since this crate doesn't depend on
+//! `futures-core`, we don't provide `dyn Stream + ...` either. Another consideration is to provide
+//! mechanisms for creating upcasting instead of providing upcasting itself, to, for example, allow
+//! for a more efficient FFI functionality.
+//!
+//! ### FFI
+//!
+//! ***Coming Soon...***
 
 use core::{
     pin::Pin,
