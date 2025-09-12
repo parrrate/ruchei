@@ -487,11 +487,83 @@ impl<T> Avl<T> {
     }
 }
 
-impl<T: Ord> Nodes<T> {
-    fn locate(&self, mut id: NodeId, value: &T) -> Result<NodeId, (Side, NodeId)> {
+mod private {
+    pub trait Sealed {}
+}
+
+pub trait Kv: Sized + private::Sealed {
+    type K: Ord;
+    type V;
+    type Kv;
+
+    fn as_k(&self) -> &Self::K;
+    fn into_v(self) -> Self::V;
+    fn as_v(&self) -> &Self::V;
+    fn into_kv(self) -> Self::Kv;
+    fn from_kv(kv: Self::Kv) -> Self;
+}
+
+impl<T: Ord> private::Sealed for (T,) {}
+
+impl<T: Ord> Kv for (T,) {
+    type K = T;
+    type V = T;
+    type Kv = T;
+
+    fn as_k(&self) -> &Self::K {
+        &self.0
+    }
+
+    fn as_v(&self) -> &Self::V {
+        &self.0
+    }
+
+    fn into_v(self) -> Self::V {
+        self.0
+    }
+
+    fn into_kv(self) -> Self::Kv {
+        self.0
+    }
+
+    fn from_kv(value: Self::Kv) -> Self {
+        (value,)
+    }
+}
+
+impl<K: Ord, V> private::Sealed for (K, V) {}
+
+impl<K: Ord, V> Kv for (K, V) {
+    type K = K;
+    type V = V;
+    type Kv = Self;
+
+    fn as_k(&self) -> &Self::K {
+        &self.0
+    }
+
+    fn into_v(self) -> Self::V {
+        self.1
+    }
+
+    fn as_v(&self) -> &Self::V {
+        &self.1
+    }
+
+    fn into_kv(self) -> Self::Kv {
+        self
+    }
+
+    fn from_kv(kv: Self::Kv) -> Self {
+        kv
+    }
+}
+
+impl<T: Kv> Nodes<T> {
+    fn locate(&self, mut id: NodeId, key: &T::K) -> Result<NodeId, (Side, NodeId)> {
         loop {
             let node = &self[id];
-            match node.value.cmp(value) {
+            match node.value.as_k().cmp(key) {
                 Ordering::Greater => {
                     let Some(next) = node.l else {
                         return Err((Side::L, id));
@@ -510,34 +582,47 @@ impl<T: Ord> Nodes<T> {
     }
 }
 
-impl<T: Ord> Avl<T> {
-    fn locate(&self, value: &T) -> Result<NodeId, Option<(Side, NodeId)>> {
+impl<T: Kv> Avl<T> {
+    fn locate(&self, key: &T::K) -> Result<NodeId, Option<(Side, NodeId)>> {
         match self.root {
-            Some(id) => self.nodes.locate(id, value).map_err(Some),
+            Some(id) => self.nodes.locate(id, key).map_err(Some),
             None => Err(None),
         }
     }
 
-    pub fn insert(&mut self, value: T) -> (NodeId, Option<T>) {
-        let r = match self.locate(&value) {
-            Ok(id) => (id, Some(self.nodes.replace(id, value))),
-            Err(parent) => (self.insert_at(parent, value), None),
+    fn insert_kv(&mut self, kv: T::Kv) -> (NodeId, Option<T::V>) {
+        let kv = T::from_kv(kv);
+        let r = match self.locate(kv.as_k()) {
+            Ok(id) => (id, Some(self.nodes.replace(id, kv).into_v())),
+            Err(parent) => (self.insert_at(parent, kv), None),
         };
         assert_eq!(self.nodes.roots(), 0);
         r
     }
 
-    pub fn remove(&mut self, value: &T) -> Option<(NodeId, T)> {
-        let id = self.locate(value).ok()?;
-        let value = self.remove_at(id);
+    pub fn remove(&mut self, key: &T::K) -> Option<(NodeId, T::V)> {
+        let id = self.locate(key).ok()?;
+        let kv = self.remove_at(id);
         assert_eq!(self.nodes.roots(), 0);
-        Some((id, value))
+        Some((id, kv.into_v()))
     }
 
-    pub fn get<'a>(&'a self, value: &T) -> Option<(NodeId, &'a T)> {
+    pub fn get<'a>(&'a self, value: &T::K) -> Option<(NodeId, &'a T::V)> {
         let id = self.locate(value).ok()?;
         let value = &self.nodes[id].value;
-        Some((id, value))
+        Some((id, value.as_v()))
+    }
+}
+
+impl<T: Ord> Avl<(T,)> {
+    pub fn insert(&mut self, value: T) -> (NodeId, Option<T>) {
+        self.insert_kv(value)
+    }
+}
+
+impl<K: Ord, V> Avl<(K, V)> {
+    pub fn insert(&mut self, key: K, value: V) -> (NodeId, Option<V>) {
+        self.insert_kv((key, value))
     }
 }
 
@@ -560,35 +645,9 @@ impl<'a, T> Iterator for Iter<'a, T> {
     }
 }
 
-#[cfg(test)]
-impl<T: std::fmt::Display> Avl<T> {
-    fn print_values(&self) {
-        let Some(node) = self.root else {
-            return;
-        };
-        let mut node = self.nodes.down(node, Side::L);
-        loop {
-            print!(
-                "[ {} {{{:?}}} ]",
-                self.nodes[node].value, self.nodes[node].bias
-            );
-            if let Some(r) = self.nodes[node].r {
-                print!(" \\ ");
-                node = self.nodes.down(r, Side::L);
-            } else if let Some(u) = self.nodes.up(node, Side::R) {
-                print!(" / ");
-                node = u;
-            } else {
-                break;
-            }
-        }
-        println!();
-    }
-}
-
 #[test]
 fn test() {
-    let mut avl = Avl::<i32>::default();
+    let mut avl = Avl::<(i32,)>::default();
     avl.insert(2);
     assert_eq!(avl.height, 1);
     avl.insert(1);
@@ -603,19 +662,11 @@ fn test() {
     assert_eq!(avl.height, 3);
     avl.insert(3);
     assert_eq!(avl.height, 3);
-    avl.print_values();
     avl.remove(&1).unwrap();
-    avl.print_values();
     avl.remove(&2).unwrap();
-    avl.print_values();
     avl.remove(&3).unwrap();
-    avl.print_values();
     avl.remove(&4).unwrap();
-    avl.print_values();
     avl.remove(&5).unwrap();
-    avl.print_values();
     avl.remove(&6).unwrap();
-    avl.print_values();
     avl.remove(&7).unwrap();
-    avl.print_values();
 }
