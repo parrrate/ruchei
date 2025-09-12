@@ -69,6 +69,7 @@ impl<T, E, S: Stream<Item = Result<T, E>>> From<S> for Echo<T, S> {
 }
 
 pub trait EchoBuffered: Sized {
+    /// Item yielded and accepted by `self` as [`Stream`]/[`Sink`].
     type T;
 
     fn echo_buffered(self) -> Echo<Self::T, Self>;

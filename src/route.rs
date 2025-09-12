@@ -197,8 +197,11 @@ pub type RouterExtending<F, R> =
 
 /// Extension trait to auto-extend a [`Router`] from a stream of connections.
 pub trait RouterExt: Sized {
+    /// Key.
     type K;
+    /// Single [`Stream`]/[`Sink`].
     type S;
+    /// Error.
     type E;
 
     /// Extend the stream of connections (`self`) into a [`Router`].

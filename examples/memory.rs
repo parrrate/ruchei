@@ -1,3 +1,5 @@
+//! Various benchmarks for in-memory multicast.
+
 use std::{
     pin::{pin, Pin},
     task::{Context, Poll},

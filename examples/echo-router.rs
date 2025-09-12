@@ -1,3 +1,5 @@
+//! [`ruchei::route`] with [`ruchei::echo::route`]
+
 use async_std::net::TcpListener;
 use futures_util::StreamExt;
 use ruchei::{

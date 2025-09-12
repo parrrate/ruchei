@@ -1,3 +1,5 @@
+//! Simple event pub-sub system.
+
 use std::{
     collections::HashMap,
     convert::Infallible,

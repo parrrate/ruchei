@@ -1,3 +1,5 @@
+//! Send-receive many messages concurrently.
+
 use std::time::Instant;
 
 use async_std::task;

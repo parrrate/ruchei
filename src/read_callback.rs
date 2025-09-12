@@ -98,6 +98,7 @@ impl<In, E, S: Stream<Item = Result<In, E>>, F> ReadCallback<S, F> {
 }
 
 pub trait ReadCallbackExt: Sized {
+    /// Incoming item.
     type In;
 
     fn read_callback<F: OnItem<Self::In>>(self, callback: F) -> ReadCallback<Self, F>;

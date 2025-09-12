@@ -232,8 +232,11 @@ pub type DealerExtending<F, R> = Extending<Dealer<<R as DealerExt>::K, <R as Dea
 
 /// Extension trait to auto-extend a [`Dealer`] from a stream of connections.
 pub trait DealerExt: Sized {
+    /// Key.
     type K;
+    /// Single [`Stream`]/[`Sink`].
     type S;
+    /// Error.
     type E;
 
     /// Extend the stream of connections (`self`) into a [`Dealer`].

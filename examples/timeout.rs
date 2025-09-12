@@ -1,3 +1,5 @@
+//! [`ruchei::timeout_unused`]
+
 use std::time::Duration;
 
 use async_std::{net::TcpListener, task};

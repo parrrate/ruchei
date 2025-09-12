@@ -1,3 +1,5 @@
+//! Read on many connections concurrently.
+
 use std::{pin::pin, time::Instant};
 
 use async_std::{channel::unbounded, stream::StreamExt, task};

@@ -1,3 +1,5 @@
+//! [`ruchei::compress`]
+
 use std::time::Duration;
 
 use async_std::stream::StreamExt;

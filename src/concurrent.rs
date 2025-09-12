@@ -85,6 +85,7 @@ impl<Fut, R> From<R> for Concurrent<R, Fut> {
 
 /// Extension trait combinator for concurrent polling on [`Future`]s.
 pub trait ConcurrentExt: Sized {
+    /// Single [`Future`].
     type Fut;
 
     fn concurrent(self) -> Concurrent<Self, Self::Fut>;

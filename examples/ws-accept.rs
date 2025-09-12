@@ -1,3 +1,5 @@
+//! Per-connection [`ruchei::echo::buffered`]
+
 use async_std::{net::TcpListener, task};
 use ruchei::echo::buffered::EchoBuffered;
 
