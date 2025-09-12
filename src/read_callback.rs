@@ -4,7 +4,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures_util::{Sink, Stream, ready, stream::FusedStream};
+use futures_util::{Sink, Stream, TryStream, ready, stream::FusedStream};
 use pin_project::pin_project;
 
 use crate::callback::OnItem;
@@ -17,12 +17,12 @@ pub struct ReadCallback<S, F> {
     callback: F,
 }
 
-impl<In, E, S: FusedStream<Item = Result<In, E>>, F: OnItem<In>> ReadCallback<S, F> {
+impl<In, E, S: FusedStream + TryStream<Ok = In, Error = E>, F: OnItem<In>> ReadCallback<S, F> {
     fn poll_inner(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), E>> {
         let mut this = self.project();
         if !this.stream.is_terminated() {
             loop {
-                match this.stream.as_mut().poll_next(cx)? {
+                match this.stream.as_mut().try_poll_next(cx)? {
                     Poll::Ready(Some(item)) => this.callback.on_item(item),
                     Poll::Ready(None) => break Poll::Pending,
                     Poll::Pending => break Poll::Ready(Ok(())),
@@ -34,7 +34,9 @@ impl<In, E, S: FusedStream<Item = Result<In, E>>, F: OnItem<In>> ReadCallback<S,
     }
 }
 
-impl<In, E, S: FusedStream<Item = Result<In, E>>, F: OnItem<In>> Stream for ReadCallback<S, F> {
+impl<In, E, S: FusedStream + TryStream<Ok = In, Error = E>, F: OnItem<In>> Stream
+    for ReadCallback<S, F>
+{
     type Item = Result<Infallible, E>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -46,7 +48,7 @@ impl<In, E, S: FusedStream<Item = Result<In, E>>, F: OnItem<In>> Stream for Read
     }
 }
 
-impl<In, E, S: FusedStream<Item = Result<In, E>>, F: OnItem<In>> FusedStream
+impl<In, E, S: FusedStream + TryStream<Ok = In, Error = E>, F: OnItem<In>> FusedStream
     for ReadCallback<S, F>
 {
     fn is_terminated(&self) -> bool {
@@ -54,8 +56,13 @@ impl<In, E, S: FusedStream<Item = Result<In, E>>, F: OnItem<In>> FusedStream
     }
 }
 
-impl<In, Out, E, S: FusedStream<Item = Result<In, E>> + Sink<Out, Error = E>, F: OnItem<In>>
-    Sink<Out> for ReadCallback<S, F>
+impl<
+    In,
+    Out,
+    E,
+    S: FusedStream + TryStream<Ok = In, Error = E> + Sink<Out, Error = E>,
+    F: OnItem<In>,
+> Sink<Out> for ReadCallback<S, F>
 {
     type Error = E;
 
@@ -91,7 +98,7 @@ impl<In, Out, E, S: FusedStream<Item = Result<In, E>> + Sink<Out, Error = E>, F:
     }
 }
 
-impl<In, E, S: Stream<Item = Result<In, E>>, F> ReadCallback<S, F> {
+impl<In, E, S: TryStream<Ok = In, Error = E>, F> ReadCallback<S, F> {
     #[must_use]
     pub fn new(stream: S, callback: F) -> Self {
         Self { stream, callback }
@@ -106,7 +113,7 @@ pub trait ReadCallbackExt: Sized {
     fn read_callback<F: OnItem<Self::In>>(self, callback: F) -> ReadCallback<Self, F>;
 }
 
-impl<In, E, S: FusedStream<Item = Result<In, E>>> ReadCallbackExt for S {
+impl<In, E, S: FusedStream + TryStream<Ok = In, Error = E>> ReadCallbackExt for S {
     type In = In;
 
     fn read_callback<F: OnItem<Self::In>>(self, callback: F) -> ReadCallback<Self, F> {
