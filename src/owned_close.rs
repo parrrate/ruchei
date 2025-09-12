@@ -8,7 +8,7 @@ use futures_util::{Future, Sink};
 use pin_project::pin_project;
 
 #[pin_project]
-pub struct OwnedClose<S, Out> {
+pub(crate) struct OwnedClose<S, Out> {
     #[pin]
     sink: S,
     _out: PhantomData<Out>,
