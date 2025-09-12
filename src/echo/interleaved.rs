@@ -4,7 +4,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures_util::{Future, Sink, Stream, stream::FusedStream};
+use futures_util::{Future, Sink, TryStream, stream::FusedStream};
 use pin_project::pin_project;
 
 #[derive(Debug)]
@@ -18,7 +18,9 @@ pub struct Echo<T, S> {
     started: bool,
 }
 
-impl<T, E, S: FusedStream<Item = Result<T, E>> + Sink<T, Error = E>> Future for Echo<T, S> {
+impl<T, E, S: FusedStream + TryStream<Ok = T, Error = E> + Sink<T, Error = E>> Future
+    for Echo<T, S>
+{
     type Output = Result<(), E>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
@@ -26,7 +28,7 @@ impl<T, E, S: FusedStream<Item = Result<T, E>> + Sink<T, Error = E>> Future for 
         loop {
             let mut pending = false;
             if !this.stream.is_terminated() {
-                if let Poll::Ready(ready) = this.stream.as_mut().poll_next(cx)? {
+                if let Poll::Ready(ready) = this.stream.as_mut().try_poll_next(cx)? {
                     match ready {
                         Some(t) => this.queue.push_back(t),
                         None => return Poll::Ready(Ok(())),
@@ -67,7 +69,7 @@ impl<T, E, S: FusedStream<Item = Result<T, E>> + Sink<T, Error = E>> Future for 
     }
 }
 
-impl<T, E, S: Stream<Item = Result<T, E>>> From<S> for Echo<T, S> {
+impl<T, E, S: TryStream<Ok = T, Error = E>> From<S> for Echo<T, S> {
     fn from(stream: S) -> Self {
         Self {
             stream,
@@ -85,7 +87,9 @@ pub trait EchoInterleaved: Sized {
     fn echo_interleaved(self) -> Echo<Self::T, Self>;
 }
 
-impl<T, E, S: FusedStream<Item = Result<T, E>> + Sink<T, Error = E>> EchoInterleaved for S {
+impl<T, E, S: FusedStream + TryStream<Ok = T, Error = E> + Sink<T, Error = E>> EchoInterleaved
+    for S
+{
     type T = T;
 
     fn echo_interleaved(self) -> Echo<Self::T, Self> {
