@@ -174,6 +174,10 @@ impl<T, const N: usize> LinkedSlabMultiTrie<T, N> {
             .0
     }
 
+    pub fn len(&self) -> usize {
+        self.collections.len()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.collections.is_empty()
     }
