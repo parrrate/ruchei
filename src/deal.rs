@@ -146,15 +146,15 @@ impl<Out, K: Key, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> Sink<Out> f
         let this = self.get_mut();
         if let Some((key, _)) = this.connections.front() {
             let key = key.clone();
-            if let Some(connection) = this.connections.get_refresh(&key) {
-                if let Err(e) = connection.stream.start_send_unpin(msg) {
-                    this.remove(&key, Some(e));
-                } else {
-                    this.started.insert_if_absent(key);
-                    this.wflush.wake();
-                }
+            let connection = this
+                .connections
+                .get_refresh(&key)
+                .expect("first key must point to an existing entry");
+            if let Err(e) = connection.stream.start_send_unpin(msg) {
+                this.remove(&key, Some(e));
             } else {
-                unreachable!();
+                this.started.insert_if_absent(key);
+                this.wflush.wake();
             }
         };
         Ok(())
