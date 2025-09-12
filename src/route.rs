@@ -1,3 +1,8 @@
+//! [`Sink`]s with routing inspired by ZeroMQ's ROUTER sockets.
+//!
+//! This model sits somewhere between explicit connection management and ZMQ-like routing trying to
+//! be a reasonable abstraction around both, with some trade-offs.
+
 use std::{
     collections::{HashMap, HashSet},
     convert::Infallible,
@@ -49,6 +54,7 @@ impl<K> ReadyWeak<K> {
     }
 }
 
+/// Helper trait for something that can be used as a key in [`Router`].
 pub trait Key: 'static + Send + Sync + Clone + Hash + PartialEq + Eq {}
 
 impl<K: 'static + Send + Sync + Clone + Hash + PartialEq + Eq> Key for K {}
@@ -112,6 +118,7 @@ struct Connection<K, S> {
     close: Arc<ConnectionWaker<K>>,
 }
 
+/// [`RouteSink`]/[`Stream`] implemented over the stream of incoming [`Sink`]s/[`Stream`]s.
 pub struct Router<K, S, F> {
     connections: HashMap<K, Connection<K, S>>,
     next: Ready<K>,
@@ -139,6 +146,7 @@ impl<K: Key, S, F> Router<K, S, F> {
         }
     }
 
+    /// Add new connection with its unique key.
     pub fn push(&mut self, key: K, stream: S) {
         let next = self.next.downgrade();
         let close = self.close.downgrade();
@@ -276,14 +284,17 @@ impl<K: Key, S, F> Extend<(K, S)> for Router<K, S, F> {
     }
 }
 
+/// [`RouteSink`]/[`Stream`] Returned by [`RouterExt::route`].
 pub type RouterExtending<F, R> =
     ExtendingRoute<Router<<R as RouterExt>::K, <R as RouterExt>::S, F>, R>;
 
+/// Extension trait to auto-extend a [`Router`] from a stream of connections.
 pub trait RouterExt: Sized {
     type K;
     type S;
     type E;
 
+    /// Extend the stream of connections (`self`) into a [`Router`].
     fn route<F: OnClose<Self::E>>(self, callback: F) -> RouterExtending<F, Self>;
 }
 
