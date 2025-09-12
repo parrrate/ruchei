@@ -1,3 +1,6 @@
+[workspace]
+members = ["ruchei-sample"]
+
 [package]
 name = "ruchei"
 version = "0.0.27" # ad7038ef3b571dc133c108e14e6bb0f8cdcd812d and earlier have invalid versions
