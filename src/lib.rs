@@ -19,6 +19,7 @@ mod owned_close;
 pub mod pinned_extend;
 pub mod poll_on_wake;
 pub mod read_callback;
+mod ready_slab;
 mod ready_weak;
 pub mod route;
 pub mod rw_isolation;

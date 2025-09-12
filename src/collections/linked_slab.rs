@@ -45,6 +45,7 @@ impl<T, const N: usize> Value<T, N> {
 pub(crate) struct LinkedSlab<T, const N: usize> {
     slab: Slab<Value<T, N>>,
     links: [Link; N],
+    lens: [usize; N],
 }
 
 impl<T, const N: usize> Default for LinkedSlab<T, N> {
@@ -52,18 +53,21 @@ impl<T, const N: usize> Default for LinkedSlab<T, N> {
         Self {
             slab: Default::default(),
             links: [Link::EMPTY; N],
+            lens: [0; N],
         }
     }
 }
 
 impl<T, const N: usize> LinkedSlab<T, N> {
     #[must_use]
+    #[cfg(test)]
     pub(crate) fn new() -> Self {
         Self::default()
     }
 
     fn unlink(&mut self, link: Link, n: usize) {
         assert!(n < N);
+        self.lens[n] -= 1;
         let (prev, next) = match link {
             Link::EMPTY => {
                 self.links[n] = Link::EMPTY;
@@ -120,10 +124,29 @@ impl<T, const N: usize> LinkedSlab<T, N> {
         Some(next)
     }
 
-    pub(crate) fn link_push<const M: usize>(&mut self, key: usize) {
+    pub(crate) fn link_empty<const M: usize>(&self) -> bool {
+        assert!(M < N);
+        self.link::<M>().is_none()
+    }
+
+    pub(crate) fn link_len<const M: usize>(&self) -> usize {
+        assert!(M < N);
+        self.lens[M]
+    }
+
+    pub(crate) fn link_contains<const M: usize>(&self, key: usize) -> bool {
+        assert!(M < N);
+        if let Some(value) = self.slab.get(key) {
+            value.links[M].is_some()
+        } else {
+            false
+        }
+    }
+
+    pub(crate) fn link_push_back<const M: usize>(&mut self, key: usize) -> bool {
         assert!(M < N);
         if !self.linkable::<M>(key) {
-            return;
+            return false;
         }
         let link = match self.link::<M>() {
             None => {
@@ -142,20 +165,40 @@ impl<T, const N: usize> LinkedSlab<T, N> {
         let link_ref = &mut self.slab.get_mut(key).expect("key not found").links[M];
         assert!(link_ref.is_none());
         *link_ref = Some(link);
+        self.lens[M] += 1;
+        true
     }
 
-    pub(crate) fn link_pop<const M: usize>(&mut self) -> Option<usize> {
+    pub(crate) fn link_pop_at<const M: usize>(&mut self, key: usize) -> bool {
+        assert!(M < N);
+        if let Some(link) = self.slab.get_mut(key).expect("key not found").links[M].take() {
+            self.unlink(link, M);
+            true
+        } else {
+            false
+        }
+    }
+
+    pub(crate) fn link_pop_front<const M: usize>(&mut self) -> Option<usize> {
         assert!(M < N);
         let key = self.first::<M>()?;
-        let link = self.slab.get_mut(key).expect("key not found").links[M]
-            .take()
-            .expect("key not linked");
-        self.unlink(link, M);
+        assert!(self.link_pop_at::<M>(key), "key not linked");
         Some(key)
+    }
+
+    pub(crate) fn link_pops<const M: usize, U, F: FnMut(usize, &mut Self) -> U>(
+        &mut self,
+        f: F,
+    ) -> Pops<'_, T, F, N, M> {
+        Pops(self, f)
     }
 
     pub(crate) fn insert(&mut self, value: T) -> usize {
         self.slab.insert(Value::new(value))
+    }
+
+    pub(crate) fn vacant_key(&mut self) -> usize {
+        self.slab.vacant_key()
     }
 
     pub(crate) fn remove(&mut self, key: usize) -> Option<T> {
@@ -175,6 +218,23 @@ impl<T, const N: usize> LinkedSlab<T, N> {
     pub(crate) fn is_empty(&self) -> bool {
         self.slab.is_empty()
     }
+
+    pub(crate) fn len(&self) -> usize {
+        self.slab.len()
+    }
+}
+
+pub(crate) struct Pops<'a, T, F, const N: usize, const M: usize>(&'a mut LinkedSlab<T, N>, F);
+
+impl<'a, T, U, F: FnMut(usize, &mut LinkedSlab<T, N>) -> U, const N: usize, const M: usize> Iterator
+    for Pops<'a, T, F, N, M>
+{
+    type Item = U;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let key = self.0.link_pop_front::<M>()?;
+        Some(self.1(key, self.0))
+    }
 }
 
 #[cfg(test)]
@@ -188,21 +248,21 @@ mod tests {
         let a = slab.insert(123);
         let b = slab.insert(456);
         assert!(!slab.is_empty());
-        slab.link_push::<0>(a);
-        slab.link_push::<0>(b);
-        slab.link_push::<1>(b);
-        slab.link_push::<1>(a);
-        slab.link_push::<2>(a);
-        slab.link_push::<2>(b);
-        assert_eq!(slab.link_pop::<0>().unwrap(), a);
-        assert_eq!(slab.link_pop::<0>().unwrap(), b);
-        assert!(slab.link_pop::<0>().is_none());
-        assert_eq!(slab.link_pop::<1>().unwrap(), b);
-        assert_eq!(slab.link_pop::<1>().unwrap(), a);
-        assert!(slab.link_pop::<1>().is_none());
+        slab.link_push_back::<0>(a);
+        slab.link_push_back::<0>(b);
+        slab.link_push_back::<1>(b);
+        slab.link_push_back::<1>(a);
+        slab.link_push_back::<2>(a);
+        slab.link_push_back::<2>(b);
+        assert_eq!(slab.link_pop_front::<0>().unwrap(), a);
+        assert_eq!(slab.link_pop_front::<0>().unwrap(), b);
+        assert!(slab.link_pop_front::<0>().is_none());
+        assert_eq!(slab.link_pop_front::<1>().unwrap(), b);
+        assert_eq!(slab.link_pop_front::<1>().unwrap(), a);
+        assert!(slab.link_pop_front::<1>().is_none());
         slab.remove(a).unwrap();
-        assert_eq!(slab.link_pop::<2>().unwrap(), b);
-        assert!(slab.link_pop::<2>().is_none());
+        assert_eq!(slab.link_pop_front::<2>().unwrap(), b);
+        assert!(slab.link_pop_front::<2>().is_none());
         assert!(slab.get_mut(a).is_none());
         assert_eq!(*slab.get_mut(b).unwrap(), 456);
         slab.remove(b).unwrap();

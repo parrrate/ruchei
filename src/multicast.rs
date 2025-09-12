@@ -18,5 +18,6 @@
 pub mod buffered;
 pub mod bufferless;
 pub mod bufferless_keyed;
+pub mod bufferless_slab;
 pub mod ignore;
 pub mod replay;
