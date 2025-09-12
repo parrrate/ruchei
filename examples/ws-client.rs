@@ -1,4 +1,4 @@
-use ruchei::echo_buffered::EchoBuffered;
+use ruchei::echo::buffered::EchoBuffered;
 
 #[async_std::main]
 async fn main() {

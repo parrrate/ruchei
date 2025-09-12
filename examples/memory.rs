@@ -11,7 +11,7 @@ use futures_util::{
 };
 use pin_project::pin_project;
 use ruchei::{
-    echo_buffered::EchoBuffered,
+    echo::buffered::EchoBuffered,
     fanout_buffered::MulticastBuffered,
     fanout_bufferless::MulticastBufferless,
     fanout_replay::MulticastReplay,

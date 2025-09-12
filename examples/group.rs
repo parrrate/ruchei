@@ -5,7 +5,7 @@ use futures_channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
 use futures_util::{future::ready, StreamExt};
 use ruchei::{
     concurrent::ConcurrentExt,
-    echo_buffered::EchoBuffered,
+    echo::buffered::EchoBuffered,
     fanout_replay::MulticastReplay,
     group_by_key::{Group, GroupByKey},
     poll_on_wake::PollOnWakeExt,
