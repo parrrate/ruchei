@@ -186,8 +186,7 @@ impl<T> Nodes<T> {
         (id, value)
     }
 
-    fn remove_at(&mut self, mut id: NodeId) -> Option<T> {
-        let value = self[id].value.take()?;
+    fn collapse(&mut self, mut id: NodeId) {
         while self[id].is_collapsible() {
             let parent = if let Some(child) = self[id].only_child() {
                 let (middle, ifirst, mut irest) = self.disown(child);
@@ -204,6 +203,11 @@ impl<T> Nodes<T> {
             self.pop(id);
             id = parent;
         }
+    }
+
+    fn remove_at(&mut self, id: NodeId) -> Option<T> {
+        let value = self[id].value.take()?;
+        self.collapse(id);
         Some(value)
     }
 
