@@ -11,7 +11,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures_util::{ready, Sink, SinkExt, Stream, StreamExt};
+use futures_util::{ready, stream::FusedStream, Sink, SinkExt, Stream, StreamExt};
 pub use ruchei_route::{RouteExt, RouteSink, WithRoute};
 
 use crate::{
@@ -208,8 +208,8 @@ pub trait RouterExt: Sized {
     fn route<F: OnClose<Self::E>>(self, callback: F) -> RouterExtending<F, Self>;
 }
 
-impl<In, K: Key, E, S: Unpin + Stream<Item = Result<In, E>>, R: Stream<Item = (K, S)>> RouterExt
-    for R
+impl<In, K: Key, E, S: Unpin + Stream<Item = Result<In, E>>, R: FusedStream<Item = (K, S)>>
+    RouterExt for R
 {
     type K = K;
     type S = S;
