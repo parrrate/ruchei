@@ -5,7 +5,7 @@ use std::{
     task::{Context, Poll, Wake, Waker},
 };
 
-use futures_util::{Future, Stream, task::AtomicWaker};
+use futures_util::{Future, TryStream, task::AtomicWaker};
 use pin_project::pin_project;
 use ruchei_route::RouteSink;
 
@@ -116,14 +116,14 @@ pub struct Echo<S, K, T> {
     ready: Ready<K>,
 }
 
-impl<K: Key, T, E, S: Stream<Item = Result<(K, T), E>> + RouteSink<K, T, Error = E>> Future
+impl<K: Key, T, E, S: TryStream<Ok = (K, T), Error = E> + RouteSink<K, T, Error = E>> Future
     for Echo<S, K, T>
 {
     type Output = Result<(), E>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let mut this = self.project();
-        while let Poll::Ready(o) = this.router.as_mut().poll_next(cx)? {
+        while let Poll::Ready(o) = this.router.as_mut().try_poll_next(cx)? {
             if let Some((key, msg)) = o {
                 this.connections
                     .entry(key)
@@ -195,7 +195,7 @@ pub trait EchoRoute: Sized {
     }
 }
 
-impl<K: Key, T, E, S: Stream<Item = Result<(K, T), E>> + RouteSink<K, T, Error = E>> EchoRoute
+impl<K: Key, T, E, S: TryStream<Ok = (K, T), Error = E> + RouteSink<K, T, Error = E>> EchoRoute
     for S
 {
     type K = K;
