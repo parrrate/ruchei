@@ -60,7 +60,7 @@ impl<T, const N: usize> Default for LinkedSlab<T, N> {
 
 impl<T, const N: usize> LinkedSlab<T, N> {
     #[must_use]
-    #[cfg(test)]
+    #[cfg(any(test, kani))]
     pub(crate) fn new() -> Self {
         Self::default()
     }
@@ -286,6 +286,47 @@ mod tests {
         assert!(slab.get_mut(a).is_none());
         assert_eq!(*slab.get_mut(b).unwrap(), 456);
         slab.remove(b).unwrap();
+        assert!(slab.is_empty());
+    }
+}
+
+#[cfg(kani)]
+mod verification {
+    use super::*;
+
+    #[kani::proof]
+    pub fn check() {
+        let mut slab = LinkedSlab::<i32, 3>::new();
+        assert!(slab.is_empty());
+        let va = kani::any();
+        let vb = kani::any();
+        kani::assume(va != vb);
+        let a = slab.insert(va);
+        assert!(!slab.is_empty());
+        assert_eq!(slab.len(), 1);
+        let b = slab.insert(vb);
+        assert!(!slab.is_empty());
+        assert_ne!(a, b);
+        assert_eq!(slab.len(), 2);
+        assert_ne!(slab.get_mut(a).copied(), slab.get_mut(b).copied());
+        slab.link_push_back::<0>(a);
+        slab.link_push_back::<0>(b);
+        slab.link_push_back::<1>(b);
+        slab.link_push_back::<1>(a);
+        slab.link_push_back::<2>(a);
+        slab.link_push_back::<2>(b);
+        assert_eq!(slab.link_pop_front::<0>().unwrap(), a);
+        assert_eq!(slab.link_pop_front::<0>().unwrap(), b);
+        assert!(slab.link_pop_front::<0>().is_none());
+        assert_eq!(slab.link_pop_front::<1>().unwrap(), b);
+        assert_eq!(slab.link_pop_front::<1>().unwrap(), a);
+        assert!(slab.link_pop_front::<1>().is_none());
+        assert_eq!(slab.remove(a).unwrap(), va);
+        assert_eq!(slab.link_pop_front::<2>().unwrap(), b);
+        assert!(slab.link_pop_front::<2>().is_none());
+        assert!(slab.get_mut(a).is_none());
+        assert_eq!(*slab.get_mut(b).unwrap(), vb);
+        assert_eq!(slab.remove(b).unwrap(), vb);
         assert!(slab.is_empty());
     }
 }
