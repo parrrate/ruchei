@@ -9,3 +9,4 @@ authors.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+slab.workspace = true
