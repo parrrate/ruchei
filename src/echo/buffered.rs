@@ -4,7 +4,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures_util::{Future, Sink,  TryStream, stream::FusedStream};
+use futures_util::{Future, Sink, TryStream, stream::FusedStream};
 use pin_project::pin_project;
 
 #[derive(Debug)]
