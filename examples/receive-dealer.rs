@@ -2,7 +2,7 @@
 
 use async_net::TcpListener;
 use futures_util::{StreamExt, TryStreamExt};
-use ruchei::{concurrent::ConcurrentExt, deal::DealerExt, poll_on_wake::PollOnWakeExt};
+use ruchei::{concurrent::ConcurrentExt, deal::keyed::DealerKeyedExt, poll_on_wake::PollOnWakeExt};
 
 #[async_std::main]
 async fn main() {
@@ -17,7 +17,7 @@ async fn main() {
         .concurrent()
         .filter_map(|r| async { r.ok() })
         .map(|s| (rand::random::<u64>(), s))
-        .deal(|_| {})
+        .deal_keyed(|_| {})
         .try_for_each(|msg| {
             eprintln!("{msg:?}");
             async { Ok(()) }
