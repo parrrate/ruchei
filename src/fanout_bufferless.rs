@@ -265,6 +265,19 @@ impl<In, Out, E, S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
 
 impl<
         In,
+        Out,
+        E,
+        S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
+        F: Default + OnClose<E>,
+    > Default for Multicast<S, Out, F>
+{
+    fn default() -> Self {
+        Self::new(F::default())
+    }
+}
+
+impl<
+        In,
         Out: Clone,
         E,
         S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
