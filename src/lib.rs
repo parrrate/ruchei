@@ -12,6 +12,7 @@ pub mod compress;
 pub mod concurrent;
 pub mod deal;
 pub mod echo;
+pub mod flatten_sorted;
 pub mod group_concurrent;
 pub mod group_sequential;
 pub mod multicast;
