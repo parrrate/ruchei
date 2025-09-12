@@ -4,7 +4,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures_util::{Sink, SinkExt, Stream, StreamExt, ready, stream::FusedStream};
+use futures_util::{Sink, SinkExt, Stream, TryStream, TryStreamExt, ready, stream::FusedStream};
 use pin_project::pin_project;
 use ruchei_collections::{as_linked_slab::AsLinkedSlab, linked_slab::LinkedSlab};
 pub use ruchei_route::{RouteExt, RouteSink, Unroute, WithRoute};
@@ -64,7 +64,7 @@ impl<S, F> Router<S, F> {
     }
 }
 
-impl<In, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stream for Router<S, F> {
+impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, F: OnClose<E>> Stream for Router<S, F> {
     type Item = Result<(usize, In), Infallible>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -74,7 +74,7 @@ impl<In, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stream for R
             if let Some(connection) = this.connections.get_mut(key)
                 && let Poll::Ready(o) = connection
                     .next
-                    .poll(cx, |cx| connection.stream.poll_next_unpin(cx))
+                    .poll(cx, |cx| connection.stream.try_poll_next_unpin(cx))
             {
                 match o {
                     Some(Ok(item)) => {
@@ -201,7 +201,9 @@ pub trait RouterSlabExt: Sized {
     fn route_slab<F: OnClose<Self::E>>(self, callback: F) -> RouterExtending<F, Self>;
 }
 
-impl<In, E, S: Unpin + Stream<Item = Result<In, E>>, R: FusedStream<Item = S>> RouterSlabExt for R {
+impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = S>> RouterSlabExt
+    for R
+{
     type S = S;
     type E = E;
 
