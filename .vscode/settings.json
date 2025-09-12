@@ -4,5 +4,8 @@
     },
     "[markdown]": {
         "editor.rulers": [86, 99, 100]
+    },
+    "markdownlint.config": {
+        "MD024": false
     }
 }
