@@ -10,16 +10,18 @@ use core::{
 
 use futures_sink::Sink;
 
-/// [`Sink`] with some `route` provided to some methods.
+/// [`Sink`] with `route` provided to some methods.
 ///
-/// This trait is considered weaker than [`Sink<Route, Msg>`] (thus is implemented for).
+/// This trait is considered weaker than [`Sink<Route, Msg>`] (thus is blanked-implemented for it).
 ///
 /// Unless specified otherwise by the implementor, all operations on [`RouteSink`] for all routes
 /// (and [`poll_close`]) are considered invalid once an error occurs.
 ///
 /// [`poll_close`]: RouteSink::poll_close
 pub trait RouteSink<Route, Msg> {
-    /// [`Sink::Error`]
+    /// The type of value produced by the sink when an error occurs.
+    ///
+    /// See also: [`Sink::Error`]
     type Error;
 
     /// Attempts to prepare the [`RouteSink`] to receive a message on a specified route.
@@ -43,6 +45,8 @@ pub trait RouteSink<Route, Msg> {
     /// May or may not trigger the actual sending process. To guarantee the delivery, use either
     /// [`poll_flush`] on the same route, or [`poll_close`] on the whole sink.
     ///
+    /// See also: [`Sink::start_send`]
+    ///
     /// [`poll_ready`]: RouteSink::poll_ready
     /// [`poll_flush`]: RouteSink::poll_flush
     /// [`poll_close`]: RouteSink::poll_close
@@ -52,6 +56,8 @@ pub trait RouteSink<Route, Msg> {
     ///
     /// Returns `Poll::Ready(Ok(()))` once all items sent via [`start_send`] on that route have been
     /// flushed from the buffer to the underlying transport.
+    ///
+    /// See also: [`Sink::poll_flush`]
     ///
     /// [`start_send`]: RouteSink::start_send
     fn poll_flush(
@@ -70,6 +76,8 @@ pub trait RouteSink<Route, Msg> {
     /// `Poll::Ready(Ok(()))`) implementation (as not to break compatibility). If you really need
     /// that type of control, it is recommended to use message transports that do explicit sessions
     /// or connections, like TCP or WebSocket.
+    ///
+    /// See also: [`Sink::poll_close`]
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>>;
 
     /// Whether this [`RouteSink`] itself is doing any actual routing and keeping wakers separate.
@@ -156,7 +164,7 @@ impl<'a, Route: Clone, Msg, E, T: ?Sized + RouteSink<Route, Msg, Error = E>> Sin
 
 /// Extension trait to make [`WithRoute`] from some mutable (pinned) reference to [`RouteSink`].
 pub trait RouteExt<Route> {
-    /// [`RouteSink`] pinned somewhere in.
+    /// [`RouteSink`] being mutably referred to.
     type T: ?Sized;
 
     /// Create a route-specific [`Sink`].
