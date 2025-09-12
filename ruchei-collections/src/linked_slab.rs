@@ -214,7 +214,7 @@ impl<T, const N: usize> LinkedSlab<T, N> {
         self.slab.vacant_key()
     }
 
-    pub fn remove(&mut self, key: usize) -> Option<T> {
+    pub fn try_remove(&mut self, key: usize) -> Option<T> {
         let value = self.slab.try_remove(key)?;
         for (n, link) in value.links.into_iter().enumerate() {
             if let Some(link) = link {
@@ -283,12 +283,12 @@ mod tests {
         assert_eq!(slab.link_pop_front::<1>().unwrap(), b);
         assert_eq!(slab.link_pop_front::<1>().unwrap(), a);
         assert!(slab.link_pop_front::<1>().is_none());
-        slab.remove(a).unwrap();
+        slab.try_remove(a).unwrap();
         assert_eq!(slab.link_pop_front::<2>().unwrap(), b);
         assert!(slab.link_pop_front::<2>().is_none());
         assert!(slab.get_mut(a).is_none());
         assert_eq!(*slab.get_mut(b).unwrap(), 456);
-        slab.remove(b).unwrap();
+        slab.try_remove(b).unwrap();
         assert!(slab.is_empty());
     }
 }
