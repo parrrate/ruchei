@@ -250,6 +250,7 @@ pub trait MulticastBufferlessKeyed: Sized {
     /// Error.
     type E;
 
+    #[must_use]
     fn multicast_bufferless_keyed<F: OnClose<Self::E>>(
         self,
         callback: F,
@@ -263,6 +264,7 @@ impl<In, K: Key, E, S: Unpin + Stream<Item = Result<In, E>>, R: FusedStream<Item
     type S = S;
     type E = E;
 
+    #[must_use]
     fn multicast_bufferless_keyed<F: OnClose<Self::E>>(
         self,
         callback: F,
