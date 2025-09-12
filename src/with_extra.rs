@@ -18,12 +18,18 @@ impl<T, Ex> WithExtra<T, Ex> {
         Self { inner, extra }
     }
 
-    pub fn as_mut(&mut self) -> &mut T {
-        &mut self.inner
+    pub fn into_inner(self) -> (T, Ex) {
+        (self.inner, self.extra)
     }
 
     pub fn as_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T> {
         self.project().inner
+    }
+}
+
+impl<T, Ex> AsMut<T> for WithExtra<T, Ex> {
+    fn as_mut(&mut self) -> &mut T {
+        &mut self.inner
     }
 }
 
