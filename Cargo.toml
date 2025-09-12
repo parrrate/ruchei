@@ -1,5 +1,5 @@
 [workspace]
-members = ["internal/ruchei-sample", "ruchei-extra"]
+members = ["internal/ruchei-sample", "ruchei-extra", "ruchei-route"]
 
 [workspace.package]
 version = "0.0.75"
