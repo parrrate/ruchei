@@ -1,3 +1,5 @@
+//! [`Sink`]s with round-robin distribution inspired by ZeroMQ's `DEALER` sockets.
+
 use std::{
     collections::HashSet,
     convert::Infallible,
@@ -17,6 +19,7 @@ use crate::{
     route::Key,
 };
 
+/// [`Sink`]/[`Stream`] implemented over the stream of incoming [`Sink`]s/[`Stream`]s.
 pub struct Dealer<K, S, F> {
     connections: LinkedHashMap<K, Connection<K, S>>,
     next: Ready<K>,
@@ -224,13 +227,16 @@ impl<K: Key, S, F> Extend<(K, S)> for Dealer<K, S, F> {
     }
 }
 
+/// [`Sink`]/[`Stream`] Returned by [`DealerExt::deal`].
 pub type DealerExtending<F, R> = Extending<Dealer<<R as DealerExt>::K, <R as DealerExt>::S, F>, R>;
 
+/// Extension trait to auto-extend a [`Dealer`] from a stream of connections.
 pub trait DealerExt: Sized {
     type K;
     type S;
     type E;
 
+    /// Extend the stream of connections (`self`) into a [`Dealer`].
     fn deal<F: OnClose<Self::E>>(self, callback: F) -> DealerExtending<F, Self>;
 }
 
