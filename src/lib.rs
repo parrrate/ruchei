@@ -8,4 +8,5 @@ pub mod fanout_replay;
 mod owned_close;
 pub mod read_callback;
 pub mod rw_isolation;
+pub mod select_one;
 mod wait_all;
