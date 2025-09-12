@@ -1,22 +1,22 @@
 use std::{
-    collections::HashSet,
+    hash::Hash,
     sync::{Arc, Weak},
     task::{Context, Wake, Waker},
 };
 
 use futures_util::task::AtomicWaker;
 
-use crate::route::Key;
+use crate::{collections::linked_hash_set::LinkedHashSet, route::Key};
 
-pub(crate) struct Ready<K>(Arc<std::sync::Mutex<HashSet<K>>>);
+pub(crate) struct Ready<K>(Arc<std::sync::Mutex<LinkedHashSet<K>>>);
 
-impl<K> Default for Ready<K> {
+impl<K: Hash + Eq> Default for Ready<K> {
     fn default() -> Self {
         Self(Default::default())
     }
 }
 
-pub(crate) struct ReadyWeak<K>(Weak<std::sync::Mutex<HashSet<K>>>);
+pub(crate) struct ReadyWeak<K>(Weak<std::sync::Mutex<LinkedHashSet<K>>>);
 
 impl<K> Default for ReadyWeak<K> {
     fn default() -> Self {
@@ -25,7 +25,7 @@ impl<K> Default for ReadyWeak<K> {
 }
 
 impl<K> Ready<K> {
-    pub(crate) fn lock(&self) -> std::sync::MutexGuard<'_, HashSet<K>> {
+    pub(crate) fn lock(&self) -> std::sync::MutexGuard<'_, LinkedHashSet<K>> {
         self.0.lock().unwrap_or_else(|e| e.into_inner())
     }
 
@@ -35,7 +35,7 @@ impl<K> Ready<K> {
 }
 
 impl<K> ReadyWeak<K> {
-    pub(crate) fn lock(&self, f: impl FnOnce(std::sync::MutexGuard<'_, HashSet<K>>)) {
+    pub(crate) fn lock(&self, f: impl FnOnce(std::sync::MutexGuard<'_, LinkedHashSet<K>>)) {
         if let Some(ready) = self.0.upgrade() {
             f(ready.lock().unwrap_or_else(|e| e.into_inner()));
         }
@@ -48,17 +48,14 @@ impl<K: Key> Ready<K> {
     }
 
     pub(crate) fn next(&self) -> Option<K> {
-        let mut set = self.lock();
-        let key = set.iter().next()?.clone();
-        set.remove(&key);
-        Some(key)
+        self.lock().pop_front()
     }
 }
 
 impl<K: Key> ReadyWeak<K> {
     pub(crate) fn insert(&self, key: K) {
         self.lock(|mut ready| {
-            ready.insert(key);
+            ready.insert_if_absent(key);
         });
     }
 }

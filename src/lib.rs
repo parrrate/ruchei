@@ -8,6 +8,7 @@ pub use ruchei_callback as callback;
 pub use ruchei_extra as with_extra;
 
 pub mod close_all;
+mod collections;
 pub mod compress;
 pub mod concurrent;
 pub mod deal;
