@@ -182,8 +182,7 @@ impl<T> Nodes<T> {
         (id, value)
     }
 
-    fn remove(&mut self, mut id: NodeId, key: &[u8]) -> Option<T> {
-        id = self.locate(id, key)?;
+    fn remove_at(&mut self, mut id: NodeId) -> Option<T> {
         let value = self[id].value.take()?;
         while self[id].is_collapsible() {
             if let Some(child) = self[id].only_child() {
@@ -202,6 +201,11 @@ impl<T> Nodes<T> {
             }
         }
         Some(value)
+    }
+
+    fn remove(&mut self, mut id: NodeId, key: &[u8]) -> Option<T> {
+        id = self.locate(id, key)?;
+        self.remove_at(id)
     }
 }
 
