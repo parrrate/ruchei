@@ -1,3 +1,8 @@
+//! [`Extend`] for [`Pin`]ned values.
+//!
+//! Many of [`ruchei`] combinator traits return [`Extending`] wrapper around something that
+//! implements [`PinnedExtend`] extending from `self`.
+
 use std::{
     pin::Pin,
     task::{Context, Poll},
