@@ -70,27 +70,26 @@ impl<T, const N: usize> LinkedSlab<T, N> {
         assert!(n < N);
         assert!(self.lens[n] > 0);
         self.lens[n] -= 1;
-        let (prev, next) = match link {
+        let (prev_next, next_prev) = match link {
             Link::EMPTY => {
                 assert!(self.lens[n] == 0);
-                assert_eq!(self.links[n].next, key);
-                assert_eq!(self.links[n].prev, key);
-                self.links[n] = Link::EMPTY;
-                return;
+                let prev_next = &mut self.links[n].next;
+                let next_prev = &mut self.links[n].prev;
+                (prev_next, next_prev)
             }
             Link { prev: EMPTY, next } => {
                 assert!(self.lens[n] > 0);
                 let next = self.slab.get_mut(next).expect("next not found");
-                let next = next.links[n].as_mut().expect("next not linked");
-                let prev = &mut self.links[n];
-                (prev, next)
+                let next_prev = &mut next.links[n].as_mut().expect("next not linked").prev;
+                let prev_next = &mut self.links[n].next;
+                (prev_next, next_prev)
             }
             Link { prev, next: EMPTY } => {
                 assert!(self.lens[n] > 0);
                 let prev = self.slab.get_mut(prev).expect("prev not found");
-                let prev = prev.links[n].as_mut().expect("prev not linked");
-                let next = &mut self.links[n];
-                (prev, next)
+                let prev_next = &mut prev.links[n].as_mut().expect("prev not linked").next;
+                let next_prev = &mut self.links[n].prev;
+                (prev_next, next_prev)
             }
             Link { prev, next } => {
                 assert!(self.lens[n] > 0);
@@ -98,15 +97,15 @@ impl<T, const N: usize> LinkedSlab<T, N> {
                     .slab
                     .get2_mut(prev, next)
                     .expect("prev or next not found");
-                let prev = prev.links[n].as_mut().expect("prev not linked");
-                let next = next.links[n].as_mut().expect("next not linked");
-                (prev, next)
+                let prev_next = &mut prev.links[n].as_mut().expect("prev not linked").next;
+                let next_prev = &mut next.links[n].as_mut().expect("next not linked").prev;
+                (prev_next, next_prev)
             }
         };
-        assert_eq!(prev.next, key);
-        assert_eq!(next.prev, key);
-        prev.next = link.next;
-        next.prev = link.prev;
+        assert_eq!(*prev_next, key);
+        assert_eq!(*next_prev, key);
+        *prev_next = link.next;
+        *next_prev = link.prev;
     }
 
     fn linkable<const M: usize>(&self, key: usize) -> bool {
