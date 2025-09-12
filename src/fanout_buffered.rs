@@ -356,6 +356,21 @@ impl<
     }
 }
 
+impl<
+        In,
+        Out: Clone,
+        E,
+        S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
+        F: Default + OnClose<E>,
+    > FromIterator<S> for Multicast<S, Out, F>
+{
+    fn from_iter<T: IntoIterator<Item = S>>(iter: T) -> Self {
+        let mut this = Self::default();
+        this.extend(iter);
+        this
+    }
+}
+
 impl<S, Out, F> AutoPinnedExtend for Multicast<S, Out, F> {}
 
 pub trait MulticastBuffered<Out>: Sized {

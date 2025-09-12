@@ -276,18 +276,28 @@ impl<
     }
 }
 
-impl<
-        In,
-        Out: Clone,
-        E,
-        S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
-        F: OnClose<E>,
-    > Extend<S> for Multicast<S, Out, F>
+impl<In, Out, E, S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>, F: OnClose<E>>
+    Extend<S> for Multicast<S, Out, F>
 {
     fn extend<T: IntoIterator<Item = S>>(&mut self, iter: T) {
         for stream in iter {
             self.push(stream)
         }
+    }
+}
+
+impl<
+        In,
+        Out,
+        E,
+        S: Unpin + Stream<Item = Result<In, E>> + Sink<Out, Error = E>,
+        F: Default + OnClose<E>,
+    > FromIterator<S> for Multicast<S, Out, F>
+{
+    fn from_iter<T: IntoIterator<Item = S>>(iter: T) -> Self {
+        let mut this = Self::default();
+        this.extend(iter);
+        this
     }
 }
 
