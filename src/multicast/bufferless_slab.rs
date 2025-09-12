@@ -90,6 +90,9 @@ impl<In, E, S: Unpin + Stream<Item = Result<In, E>>, F: OnClose<E>> Stream for M
             if this.connections.link_pop_at::<OP_IS_READIED>(key) {
                 this.ready.downgrade().insert(key);
             }
+            if this.connections.link_pop_at::<OP_IS_FLUSHING>(key) {
+                this.flush.downgrade().insert(key);
+            }
             if let Some(connection) = this.connections.get_mut(key)
                 && let Poll::Ready(o) = connection
                     .next
@@ -179,20 +182,16 @@ impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> Sink<Out> fo
         this.flush.register(cx);
         this.flush.downgrade().extend(
             this.connections
-                .link_pops::<OP_IS_STARTED, _, _>(|key, connection| {
-                    (!connection.link_contains::<OP_IS_FLUSHING>(key)).then_some(key)
-                })
-                .flatten(),
+                .link_pops::<OP_IS_STARTED, _, _>(|key, _| key),
         );
         while let Some(key) = this
             .flush
             .as_mut()
             .next::<OP_WAKE_FLUSH, _, OP_COUNT>(this.connections)
         {
-            if this.connections.link_pop_at::<OP_IS_READIED>(key) {
-                this.ready.downgrade().insert(key);
-            }
             if let Some(connection) = this.connections.get_mut(key) {
+                this.next.downgrade().insert(key);
+                this.ready.downgrade().insert(key);
                 match connection
                     .flush
                     .poll(cx, |cx| connection.stream.poll_flush_unpin(cx))
