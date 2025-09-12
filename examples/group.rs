@@ -6,8 +6,8 @@ use futures_util::{future::ready, StreamExt};
 use ruchei::{
     concurrent::ConcurrentExt,
     echo::buffered::EchoBuffered,
-    fanout::replay::MulticastReplay,
     group_by_key::{Group, GroupByKey},
+    multicast::replay::MulticastReplay,
     poll_on_wake::PollOnWakeExt,
     timeout_unused::TimeoutUnused,
 };

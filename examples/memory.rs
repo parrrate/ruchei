@@ -12,9 +12,9 @@ use futures_util::{
 use pin_project::pin_project;
 use ruchei::{
     echo::buffered::EchoBuffered,
-    fanout::buffered::MulticastBuffered,
-    fanout::bufferless::MulticastBufferless,
-    fanout::replay::MulticastReplay,
+    multicast::buffered::MulticastBuffered,
+    multicast::bufferless::MulticastBufferless,
+    multicast::replay::MulticastReplay,
     rw_isolation::{isolation, IsolateInner, IsolateOuter},
 };
 

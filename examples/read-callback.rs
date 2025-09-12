@@ -3,7 +3,8 @@ use std::{pin::pin, time::Duration};
 use async_std::{net::TcpListener, task::sleep};
 use futures_util::{SinkExt, StreamExt};
 use ruchei::{
-    concurrent::ConcurrentExt, fanout::buffered::MulticastBuffered, read_callback::ReadCallbackExt,
+    concurrent::ConcurrentExt, multicast::buffered::MulticastBuffered,
+    read_callback::ReadCallbackExt,
 };
 
 #[async_std::main]

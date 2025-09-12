@@ -2,7 +2,7 @@ use async_std::net::TcpListener;
 use futures_util::StreamExt;
 use ruchei::{
     concurrent::ConcurrentExt, echo::buffered::EchoBuffered,
-    fanout::bufferless::MulticastBufferless, poll_on_wake::PollOnWakeExt,
+    multicast::bufferless::MulticastBufferless, poll_on_wake::PollOnWakeExt,
 };
 
 #[async_std::main]
