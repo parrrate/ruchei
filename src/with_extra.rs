@@ -1,5 +1,8 @@
 //! Store extra data alongside a [`Future`]/[`Stream`]/[`Sink`].
 //!
+//! [`Stream`]: ::futures_util::Stream
+//! [`Sink`]: ::futures_util::Sink
+//!
 //! Commonly used for storing types with [`Drop`] logic:
 //!
 //! * [`ruchei::timeout_unused::KeepAlive`]
