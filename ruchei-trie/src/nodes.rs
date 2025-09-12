@@ -72,6 +72,7 @@ impl<Node> Nodes<Node> {
         self.roots
     }
 
+    #[cfg(test)]
     pub(crate) fn len(&self) -> usize {
         self.slab.len()
     }
