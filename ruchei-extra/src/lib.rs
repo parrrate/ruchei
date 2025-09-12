@@ -11,6 +11,7 @@ use futures_core::{FusedFuture, FusedStream, Future, Stream};
 use futures_sink::Sink;
 use pin_project::pin_project;
 
+/// [`Future`]/[`Stream`]/[`Sink`] with extra data attached.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[pin_project]
 pub struct WithExtra<T, Ex> {
@@ -20,16 +21,19 @@ pub struct WithExtra<T, Ex> {
 }
 
 impl<T, Ex> WithExtra<T, Ex> {
+    /// Attach extra data to a value.
     #[must_use]
     pub const fn new(inner: T, extra: Ex) -> Self {
         Self { inner, extra }
     }
 
+    /// Unwrap into parts.
     #[must_use]
     pub fn into_inner(self) -> (T, Ex) {
         (self.inner, self.extra)
     }
 
+    /// Get a pinned mutable reference to the inner value.
     #[must_use]
     pub fn as_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T> {
         self.project().inner
