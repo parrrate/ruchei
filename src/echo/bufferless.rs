@@ -25,28 +25,33 @@ impl<T, E, S: FusedStream<Item = Result<T, E>> + Sink<T, Error = E>> Future for 
             return Poll::Ready(Ok(()));
         }
         loop {
-            match this.item.take() {
-                Some(item) => match this.stream.as_mut().poll_ready(cx)? {
-                    Poll::Ready(()) => {
-                        this.stream.as_mut().start_send(item)?;
-                        *this.started = true;
-                    }
-                    Poll::Pending => {
-                        *this.item = Some(item);
-                        break;
-                    }
-                },
-                None => match this.stream.as_mut().poll_next(cx)? {
-                    Poll::Ready(Some(item)) => *this.item = Some(item),
-                    Poll::Ready(None) => return Poll::Ready(Ok(())),
-                    Poll::Pending => break,
-                },
+            loop {
+                match this.item.take() {
+                    Some(item) => match this.stream.as_mut().poll_ready(cx)? {
+                        Poll::Ready(()) => {
+                            this.stream.as_mut().start_send(item)?;
+                            *this.started = true;
+                        }
+                        Poll::Pending => {
+                            *this.item = Some(item);
+                            break;
+                        }
+                    },
+                    None => match this.stream.as_mut().poll_next(cx)? {
+                        Poll::Ready(Some(item)) => *this.item = Some(item),
+                        Poll::Ready(None) => return Poll::Ready(Ok(())),
+                        Poll::Pending => {
+                            break;
+                        }
+                    },
+                }
+            }
+            if *this.started && this.stream.as_mut().poll_flush(cx)?.is_ready() {
+                *this.started = false;
+            } else {
+                break Poll::Pending;
             }
         }
-        if *this.started && this.stream.as_mut().poll_flush(cx)?.is_ready() {
-            *this.started = false;
-        }
-        Poll::Pending
     }
 }
 
