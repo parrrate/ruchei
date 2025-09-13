@@ -310,6 +310,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, F: OnClose<E>, E> Sink<T> for Mult
     }
 
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        ready!(self.as_mut().poll_send_all(cx));
         let mut this = self.as_mut().project();
         this.close.register(cx);
         while let Some(key) = this.close.as_mut().next::<OP_WAKE_CLOSE>(this.connections) {
