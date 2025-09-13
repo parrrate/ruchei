@@ -3,8 +3,8 @@
 use async_net::TcpListener;
 use futures_util::{StreamExt, future::ready};
 use ruchei::{
-    concurrent::ConcurrentExt, echo::buffered::EchoBuffered, multicast::replay::MulticastReplay,
-    poll_on_wake::PollOnWakeExt,
+    concurrent::ConcurrentExt, echo::buffered::EchoBuffered,
+    multicast::replay_slab::MulticastReplaySlab, poll_on_wake::PollOnWakeExt,
 };
 
 #[async_std::main]
@@ -20,7 +20,7 @@ async fn main() {
         .concurrent()
         .filter_map(|r| ready(r.ok()))
         .map(|s| s.poll_on_wake())
-        .multicast_replay(|_| {})
+        .multicast_replay_slab(|_| {})
         .echo_buffered()
         .await
         .unwrap();
