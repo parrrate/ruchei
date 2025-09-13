@@ -5,9 +5,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+### Added
+
+- `flatten_sorted`
+- `into_reply_buffer`
+- `multicast_replay_slab`
+- `multicast_trie`
+
 ### Changed
 
 - Dropped `Clone` bound for `group_sequential` context
+- More `TryStream`-based `impl`s (instead of `Stream<Item = Result<T, E>>`)
+
+### Fixed
+
+- Some `multicast_bufferless_slab` bugs resulting in a deadlock
+
+### Removed
+
+- Previously deprecated `deal` and `route` aliases
 
 ### [0.0.96] - 2025-07-19
 
