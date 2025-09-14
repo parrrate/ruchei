@@ -181,11 +181,11 @@ impl<T> Default for Avl<T> {
 }
 
 enum Mode {
-    // Current node is balanced. May leave the node in an unbalanced state.
+    /// Current node is balanced. May leave the node in an unbalanced state.
     Balanced,
-    // Current node is unbalanced opposite the rotation. Makes it balanced.
+    /// Current node is unbalanced opposite the rotation. Makes it balanced.
     Unbalanced,
-    // Current node and the deep node are both unbalanced opposite the rotation. Make both balanced.
+    /// Current node and the deep node are both unbalanced opposite the rotation. Make both balanced.
     VeryUnbalanced,
 }
 
