@@ -68,6 +68,18 @@ impl<T, const N: usize> LinkedSlab<T, N> {
         Self::default()
     }
 
+    fn prev_next(&mut self, n: usize, prev: usize, next: usize) -> (&mut usize, &mut usize) {
+        assert!(n < N);
+        assert_ne!(self.lens[n], 0);
+        let (prev, next) = self
+            .slab
+            .get2_mut(prev, next)
+            .expect("prev or next not found");
+        let prev_next = &mut prev.links[n].as_mut().expect("prev not linked").next;
+        let next_prev = &mut next.links[n].as_mut().expect("next not linked").prev;
+        (prev_next, next_prev)
+    }
+
     #[inline(always)]
     fn unlink(&mut self, link: Link, n: usize, key: usize) {
         assert!(n < N);
@@ -95,16 +107,7 @@ impl<T, const N: usize> LinkedSlab<T, N> {
                 let next_prev = &mut self.links[n].prev;
                 (prev_next, next_prev)
             }
-            Link { prev, next } => {
-                assert_ne!(self.lens[n], 0);
-                let (prev, next) = self
-                    .slab
-                    .get2_mut(prev, next)
-                    .expect("prev or next not found");
-                let prev_next = &mut prev.links[n].as_mut().expect("prev not linked").next;
-                let next_prev = &mut next.links[n].as_mut().expect("next not linked").prev;
-                (prev_next, next_prev)
-            }
+            Link { prev, next } => self.prev_next(n, prev, next),
         };
         assert_eq!(*prev_next, key);
         assert_eq!(*next_prev, key);
@@ -228,6 +231,15 @@ impl<T, const N: usize> AsLinkedSlab for LinkedSlab<T, N> {
         }
     }
 
+    fn link_insert_between<const M: usize>(&mut self, prev: usize, key: usize, next: usize) {
+        assert!(self.slab[key].links[M].is_none(), "already linked");
+        let (prev_next, next_prev) = self.prev_next(M, prev, next);
+        *prev_next = key;
+        *next_prev = key;
+        self.slab[key].links[M] = Some(Link { prev, next });
+        self.lens[M] += 1;
+    }
+
     fn insert(&mut self, value: Self::T) -> usize {
         self.slab.insert(Value::new(value))
     }
@@ -307,6 +319,21 @@ mod tests {
         assert_eq!(*slab.get_mut(b).unwrap(), 456);
         slab.try_remove(b).unwrap();
         assert!(slab.is_empty());
+    }
+
+    #[test]
+    fn test_insert_between() {
+        let mut slab = LinkedSlab::<i32, 1>::new();
+        let a = slab.insert(1);
+        let b = slab.insert(2);
+        let c = slab.insert(3);
+        slab.link_push_back::<0>(a);
+        slab.link_push_back::<0>(c);
+        slab.link_insert_between::<0>(a, b, c);
+        assert_eq!(slab.link_pop_front::<0>().unwrap(), a);
+        assert_eq!(slab.link_pop_front::<0>().unwrap(), b);
+        assert_eq!(slab.link_pop_front::<0>().unwrap(), c);
+        assert!(slab.link_empty::<0>());
     }
 }
 

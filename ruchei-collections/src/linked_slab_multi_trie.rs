@@ -153,6 +153,10 @@ impl<T, const N: usize> AsLinkedSlab for LinkedSlabMultiTrie<T, N> {
         self.collections.link_of::<M>(key)
     }
 
+    fn link_insert_between<const M: usize>(&mut self, prev: usize, key: usize, next: usize) {
+        self.collections.link_insert_between::<M>(prev, key, next);
+    }
+
     fn insert(&mut self, value: Self::T) -> usize {
         self.collections.insert((value, Slab::new()))
     }
