@@ -16,6 +16,7 @@
 //! [`send`]: futures_util::Sink::start_send
 
 pub mod buffered;
+pub mod buffered_slab;
 pub mod bufferless;
 pub mod bufferless_keyed;
 pub mod bufferless_slab;

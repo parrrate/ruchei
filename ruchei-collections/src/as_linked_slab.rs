@@ -22,6 +22,29 @@ pub trait AsLinkedSlab: Index<usize> + IndexMut<usize> {
     fn is_empty(&self) -> bool;
     fn len(&self) -> usize;
 
+    fn link_insert<const M: usize>(
+        &mut self,
+        prev: Option<usize>,
+        key: usize,
+        next: Option<usize>,
+    ) {
+        match (prev, next) {
+            (None, next) => {
+                let (_, prev_next) = self.link_of::<M>(None);
+                assert_eq!(prev_next, next);
+                assert!(self.link_push_front::<M>(key));
+            }
+            (prev, None) => {
+                let (next_prev, _) = self.link_of::<M>(None);
+                assert_eq!(next_prev, prev);
+                assert!(self.link_push_back::<M>(key));
+            }
+            (Some(prev), Some(next)) => {
+                self.link_insert_between::<M>(prev, key, next);
+            }
+        }
+    }
+
     fn get_refresh<const M: usize>(&mut self, key: usize) -> Option<&mut Self::T> {
         assert!(M < Self::N);
         self.link_pop_at::<M>(key);
