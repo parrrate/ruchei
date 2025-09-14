@@ -9,6 +9,7 @@ pub trait AsLinkedSlab: Index<usize> + IndexMut<usize> {
     fn link_len<const M: usize>(&self) -> usize;
     fn link_contains<const M: usize>(&self, key: usize) -> bool;
     fn link_push_back<const M: usize>(&mut self, key: usize) -> bool;
+    fn link_push_front<const M: usize>(&mut self, key: usize) -> bool;
     fn link_pop_at<const M: usize>(&mut self, key: usize) -> bool;
     fn link_pop_front<const M: usize>(&mut self) -> Option<usize>;
     fn link_of<const M: usize>(&self, key: Option<usize>) -> (Option<usize>, Option<usize>);

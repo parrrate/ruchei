@@ -201,6 +201,35 @@ impl<T, const N: usize> AsLinkedSlab for LinkedSlab<T, N> {
         true
     }
 
+    fn link_push_front<const M: usize>(&mut self, key: usize) -> bool {
+        assert!(M < N);
+        if !self.linkable::<M>(key) {
+            return false;
+        }
+        assert!(self.lens[M] < self.len());
+        let link = match self.link::<M>() {
+            None => {
+                assert_eq!(self.lens[M], 0);
+                self.links[M] = Link::new(key);
+                Link::EMPTY
+            }
+            Some((_, next)) => {
+                assert_ne!(self.lens[M], 0);
+                self.slab.get_mut(next).expect("first not found").links[M]
+                    .as_mut()
+                    .expect("first not linked")
+                    .prev = key;
+                self.links[M].next = key;
+                Link { next, prev: EMPTY }
+            }
+        };
+        let link_ref = &mut self.slab.get_mut(key).expect("key not found").links[M];
+        assert!(link_ref.is_none());
+        *link_ref = Some(link);
+        self.lens[M] += 1;
+        true
+    }
+
     fn link_pop_at<const M: usize>(&mut self, key: usize) -> bool {
         assert!(M < N);
         if let Some(link) = self.slab.get_mut(key).expect("key not found").links[M].take() {
@@ -327,8 +356,8 @@ mod tests {
         let a = slab.insert(1);
         let b = slab.insert(2);
         let c = slab.insert(3);
-        slab.link_push_back::<0>(a);
-        slab.link_push_back::<0>(c);
+        slab.link_push_front::<0>(c);
+        slab.link_push_front::<0>(a);
         slab.link_insert_between::<0>(a, b, c);
         assert_eq!(slab.link_pop_front::<0>().unwrap(), a);
         assert_eq!(slab.link_pop_front::<0>().unwrap(), b);

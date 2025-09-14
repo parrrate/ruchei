@@ -141,6 +141,10 @@ impl<T, const N: usize> AsLinkedSlab for LinkedSlabMultiTrie<T, N> {
         self.collections.link_push_back::<M>(key)
     }
 
+    fn link_push_front<const M: usize>(&mut self, key: usize) -> bool {
+        self.collections.link_push_front::<M>(key)
+    }
+
     fn link_pop_at<const M: usize>(&mut self, key: usize) -> bool {
         self.collections.link_pop_at::<M>(key)
     }
