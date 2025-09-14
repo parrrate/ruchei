@@ -149,6 +149,10 @@ impl<T, const N: usize> AsLinkedSlab for LinkedSlabMultiTrie<T, N> {
         self.collections.link_pop_front::<M>()
     }
 
+    fn link_of<const M: usize>(&self, key: Option<usize>) -> (Option<usize>, Option<usize>) {
+        self.collections.link_of::<M>(key)
+    }
+
     fn insert(&mut self, value: Self::T) -> usize {
         self.collections.insert((value, Slab::new()))
     }

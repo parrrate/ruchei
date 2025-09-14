@@ -130,6 +130,14 @@ impl<T, const N: usize> LinkedSlab<T, N> {
             Link { prev, next } => Some((prev, next)),
         }
     }
+
+    fn item_link<const M: usize>(&self, key: usize) -> (Option<usize>, Option<usize>) {
+        assert!(M < N);
+        let Link { prev, next } = *self.slab[key].links[M].as_ref().expect("not linked");
+        let prev = (prev != EMPTY).then_some(prev);
+        let next = (next != EMPTY).then_some(next);
+        (prev, next)
+    }
 }
 
 impl<T, const N: usize> AsLinkedSlab for LinkedSlab<T, N> {
@@ -206,6 +214,18 @@ impl<T, const N: usize> AsLinkedSlab for LinkedSlab<T, N> {
         let popped = self.link_pop_at::<M>(key);
         assert!(popped, "key not linked");
         Some(key)
+    }
+
+    fn link_of<const M: usize>(&self, key: Option<usize>) -> (Option<usize>, Option<usize>) {
+        match key {
+            Some(key) => self.item_link::<M>(key),
+            None => {
+                let Some((prev, next)) = self.link::<M>() else {
+                    return (None, None);
+                };
+                (Some(prev), Some(next))
+            }
+        }
     }
 
     fn insert(&mut self, value: Self::T) -> usize {
