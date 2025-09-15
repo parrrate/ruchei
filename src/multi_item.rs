@@ -2,6 +2,7 @@ use std::convert::Infallible;
 
 use futures_util::{Sink, StreamExt, future::ready, stream::FusedStream};
 
+#[derive(Debug)]
 pub enum MultiItem<T, S, E> {
     Item(T),
     Closed(S, Option<E>),
