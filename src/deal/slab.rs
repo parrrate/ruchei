@@ -1,4 +1,5 @@
 use std::{
+    collections::VecDeque,
     convert::Infallible,
     pin::Pin,
     task::{Context, Poll},
@@ -8,10 +9,10 @@ use futures_util::{
     Sink, SinkExt, Stream, TryStream, TryStreamExt, ready, stream::FusedStream, task::AtomicWaker,
 };
 use pin_project::pin_project;
-use ruchei_callback::OnClose;
 use ruchei_collections::{as_linked_slab::AsLinkedSlab, linked_slab::LinkedSlab};
 
 use crate::{
+    multi_item::MultiItem,
     pinned_extend::{Extending, PinnedExtend},
     ready_slab::{Connection, ConnectionWaker, Ready},
 };
@@ -26,7 +27,7 @@ const OP_COUNT: usize = 6;
 
 /// [`Sink`]/[`Stream`] implemented over the stream of incoming [`Sink`]s/[`Stream`]s.
 #[pin_project]
-pub struct Dealer<S, F> {
+pub struct Dealer<S, E> {
     connections: LinkedSlab<Connection<S>, OP_COUNT>,
     #[pin]
     next: Ready,
@@ -35,22 +36,31 @@ pub struct Dealer<S, F> {
     flush: Ready,
     #[pin]
     close: Ready,
-    callback: F,
+    closed: VecDeque<(S, Option<E>)>,
 }
 
-impl<S, F> Dealer<S, F> {
-    fn remove<E>(self: Pin<&mut Self>, key: usize, error: Option<E>)
-    where
-        F: OnClose<E>,
-    {
-        let this = self.project();
-        this.callback.on_close(error);
-        if let Some(connection) = this.connections.try_remove(key) {
-            connection.next.waker.wake();
-            connection.ready.waker.wake();
-            connection.flush.waker.wake();
-            connection.close.waker.wake();
+impl<S, E> Default for Dealer<S, E> {
+    fn default() -> Self {
+        Self {
+            connections: Default::default(),
+            next: Default::default(),
+            wready: Default::default(),
+            flush: Default::default(),
+            close: Default::default(),
+            closed: Default::default(),
         }
+    }
+}
+
+impl<S, E> Dealer<S, E> {
+    fn remove(self: Pin<&mut Self>, key: usize, error: Option<E>) {
+        let this = self.project();
+        let connection = this.connections.remove(key);
+        connection.next.waker.wake();
+        connection.ready.waker.wake();
+        connection.flush.waker.wake();
+        connection.close.waker.wake();
+        this.closed.push_back((connection.stream, error));
     }
 
     /// Add new connection with its unique key.
@@ -77,11 +87,14 @@ impl<S, F> Dealer<S, F> {
     }
 }
 
-impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, F: OnClose<E>> Stream for Dealer<S, F> {
-    type Item = In;
+impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Dealer<S, E> {
+    type Item = MultiItem<In, S, E>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.as_mut().project();
+        if let Some((stream, error)) = this.closed.pop_front() {
+            return Poll::Ready(Some(MultiItem::Closed(stream, error)));
+        }
         this.next.register(cx);
         while let Some(key) = this.next.as_mut().next::<OP_WAKE_NEXT>(this.connections) {
             if let Some(connection) = this.connections.get_mut(key)
@@ -92,7 +105,7 @@ impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, F: OnClose<E>> Stream for 
                 match o {
                     Some(Ok(item)) => {
                         this.next.downgrade().insert(key);
-                        return Poll::Ready(Some(item));
+                        return Poll::Ready(Some(MultiItem::Item(item)));
                     }
                     Some(Err(e)) => {
                         self.as_mut().remove(key, Some(e));
@@ -112,13 +125,13 @@ impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, F: OnClose<E>> Stream for 
     }
 }
 
-impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, F: OnClose<E>> FusedStream for Dealer<S, F> {
+impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>> FusedStream for Dealer<S, E> {
     fn is_terminated(&self) -> bool {
         self.connections.is_empty()
     }
 }
 
-impl<Out, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> Sink<Out> for Dealer<S, F> {
+impl<Out, E, S: Unpin + Sink<Out, Error = E>> Sink<Out> for Dealer<S, E> {
     type Error = Infallible;
 
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -229,7 +242,8 @@ impl<S, F> PinnedExtend<S> for Dealer<S, F> {
 }
 
 /// [`Sink`]/[`Stream`] Returned by [`DealerSlabExt::deal_slab`].
-pub type DealerExtending<F, R> = Extending<Dealer<<R as DealerSlabExt>::S, F>, R>;
+pub type DealerExtending<R> =
+    Extending<Dealer<<R as DealerSlabExt>::S, <R as DealerSlabExt>::E>, R>;
 
 /// Extension trait to auto-extend a [`Dealer`] from a stream of connections.
 pub trait DealerSlabExt: Sized {
@@ -240,7 +254,7 @@ pub trait DealerSlabExt: Sized {
 
     /// Extend the stream of connections (`self`) into a [`Dealer`].
     #[must_use]
-    fn deal_slab<F: OnClose<Self::E>>(self, callback: F) -> DealerExtending<F, Self>;
+    fn deal_slab(self) -> DealerExtending<Self>;
 }
 
 impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = S>> DealerSlabExt
@@ -249,17 +263,7 @@ impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = S>> 
     type S = S;
     type E = E;
 
-    fn deal_slab<F: OnClose<Self::E>>(self, callback: F) -> DealerExtending<F, Self> {
-        Extending::new(
-            self,
-            Dealer {
-                connections: Default::default(),
-                next: Default::default(),
-                wready: Default::default(),
-                flush: Default::default(),
-                close: Default::default(),
-                callback,
-            },
-        )
+    fn deal_slab(self) -> DealerExtending<Self> {
+        Extending::new(self, Default::default())
     }
 }

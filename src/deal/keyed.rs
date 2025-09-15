@@ -261,6 +261,6 @@ impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Ite
     type E = E;
 
     fn deal_keyed(self) -> DealerExtending<Self> {
-        Extending::new(self, Dealer::default())
+        Extending::new(self, Default::default())
     }
 }
