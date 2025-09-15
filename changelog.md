@@ -3,7 +3,7 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [unreleased]
+## [Unreleased]
 
 ### Added
 
@@ -40,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - some `multicast_bufferless_slab` bugs resulting in a deadlock
 
-## [0.0.96] - 2025-07-19
+## [0.0.96] — 2025-07-19
 
 ### Added
 
@@ -54,7 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - replaced broken doc links
 
-## [0.0.95] - 2024-10-03
+## [0.0.95] — 2024-10-03
 
 ### Added
 
@@ -86,13 +86,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - restricted `ConcurrentExt` to apply to `FusedStream` only
 
-## [0.0.94] - 2024-07-16
+## [0.0.94] — 2024-07-16
 
 ### Changed
 
 - `Unroute` has been moved to `ruchei-route`
 
-## [0.0.93] - 2024-07-09
+## [0.0.93] — 2024-07-09
 
 (baseline)
 
