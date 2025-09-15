@@ -36,5 +36,8 @@ pub trait ReadyRoute<Route, Msg>: FlushRoute<Route, Msg> {
 }
 
 pub trait ReadySome<Route, Msg>: FlushRoute<Route, Msg> {
-    fn poll_ready_some(self: Pin<&mut Self>) -> Poll<Result<Route, Self::Error>>;
+    fn poll_ready_some(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Result<Route, Self::Error>>;
 }
