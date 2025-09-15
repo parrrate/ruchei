@@ -3,7 +3,7 @@ use futures_util::{
     Stream, TryFuture, TryStream,
     stream::{
         AndThen, Enumerate, Filter, FilterMap, FlatMap, FlatMapUnordered, Flatten, Fuse,
-        IntoStream, Map, Then,
+        IntoStream, Map, Then, TryFilter,
     },
 };
 
@@ -315,6 +315,30 @@ impl<St, Fut, F, Route, Msg> ReadySome<Route, Msg> for Then<St, Fut, F>
 where
     St: Stream + ReadySome<Route, Msg>,
     F: FnMut(St::Item) -> Fut,
+{
+    delegate_rs!(Route);
+}
+
+impl<St, Fut, F, Route, Msg> FlushRoute<Route, Msg> for TryFilter<St, Fut, F>
+where
+    St: TryStream + FlushRoute<Route, Msg>,
+    F: FnMut(&St::Item) -> Fut,
+{
+    delegate_fr!(Route);
+}
+
+impl<St, Fut, F, Route, Msg> ReadyRoute<Route, Msg> for TryFilter<St, Fut, F>
+where
+    St: TryStream + ReadyRoute<Route, Msg>,
+    F: FnMut(&St::Item) -> Fut,
+{
+    delegate_rr!(Route);
+}
+
+impl<St, Fut, F, Route, Msg> ReadySome<Route, Msg> for TryFilter<St, Fut, F>
+where
+    St: TryStream + ReadySome<Route, Msg>,
+    F: FnMut(&St::Item) -> Fut,
 {
     delegate_rs!(Route);
 }
