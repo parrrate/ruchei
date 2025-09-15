@@ -1,110 +1,27 @@
 use std::{
-    collections::{HashMap, HashSet, VecDeque},
+    collections::{HashMap, VecDeque},
     pin::Pin,
-    sync::{Arc, Weak},
-    task::{Context, Poll, Wake, Waker},
+    sync::Arc,
+    task::{Context, Poll},
 };
 
-use futures_util::{Future, TryStream, task::AtomicWaker};
+use futures_util::{Future, TryStream};
 use pin_project::pin_project;
+use ruchei_collections::{as_linked_slab::AsLinkedSlab, linked_slab::LinkedSlab};
 use ruchei_route::RouteSink;
 
-use crate::route::Key;
+use crate::{
+    ready_slab::{ConnectionWaker, Ready},
+    route::Key,
+};
 
-struct Ready<K>(Arc<std::sync::Mutex<HashSet<K>>>);
-
-impl<K> Default for Ready<K> {
-    fn default() -> Self {
-        Self(Default::default())
-    }
-}
-
-struct ReadyWeak<K>(Weak<std::sync::Mutex<HashSet<K>>>);
-
-impl<K> Default for ReadyWeak<K> {
-    fn default() -> Self {
-        Self(Default::default())
-    }
-}
-
-impl<K> Ready<K> {
-    fn lock(&self) -> std::sync::MutexGuard<'_, HashSet<K>> {
-        self.0.lock().unwrap_or_else(|e| e.into_inner())
-    }
-
-    fn downgrade(&self) -> ReadyWeak<K> {
-        ReadyWeak(Arc::downgrade(&self.0))
-    }
-}
-
-impl<K> ReadyWeak<K> {
-    fn lock(&self, f: impl FnOnce(std::sync::MutexGuard<'_, HashSet<K>>)) {
-        if let Some(ready) = self.0.upgrade() {
-            f(ready.lock().unwrap_or_else(|e| e.into_inner()));
-        }
-    }
-}
-
-impl<K: Key> Ready<K> {
-    fn next(&self) -> Option<K> {
-        let mut set = self.lock();
-        let key = set.iter().next()?.clone();
-        set.remove(&key);
-        Some(key)
-    }
-}
-
-impl<K: Key> ReadyWeak<K> {
-    fn insert(&self, key: K) {
-        self.lock(|mut ready| {
-            ready.insert(key);
-        });
-    }
-}
-
-struct ConnectionWaker<K> {
-    waker: AtomicWaker,
-    ready: ReadyWeak<K>,
-    key: K,
-}
-
-impl<K: Key> ConnectionWaker<K> {
-    fn new(key: K, ready: ReadyWeak<K>) -> Arc<Self> {
-        ready.insert(key.clone());
-        Arc::new(Self {
-            waker: Default::default(),
-            ready,
-            key,
-        })
-    }
-}
-
-impl<K: Key> Wake for ConnectionWaker<K> {
-    fn wake(self: Arc<Self>) {
-        self.ready.insert(self.key.clone());
-        self.waker.wake();
-    }
-}
-
-impl<K: Key> ConnectionWaker<K> {
-    fn poll<T>(self: &Arc<Self>, cx: &mut Context<'_>, f: impl FnOnce(&mut Context<'_>) -> T) -> T {
-        self.waker.register(cx.waker());
-        f(&mut Context::from_waker(&Waker::from(self.clone())))
-    }
-}
+const OP_WAKE_SEND: usize = 0;
+const OP_COUNT: usize = 1;
 
 struct Connection<K, T> {
-    waker: Arc<ConnectionWaker<K>>,
+    key: K,
+    send: Arc<ConnectionWaker>,
     msgs: VecDeque<T>,
-}
-
-impl<K: Key, T> Connection<K, T> {
-    fn new(key: K, ready: ReadyWeak<K>) -> Self {
-        Self {
-            waker: ConnectionWaker::new(key, ready),
-            msgs: Default::default(),
-        }
-    }
 }
 
 #[pin_project]
@@ -112,8 +29,36 @@ impl<K: Key, T> Connection<K, T> {
 pub struct Echo<S, K, T> {
     #[pin]
     router: S,
-    connections: HashMap<K, Connection<K, T>>,
-    ready: Ready<K>,
+    connections: LinkedSlab<Connection<K, T>, OP_COUNT>,
+    map: HashMap<K, usize>,
+    #[pin]
+    send: Ready,
+}
+
+impl<K: Key, T, S> Echo<S, K, T> {
+    fn remove(self: Pin<&mut Self>, ix: usize) {
+        let this = self.project();
+        let key = this.connections.remove(ix).key;
+        assert_eq!(this.map.remove(&key).expect("unknown key"), ix);
+    }
+
+    fn push(self: Pin<&mut Self>, key: K, msg: T) {
+        let this = self.project();
+        if let Some(&ix) = this.map.get(&key) {
+            this.connections[ix].msgs.push_back(msg);
+        } else {
+            let ix = this.connections.vacant_key();
+            let send = this.send.downgrade();
+            let connection = Connection {
+                key: key.clone(),
+                send: ConnectionWaker::new(ix, send),
+                msgs: [msg].into(),
+            };
+            assert_eq!(this.connections.insert(connection), ix);
+            this.map.insert(key, ix);
+            this.send.downgrade().insert(ix);
+        }
+    }
 }
 
 impl<K: Key, T, E, S: TryStream<Ok = (K, T), Error = E> + RouteSink<K, T, Error = E>> Future
@@ -121,45 +66,45 @@ impl<K: Key, T, E, S: TryStream<Ok = (K, T), Error = E> + RouteSink<K, T, Error 
 {
     type Output = Result<(), E>;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let mut this = self.project();
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let mut this = self.as_mut().project();
         while let Poll::Ready(o) = this.router.as_mut().try_poll_next(cx)? {
             if let Some((key, msg)) = o {
-                this.connections
-                    .entry(key)
-                    .or_insert_with_key(|key| Connection::new(key.clone(), this.ready.downgrade()))
-                    .msgs
-                    .push_back(msg);
+                self.as_mut().push(key, msg);
+                this = self.as_mut().project();
             } else {
                 return Poll::Ready(Ok(()));
             }
         }
-        while let Some(key) = this.ready.next() {
+        while let Some(ix) = this.send.as_mut().next::<OP_WAKE_SEND>(this.connections) {
             let mut ready = false;
-            while let Some(connection) = this.connections.get_mut(&key) {
+            while let Some(connection) = this.connections.get_mut(ix) {
                 if connection.msgs.is_empty() {
-                    match connection
-                        .waker
-                        .poll(cx, |cx| this.router.as_mut().poll_flush(&key, cx))?
-                    {
+                    match connection.send.poll(cx, |cx| {
+                        this.router.as_mut().poll_flush(&connection.key, cx)
+                    })? {
                         Poll::Ready(()) => {
                             ready = true;
-                            this.connections.remove(&key);
+                            self.as_mut().remove(ix);
+                            this = self.as_mut().project();
                         }
                         Poll::Pending => {
                             break;
                         }
                     }
                 } else {
-                    match connection
-                        .waker
-                        .poll(cx, |cx| this.router.as_mut().poll_ready(&key, cx))?
-                    {
+                    match connection.send.poll(cx, |cx| {
+                        this.router.as_mut().poll_ready(&connection.key, cx)
+                    })? {
                         Poll::Ready(()) => {
                             ready = true;
-                            this.router
-                                .as_mut()
-                                .start_send(key.clone(), connection.msgs.pop_front().unwrap())?;
+                            this.router.as_mut().start_send(
+                                connection.key.clone(),
+                                connection
+                                    .msgs
+                                    .pop_front()
+                                    .expect("no first item but not empty?"),
+                            )?;
                         }
                         Poll::Pending => {
                             break;
@@ -167,13 +112,11 @@ impl<K: Key, T, E, S: TryStream<Ok = (K, T), Error = E> + RouteSink<K, T, Error 
                     }
                 }
             }
-            if ready && !this.router.is_routing() {
-                let mut guard = this.ready.lock();
-                if guard.is_empty()
-                    && let Some(key) = this.connections.keys().next()
-                {
-                    guard.insert(key.clone());
-                }
+            if ready
+                && !this.router.is_routing()
+                && let Some(&ix) = this.map.values().next()
+            {
+                this.send.downgrade().insert(ix);
             }
         }
         Poll::Pending
@@ -190,7 +133,8 @@ pub trait EchoRoute: Sized {
         Echo {
             router: self,
             connections: Default::default(),
-            ready: Default::default(),
+            map: Default::default(),
+            send: Default::default(),
         }
     }
 }
