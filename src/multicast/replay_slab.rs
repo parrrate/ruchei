@@ -1,4 +1,5 @@
 use std::{
+    collections::VecDeque,
     convert::Infallible,
     pin::Pin,
     sync::Arc,
@@ -9,10 +10,10 @@ use futures_util::{
     Sink, SinkExt, Stream, TryStream, TryStreamExt, ready, stream::FusedStream, task::AtomicWaker,
 };
 use pin_project::pin_project;
-use ruchei_callback::OnClose;
 use ruchei_collections::{as_linked_slab::AsLinkedSlab, linked_slab::LinkedSlab};
 
 use crate::{
+    multi_item::MultiItem,
     pinned_extend::{Extending, PinnedExtend},
     ready_slab::{ConnectionWaker, Ready},
 };
@@ -55,7 +56,7 @@ impl Wake for NextFlush {
 }
 
 #[pin_project]
-pub struct Multicast<S, T, F> {
+pub struct Multicast<S, T, E> {
     connections: LinkedSlab<Connection<S>, OP_COUNT>,
     #[pin]
     next: Ready,
@@ -68,19 +69,34 @@ pub struct Multicast<S, T, F> {
     items: Vec<T>,
     flush_target: usize,
     next_flush: Arc<NextFlush>,
-    callback: F,
+    closed: VecDeque<(S, Option<E>)>,
 }
 
-impl<S: Unpin + Sink<T, Error = E>, T: Clone, F: OnClose<E>, E> Multicast<S, T, F> {
+impl<S, T, E> Default for Multicast<S, T, E> {
+    fn default() -> Self {
+        Self {
+            connections: Default::default(),
+            next: Default::default(),
+            ready: Default::default(),
+            flush: Default::default(),
+            close: Default::default(),
+            items: Default::default(),
+            flush_target: Default::default(),
+            next_flush: Default::default(),
+            closed: Default::default(),
+        }
+    }
+}
+
+impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
     fn remove(self: Pin<&mut Self>, key: usize, error: Option<E>) {
         let this = self.project();
-        this.callback.on_close(error);
-        if let Some(connection) = this.connections.try_remove(key) {
-            connection.next.waker.wake();
-            connection.ready.waker.wake();
-            connection.flush.waker.wake();
-            connection.close.waker.wake();
-        }
+        let connection = this.connections.remove(key);
+        connection.next.waker.wake();
+        connection.ready.waker.wake();
+        connection.flush.waker.wake();
+        connection.close.waker.wake();
+        this.closed.push_back((connection.stream, error));
     }
 
     pub fn push(self: Pin<&mut Self>, stream: S) {
@@ -236,15 +252,18 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, F: OnClose<E>, E> Multicast<S, T, 
     }
 }
 
-impl<S: Unpin + TryStream<Error = E> + Sink<T, Error = E>, T: Clone, F: OnClose<E>, E> Stream
-    for Multicast<S, T, F>
+impl<S: Unpin + TryStream<Error = E> + Sink<T, Error = E>, T: Clone, E> Stream
+    for Multicast<S, T, E>
 {
-    type Item = S::Ok;
+    type Item = MultiItem<S::Ok, S, E>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.next_flush.next.register(cx.waker());
         let _ = self.as_mut().poll_send_flush();
         let mut this = self.as_mut().project();
+        if let Some((stream, error)) = this.closed.pop_front() {
+            return Poll::Ready(Some(MultiItem::Closed(stream, error)));
+        }
         while let Some(key) = this.next.as_mut().next::<OP_WAKE_NEXT>(this.connections) {
             if let Some(connection) = this.connections.get_mut(key)
                 && let Poll::Ready(o) = connection
@@ -254,7 +273,7 @@ impl<S: Unpin + TryStream<Error = E> + Sink<T, Error = E>, T: Clone, F: OnClose<
                 match o {
                     Some(Ok(item)) => {
                         this.next.downgrade().insert(key);
-                        return Poll::Ready(Some(item));
+                        return Poll::Ready(Some(MultiItem::Item(item)));
                     }
                     Some(Err(e)) => {
                         self.as_mut().remove(key, Some(e));
@@ -274,15 +293,15 @@ impl<S: Unpin + TryStream<Error = E> + Sink<T, Error = E>, T: Clone, F: OnClose<
     }
 }
 
-impl<S: Unpin + TryStream<Error = E> + Sink<T, Error = E>, T: Clone, F: OnClose<E>, E> FusedStream
-    for Multicast<S, T, F>
+impl<S: Unpin + TryStream<Error = E> + Sink<T, Error = E>, T: Clone, E> FusedStream
+    for Multicast<S, T, E>
 {
     fn is_terminated(&self) -> bool {
         self.connections.is_empty()
     }
 }
 
-impl<S: Unpin + Sink<T, Error = E>, T: Clone, F: OnClose<E>, E> Sink<T> for Multicast<S, T, F> {
+impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Sink<T> for Multicast<S, T, E> {
     type Error = Infallible;
 
     fn poll_ready(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -338,9 +357,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, F: OnClose<E>, E> Sink<T> for Mult
     }
 }
 
-impl<S: Unpin + Sink<T, Error = E>, T: Clone, F: OnClose<E>, E> PinnedExtend<S>
-    for Multicast<S, T, F>
-{
+impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> PinnedExtend<S> for Multicast<S, T, E> {
     fn extend_pinned<I: IntoIterator<Item = S>>(mut self: Pin<&mut Self>, iter: I) {
         for stream in iter {
             self.as_mut().push(stream);
@@ -348,8 +365,8 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, F: OnClose<E>, E> PinnedExtend<S>
     }
 }
 
-pub type MulticastExtending<T, F, R> =
-    Extending<Multicast<<R as MulticastReplaySlab<T>>::S, T, F>, R>;
+pub type MulticastExtending<T, R> =
+    Extending<Multicast<<R as MulticastReplaySlab<T>>::S, T, <R as MulticastReplaySlab<T>>::E>, R>;
 
 pub trait MulticastReplaySlab<T: Clone>: Sized + FusedStream<Item = Self::S> {
     /// Single [`Stream`]/[`Sink`].
@@ -358,10 +375,7 @@ pub trait MulticastReplaySlab<T: Clone>: Sized + FusedStream<Item = Self::S> {
     type E;
 
     #[must_use]
-    fn multicast_replay_slab<F: OnClose<Self::E>>(
-        self,
-        callback: F,
-    ) -> MulticastExtending<T, F, Self>;
+    fn multicast_replay_slab(self) -> MulticastExtending<T, Self>;
 }
 
 impl<S: Unpin + TryStream<Error = E> + Sink<T, Error = E>, T: Clone, E, R: FusedStream<Item = S>>
@@ -370,23 +384,7 @@ impl<S: Unpin + TryStream<Error = E> + Sink<T, Error = E>, T: Clone, E, R: Fused
     type S = S;
     type E = E;
 
-    fn multicast_replay_slab<F: OnClose<Self::E>>(
-        self,
-        callback: F,
-    ) -> MulticastExtending<T, F, Self> {
-        Extending::new(
-            self,
-            Multicast {
-                connections: Default::default(),
-                next: Default::default(),
-                ready: Default::default(),
-                flush: Default::default(),
-                close: Default::default(),
-                items: Default::default(),
-                flush_target: Default::default(),
-                next_flush: Default::default(),
-                callback,
-            },
-        )
+    fn multicast_replay_slab(self) -> MulticastExtending<T, Self> {
+        Extending::new(self, Default::default())
     }
 }
