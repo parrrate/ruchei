@@ -35,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `OnClose`
 
+- `OnItem`
+
 ### Removed
 
 - previously deprecated `deal` and `route` aliases
