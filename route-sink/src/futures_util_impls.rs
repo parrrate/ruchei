@@ -2,7 +2,8 @@ use futures_sink::Sink;
 use futures_util::{
     Stream, TryFuture, TryStream,
     stream::{
-        AndThen, Enumerate, Filter, FilterMap, FlatMap, FlatMapUnordered, Flatten, Fuse, IntoStream,
+        AndThen, Enumerate, Filter, FilterMap, FlatMap, FlatMapUnordered, Flatten, Fuse,
+        IntoStream, Map,
     },
 };
 
@@ -266,6 +267,30 @@ where
 impl<St, Route, Msg> ReadySome<Route, Msg> for IntoStream<St>
 where
     St: ReadySome<Route, Msg>,
+{
+    delegate_rs!(Route);
+}
+
+impl<St, F, Route, Msg> FlushRoute<Route, Msg> for Map<St, F>
+where
+    St: Stream + FlushRoute<Route, Msg>,
+    F: FnMut(St::Item),
+{
+    delegate_fr!(Route);
+}
+
+impl<St, F, Route, Msg> ReadyRoute<Route, Msg> for Map<St, F>
+where
+    St: Stream + ReadyRoute<Route, Msg>,
+    F: FnMut(St::Item),
+{
+    delegate_rr!(Route);
+}
+
+impl<St, F, Route, Msg> ReadySome<Route, Msg> for Map<St, F>
+where
+    St: Stream + ReadySome<Route, Msg>,
+    F: FnMut(St::Item),
 {
     delegate_rs!(Route);
 }
