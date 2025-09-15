@@ -20,7 +20,6 @@ pub mod multicast;
 mod owned_close;
 pub mod pinned_extend;
 pub mod poll_on_wake;
-mod ready_keyed;
 mod ready_slab;
 pub mod reply_buffer;
 pub mod route;

@@ -15,10 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Dropped `Clone` bound for `group_sequential` context
-- More `TryStream`-based `impl`s (instead of `Stream<Item = Result<T, E>>`)
-- Combinators over multiple streams now yield `MultiItem` instead of calling an `OnClose`
-- All those combinators are also now `Default`
+- dropped `Clone` bound for `group_sequential` context
+- more `TryStream`-based `impl`s (instead of `Stream<Item = Result<T, E>>`)
+- combinators over multiple streams now yield `MultiItem` instead of calling an `OnClose`
+- all those combinators are also now `Default`
+- reworker `route_keyed` to be implemented via `route_slab`
 
 ### Deprecated
 
@@ -26,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-- Previously deprecated `deal` and `route` aliases
+- previously deprecated `deal` and `route` aliases
 - `deal_keyed`
 - `multicast_buffered`
 - `multicast_bufferless`
@@ -37,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Some `multicast_bufferless_slab` bugs resulting in a deadlock
+- some `multicast_bufferless_slab` bugs resulting in a deadlock
 
 ## [0.0.96] - 2025-07-19
 
@@ -51,7 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Replaced broken doc links
+- replaced broken doc links
 
 ## [0.0.95] - 2024-10-03
 
@@ -83,7 +84,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Restricted `ConcurrentExt` to apply to `FusedStream` only
+- restricted `ConcurrentExt` to apply to `FusedStream` only
 
 ## [0.0.94] - 2024-07-16
 

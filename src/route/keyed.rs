@@ -1,113 +1,110 @@
 use std::{
-    collections::{HashMap, VecDeque},
     convert::Infallible,
     hash::Hash,
     pin::Pin,
     task::{Context, Poll},
 };
 
-use futures_util::{Sink, SinkExt, Stream, TryStream, TryStreamExt, ready, stream::FusedStream};
+use futures_util::{Sink, Stream, TryStream, stream::FusedStream};
+use linked_hash_map::LinkedHashMap;
+use pin_project::pin_project;
 pub use ruchei_route::{RouteExt, RouteSink, Unroute, WithRoute};
 
 use crate::{
     multi_item::MultiItem,
-    pinned_extend::{AutoPinnedExtend, Extending, ExtendingRoute},
-    ready_keyed::{Connection, ConnectionWaker, Ready},
+    pinned_extend::{Extending, ExtendingRoute, PinnedExtend},
 };
 
 use super::Key;
 
+#[pin_project]
+struct One<K, S> {
+    ctr: usize,
+    key: K,
+    #[pin]
+    stream: S,
+}
+
+impl<In, K: Key, E, S: TryStream<Ok = In, Error = E>> Stream for One<K, S> {
+    type Item = Result<(usize, K, In), E>;
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let this = self.project();
+        this.stream
+            .try_poll_next(cx)
+            .map_ok(|v| (*this.ctr, this.key.clone(), v))
+    }
+}
+
+impl<Out, K, E, S: Sink<Out, Error = E>> Sink<Out> for One<K, S> {
+    type Error = E;
+
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.project().stream.poll_ready(cx)
+    }
+
+    fn start_send(self: Pin<&mut Self>, item: Out) -> Result<(), Self::Error> {
+        self.project().stream.start_send(item)
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.project().stream.poll_flush(cx)
+    }
+
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.project().stream.poll_close(cx)
+    }
+}
+
 /// [`RouteSink`]/[`Stream`] implemented over the stream of incoming [`Sink`]s/[`Stream`]s.
+#[pin_project]
 pub struct Router<K, S, E> {
-    connections: HashMap<K, Connection<K, S>>,
-    next: Ready<K>,
-    close: Ready<K>,
-    closed: VecDeque<(S, Option<E>)>,
+    #[pin]
+    router: super::slab::Router<One<K, S>, E>,
+    routes: LinkedHashMap<K, LinkedHashMap<usize, usize>>,
+    ctr: usize,
 }
 
 impl<K: Hash + Eq, S, E> Default for Router<K, S, E> {
     fn default() -> Self {
         Self {
-            connections: Default::default(),
-            next: Default::default(),
-            close: Default::default(),
-            closed: Default::default(),
+            router: Default::default(),
+            routes: Default::default(),
+            ctr: Default::default(),
         }
-    }
-}
-
-impl<K, S, E> Unpin for Router<K, S, E> {}
-
-impl<K, S, E> AutoPinnedExtend for Router<K, S, E> {}
-
-impl<K: Key, S, E> Router<K, S, E> {
-    fn remove(&mut self, key: &K, error: Option<E>) {
-        self.next.remove(key);
-        self.close.remove(key);
-        let connection = self.connections.remove(key).expect("unknown key");
-        connection.next.waker.wake();
-        connection.ready.waker.wake();
-        connection.flush.waker.wake();
-        connection.close.waker.wake();
-        self.closed.push_back((connection.stream, error));
-    }
-
-    /// Add new connection with its unique key.
-    pub fn push(&mut self, key: K, stream: S) {
-        let next = self.next.downgrade();
-        let close = self.close.downgrade();
-        next.insert(key.clone());
-        close.insert(key.clone());
-        let connection = Connection {
-            stream,
-            next: ConnectionWaker::new(key.clone(), next),
-            ready: ConnectionWaker::new(key.clone(), Default::default()),
-            flush: ConnectionWaker::new(key.clone(), Default::default()),
-            close: ConnectionWaker::new(key.clone(), close),
-        };
-        self.connections.insert(key, connection);
     }
 }
 
 impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Router<K, S, E> {
-    type Item = MultiItem<(K, In), S, E>;
+    type Item = MultiItem<(K, In), (K, S), E>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let this = self.get_mut();
-        if let Some((stream, error)) = this.closed.pop_front() {
-            return Poll::Ready(Some(MultiItem::Closed(stream, error)));
-        }
-        while let Some(key) = this.next.next() {
-            if let Some(connection) = this.connections.get_mut(&key)
-                && let Poll::Ready(o) = connection
-                    .next
-                    .poll(cx, |cx| connection.stream.try_poll_next_unpin(cx))
-            {
-                match o {
-                    Some(Ok(item)) => {
-                        this.next.downgrade().insert(key.clone());
-                        return Poll::Ready(Some(MultiItem::Item((key, item))));
-                    }
-                    Some(Err(e)) => {
-                        this.remove(&key, Some(e));
-                    }
-                    None => {
-                        this.remove(&key, None);
-                    }
+        let mut this = self.project();
+        this.router.as_mut().poll_next(cx).map(|o| {
+            o.map(|item| match item {
+                MultiItem::Item((i, (ctr, k, v))) => {
+                    this.routes.entry(k.clone()).or_default().insert(ctr, i);
+                    MultiItem::Item((k, v))
                 }
-            }
-        }
-        if this.connections.is_empty() {
-            Poll::Ready(None)
-        } else {
-            Poll::Pending
-        }
+                MultiItem::Closed(One { ctr, key, stream }, e) => {
+                    let mut entry = match this.routes.entry(key.clone()) {
+                        linked_hash_map::Entry::Occupied(entry) => entry,
+                        linked_hash_map::Entry::Vacant(_) => panic!("unknown key"),
+                    };
+                    entry.get_mut().remove(&ctr).expect("unknown stream");
+                    if entry.get().is_empty() {
+                        entry.remove();
+                    }
+                    MultiItem::Closed((key, stream), e)
+                }
+            })
+        })
     }
 }
 
 impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>> FusedStream for Router<K, S, E> {
     fn is_terminated(&self) -> bool {
-        self.closed.is_empty() && self.connections.is_empty()
+        self.router.is_terminated()
     }
 }
 
@@ -119,28 +116,24 @@ impl<Out, K: Key, E, S: Unpin + Sink<Out, Error = E>> RouteSink<K, Out> for Rout
         key: &K,
         cx: &mut Context<'_>,
     ) -> Poll<Result<(), Self::Error>> {
-        let this = self.get_mut();
-        if let Some(connection) = this.connections.get_mut(key)
-            && let Err(e) = ready!(
-                connection
-                    .ready
-                    .poll(cx, |cx| connection.stream.poll_ready_unpin(cx))
-            )
-        {
-            this.remove(key, Some(e));
+        let this = self.project();
+        if let Some(routes) = this.routes.get(key) {
+            let route = routes.back().expect("empty routes per key").1;
+            this.router.poll_ready(route, cx)
+        } else {
+            Poll::Ready(Ok(()))
         }
-        Poll::Ready(Ok(()))
     }
 
     fn start_send(self: Pin<&mut Self>, key: K, msg: Out) -> Result<(), Self::Error> {
         let key = &key;
-        let this = self.get_mut();
-        if let Some(connection) = this.connections.get_mut(key)
-            && let Err(e) = connection.stream.start_send_unpin(msg)
-        {
-            this.remove(key, Some(e));
+        let this = self.project();
+        if let Some(routes) = this.routes.get(key) {
+            let route = *routes.back().expect("empty routes per key").1;
+            this.router.start_send(route, msg)
+        } else {
+            Ok(())
         }
-        Ok(())
     }
 
     fn poll_flush(
@@ -148,49 +141,33 @@ impl<Out, K: Key, E, S: Unpin + Sink<Out, Error = E>> RouteSink<K, Out> for Rout
         key: &K,
         cx: &mut Context<'_>,
     ) -> Poll<Result<(), Self::Error>> {
-        let this = self.get_mut();
-        if let Some(connection) = this.connections.get_mut(key)
-            && let Err(e) = ready!(
-                connection
-                    .flush
-                    .poll(cx, |cx| connection.stream.poll_flush_unpin(cx))
-            )
-        {
-            this.remove(key, Some(e));
+        let this = self.project();
+        if let Some(routes) = this.routes.get(key) {
+            let route = routes.back().expect("empty routes per key").1;
+            this.router.poll_flush(route, cx)
+        } else {
+            Poll::Ready(Ok(()))
         }
-        Poll::Ready(Ok(()))
     }
 
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let this = self.get_mut();
-        while let Some(key) = this.close.next() {
-            if let Some(connection) = this.connections.get_mut(&key)
-                && let Poll::Ready(r) = connection
-                    .close
-                    .poll(cx, |cx| connection.stream.poll_close_unpin(cx))
-            {
-                match r {
-                    Ok(()) => {
-                        this.remove(&key, None);
-                    }
-                    Err(e) => {
-                        this.remove(&key, Some(e));
-                    }
-                }
-            }
-        }
-        if this.connections.is_empty() {
-            Poll::Ready(Ok(()))
-        } else {
-            Poll::Pending
-        }
+        self.project().router.poll_close(cx)
     }
 }
 
-impl<K: Key, S, E> Extend<(K, S)> for Router<K, S, E> {
-    fn extend<T: IntoIterator<Item = (K, S)>>(&mut self, iter: T) {
+impl<K: Key, S, E> Router<K, S, E> {
+    fn push(self: Pin<&mut Self>, key: K, stream: S) {
+        let this = self.project();
+        let ctr = *this.ctr;
+        *this.ctr += 1;
+        this.router.push(One { ctr, key, stream });
+    }
+}
+
+impl<K: Key, S, E> PinnedExtend<(K, S)> for Router<K, S, E> {
+    fn extend_pinned<T: IntoIterator<Item = (K, S)>>(mut self: Pin<&mut Self>, iter: T) {
         for (key, stream) in iter {
-            self.push(key, stream)
+            self.as_mut().push(key, stream)
         }
     }
 }
