@@ -1,6 +1,6 @@
 [package]
 name = "ruchei-collections"
-version = "0.0.0"
+version = "0.0.0-a.0"
 edition.workspace = true
 publish.workspace = true
 license.workspace = true
@@ -13,6 +13,3 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
 
 [dependencies]
 slab.workspace = true
-
-[package.metadata.tagit]
-skip = true
