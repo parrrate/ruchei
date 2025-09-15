@@ -1,7 +1,7 @@
 use futures_sink::Sink;
 use futures_util::{
     Stream, TryFuture, TryStream,
-    stream::{AndThen, Enumerate, Filter, FilterMap, FlatMap, FlatMapUnordered},
+    stream::{AndThen, Enumerate, Filter, FilterMap, FlatMap, FlatMapUnordered, Flatten},
 };
 
 use crate::{FlushRoute, ReadyRoute, ReadySome};
@@ -198,6 +198,30 @@ where
     St: Stream + ReadySome<Route, Msg>,
     U: Stream + Unpin,
     F: FnMut(St::Item) -> U,
+{
+    delegate_rs!(Route);
+}
+
+impl<St, Route, Msg, E> FlushRoute<Route, Msg> for Flatten<St>
+where
+    St: Stream + FlushRoute<Route, Msg, Error = E>,
+    Self: Sink<(Route, Msg), Error = E>,
+{
+    delegate_fr!(Route);
+}
+
+impl<St, Route, Msg, E> ReadyRoute<Route, Msg> for Flatten<St>
+where
+    St: Stream + ReadyRoute<Route, Msg, Error = E>,
+    Self: Sink<(Route, Msg), Error = E>,
+{
+    delegate_rr!(Route);
+}
+
+impl<St, Route, Msg, E> ReadySome<Route, Msg> for Flatten<St>
+where
+    St: Stream + ReadySome<Route, Msg, Error = E>,
+    Self: Sink<(Route, Msg), Error = E>,
 {
     delegate_rs!(Route);
 }
