@@ -5,7 +5,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures_util::{Sink, Stream, TryStream, ready, stream::FusedStream};
+use futures_util::{Sink, Stream, TryStream, stream::FusedStream};
 use linked_hash_map::LinkedHashMap;
 use pin_project::pin_project;
 pub use ruchei_route::{RouteExt, RouteSink, Unroute, WithRoute};
@@ -18,7 +18,7 @@ use crate::{
 use super::Key;
 
 #[pin_project]
-pub struct One<K, S> {
+struct One<K, S> {
     ctr: usize,
     key: K,
     #[pin]
@@ -58,14 +58,14 @@ impl<Out, K, E, S: Sink<Out, Error = E>> Sink<Out> for One<K, S> {
 
 /// [`RouteSink`]/[`Stream`] implemented over the stream of incoming [`Sink`]s/[`Stream`]s.
 #[pin_project]
-pub struct Router<K, I, R> {
+pub struct Router<K, S, E> {
     #[pin]
-    router: R,
-    routes: LinkedHashMap<K, LinkedHashMap<usize, I>>,
+    router: super::slab::Router<One<K, S>, E>,
+    routes: LinkedHashMap<K, LinkedHashMap<usize, usize>>,
     ctr: usize,
 }
 
-impl<K: Hash + Eq, I, R: Default> Default for Router<K, I, R> {
+impl<K: Hash + Eq, S, E> Default for Router<K, S, E> {
     fn default() -> Self {
         Self {
             router: Default::default(),
@@ -75,15 +75,13 @@ impl<K: Hash + Eq, I, R: Default> Default for Router<K, I, R> {
     }
 }
 
-impl<In, K: Key, E, S, I, R: Stream<Item = MultiItem<(I, (usize, K, In)), One<K, S>, E>>> Stream
-    for Router<K, I, R>
-{
+impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Router<K, S, E> {
     type Item = MultiItem<(K, In), (K, S), E>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
-        while let Some(item) = ready!(this.router.as_mut().poll_next(cx)) {
-            return Poll::Ready(Some(match item {
+        this.router.as_mut().poll_next(cx).map(|o| {
+            o.map(|item| match item {
                 MultiItem::Item((i, (ctr, k, v))) => {
                     this.routes.entry(k.clone()).or_default().insert(ctr, i);
                     MultiItem::Item((k, v))
@@ -91,33 +89,26 @@ impl<In, K: Key, E, S, I, R: Stream<Item = MultiItem<(I, (usize, K, In)), One<K,
                 MultiItem::Closed(One { ctr, key, stream }, e) => {
                     let mut entry = match this.routes.entry(key.clone()) {
                         linked_hash_map::Entry::Occupied(entry) => entry,
-                        linked_hash_map::Entry::Vacant(_) => continue,
+                        linked_hash_map::Entry::Vacant(_) => panic!("unknown key"),
                     };
-                    if entry.get_mut().remove(&ctr).is_none() {
-                        continue;
-                    }
+                    entry.get_mut().remove(&ctr).expect("unknown stream");
                     if entry.get().is_empty() {
                         entry.remove();
                     }
                     MultiItem::Closed((key, stream), e)
                 }
-            }));
-        }
-        Poll::Ready(None)
+            })
+        })
     }
 }
 
-impl<In, K: Key, E, S, I, R: FusedStream<Item = MultiItem<(I, (usize, K, In)), One<K, S>, E>>>
-    FusedStream for Router<K, I, R>
-{
+impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>> FusedStream for Router<K, S, E> {
     fn is_terminated(&self) -> bool {
         self.router.is_terminated()
     }
 }
 
-impl<Out, K: Key, I: Clone, R: RouteSink<I, Out, Error = Infallible>> RouteSink<K, Out>
-    for Router<K, I, R>
-{
+impl<Out, K: Key, E, S: Unpin + Sink<Out, Error = E>> RouteSink<K, Out> for Router<K, S, E> {
     type Error = Infallible;
 
     fn poll_ready(
@@ -138,7 +129,7 @@ impl<Out, K: Key, I: Clone, R: RouteSink<I, Out, Error = Infallible>> RouteSink<
         let key = &key;
         let this = self.project();
         if let Some(routes) = this.routes.get(key) {
-            let route = routes.back().expect("empty routes per key").1.clone();
+            let route = *routes.back().expect("empty routes per key").1;
             this.router.start_send(route, msg)
         } else {
             Ok(())
@@ -164,11 +155,8 @@ impl<Out, K: Key, I: Clone, R: RouteSink<I, Out, Error = Infallible>> RouteSink<
     }
 }
 
-impl<K: Key, I, R> Router<K, I, R> {
-    fn push<S>(self: Pin<&mut Self>, key: K, stream: S)
-    where
-        R: PinnedExtend<One<K, S>>,
-    {
+impl<K: Key, S, E> Router<K, S, E> {
+    fn push(self: Pin<&mut Self>, key: K, stream: S) {
         let this = self.project();
         let ctr = *this.ctr;
         *this.ctr += 1;
@@ -176,7 +164,7 @@ impl<K: Key, I, R> Router<K, I, R> {
     }
 }
 
-impl<K: Key, S, I, R: PinnedExtend<One<K, S>>> PinnedExtend<(K, S)> for Router<K, I, R> {
+impl<K: Key, S, E> PinnedExtend<(K, S)> for Router<K, S, E> {
     fn extend_pinned<T: IntoIterator<Item = (K, S)>>(mut self: Pin<&mut Self>, iter: T) {
         for (key, stream) in iter {
             self.as_mut().push(key, stream)
@@ -186,14 +174,7 @@ impl<K: Key, S, I, R: PinnedExtend<One<K, S>>> PinnedExtend<(K, S)> for Router<K
 
 /// [`RouteSink`]/[`Stream`] Returned by [`RouterKeyedExt::route_keyed`].
 pub type RouterExtending<R> = ExtendingRoute<
-    Router<
-        <R as RouterKeyedExt>::K,
-        usize,
-        super::slab::Router<
-            One<<R as RouterKeyedExt>::K, <R as RouterKeyedExt>::S>,
-            <R as RouterKeyedExt>::E,
-        >,
-    >,
+    Router<<R as RouterKeyedExt>::K, <R as RouterKeyedExt>::S, <R as RouterKeyedExt>::E>,
     R,
 >;
 
