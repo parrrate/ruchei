@@ -9,7 +9,10 @@
 
 /// Act when one of inner channels gets closed instead of closing the outer channel. Used with [`multicast`].
 ///
+/// Deprecated in favour of [`MultiItem`].
+///
 /// [`multicast`]: https://docs.rs/ruchei/0.0.81/ruchei/multicast/index.html
+/// [`MultiItem`]: https://docs.rs/ruchei/0.0.97/ruchei/multi_item/enum.MultiItem.html
 #[deprecated]
 pub trait OnClose<E>: Clone {
     /// Get notified about something getting closed (optionally with an error).
@@ -25,6 +28,8 @@ impl<E, F: Clone + Fn(Option<E>)> OnClose<E> for F {
 }
 
 /// Used with [`ReadCallback`].
+///
+/// Deprecated: the combinator got removed.
 ///
 /// [`ReadCallback`]: https://docs.rs/ruchei/0.0.81/ruchei/read_callback/index.html
 #[deprecated]
