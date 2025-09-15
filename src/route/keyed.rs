@@ -5,7 +5,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures_util::{Sink, Stream, TryStream, stream::FusedStream};
+use futures_util::{Sink, Stream, TryStream, ready, stream::FusedStream};
 use linked_hash_map::LinkedHashMap;
 use pin_project::pin_project;
 pub use ruchei_route::{RouteExt, RouteSink, Unroute, WithRoute};
@@ -80,8 +80,8 @@ impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Router<
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
-        this.router.as_mut().poll_next(cx).map(|o| {
-            o.map(|item| match item {
+        while let Some(item) = ready!(this.router.as_mut().poll_next(cx)) {
+            return Poll::Ready(Some(match item {
                 MultiItem::Item((i, (ctr, k, v))) => {
                     this.routes.entry(k.clone()).or_default().insert(ctr, i);
                     MultiItem::Item((k, v))
@@ -89,16 +89,19 @@ impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Router<
                 MultiItem::Closed(One { ctr, key, stream }, e) => {
                     let mut entry = match this.routes.entry(key.clone()) {
                         linked_hash_map::Entry::Occupied(entry) => entry,
-                        linked_hash_map::Entry::Vacant(_) => panic!("unknown key"),
+                        linked_hash_map::Entry::Vacant(_) => continue,
                     };
-                    entry.get_mut().remove(&ctr).expect("unknown stream");
+                    if entry.get_mut().remove(&ctr).is_none() {
+                        continue;
+                    }
                     if entry.get().is_empty() {
                         entry.remove();
                     }
                     MultiItem::Closed((key, stream), e)
                 }
-            })
-        })
+            }));
+        }
+        Poll::Ready(None)
     }
 }
 
