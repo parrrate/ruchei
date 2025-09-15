@@ -17,3 +17,6 @@ futures-util = { version = "0.3.31", optional = true, features = [
 [features]
 futures-util = ["dep:futures-util"]
 std = ["futures-util?/std"]
+
+[package.metadata.tagit]
+skip = true

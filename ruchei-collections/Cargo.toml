@@ -13,3 +13,6 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
 
 [dependencies]
 slab.workspace = true
+
+[package.metadata.tagit]
+skip = true
