@@ -1,6 +1,6 @@
 use futures_util::{
     Stream, TryFuture, TryStream,
-    stream::{AndThen, Enumerate},
+    stream::{AndThen, Enumerate, Filter},
 };
 
 use crate::{FlushRoute, ReadyRoute, ReadySome};
@@ -92,6 +92,33 @@ where
 impl<St: Stream, Route, Msg> ReadySome<Route, Msg> for Enumerate<St>
 where
     St: ReadySome<Route, Msg>,
+{
+    delegate_rs!(Route);
+}
+
+impl<St, Fut, F, Route, Msg> FlushRoute<Route, Msg> for Filter<St, Fut, F>
+where
+    St: Stream + FlushRoute<Route, Msg>,
+    F: FnMut(&St::Item) -> Fut,
+    Fut: Future<Output = bool>,
+{
+    delegate_fr!(Route);
+}
+
+impl<St, Fut, F, Route, Msg> ReadyRoute<Route, Msg> for Filter<St, Fut, F>
+where
+    St: Stream + ReadyRoute<Route, Msg>,
+    F: FnMut(&St::Item) -> Fut,
+    Fut: Future<Output = bool>,
+{
+    delegate_rr!(Route);
+}
+
+impl<St, Fut, F, Route, Msg> ReadySome<Route, Msg> for Filter<St, Fut, F>
+where
+    St: Stream + ReadySome<Route, Msg>,
+    F: FnMut(&St::Item) -> Fut,
+    Fut: Future<Output = bool>,
 {
     delegate_rs!(Route);
 }
