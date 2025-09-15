@@ -32,10 +32,10 @@ authors.workspace = true
 rust-version.workspace = true
 
 [workspace.dependencies]
-ruchei-callback = { path = "ruchei-callback", version = "0.1.0" }
+ruchei-callback = { path = "ruchei-callback", version = "0.1.1" }
 ruchei-collections = { path = "ruchei-collections", version = "=0.0.0-a.0" }
 ruchei-extra = { path = "ruchei-extra", version = "0.1.1" }
-ruchei-route = { path = "ruchei-route", version = "0.1.7", default-features = false }
+ruchei-route = { path = "ruchei-route", version = "0.1.8", default-features = false }
 ruchei-sample.path = "internal/ruchei-sample"
 
 futures-channel = "0.3.31"
