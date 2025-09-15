@@ -1,6 +1,7 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, VecDeque},
     convert::Infallible,
+    hash::Hash,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -9,7 +10,7 @@ use futures_util::{Sink, SinkExt, Stream, TryStream, TryStreamExt, ready, stream
 pub use ruchei_route::{RouteExt, RouteSink, Unroute, WithRoute};
 
 use crate::{
-    callback::OnClose,
+    multi_item::MultiItem,
     pinned_extend::{AutoPinnedExtend, Extending, ExtendingRoute},
     ready_keyed::{Connection, ConnectionWaker, Ready},
 };
@@ -17,31 +18,38 @@ use crate::{
 use super::Key;
 
 /// [`RouteSink`]/[`Stream`] implemented over the stream of incoming [`Sink`]s/[`Stream`]s.
-pub struct Router<K, S, F> {
+pub struct Router<K, S, E> {
     connections: HashMap<K, Connection<K, S>>,
     next: Ready<K>,
     close: Ready<K>,
-    callback: F,
+    closed: VecDeque<(S, Option<E>)>,
 }
 
-impl<K, S, F> Unpin for Router<K, S, F> {}
+impl<K: Hash + Eq, S, E> Default for Router<K, S, E> {
+    fn default() -> Self {
+        Self {
+            connections: Default::default(),
+            next: Default::default(),
+            close: Default::default(),
+            closed: Default::default(),
+        }
+    }
+}
 
-impl<K, S, F> AutoPinnedExtend for Router<K, S, F> {}
+impl<K, S, E> Unpin for Router<K, S, E> {}
 
-impl<K: Key, S, F> Router<K, S, F> {
-    fn remove<E>(&mut self, key: &K, error: Option<E>)
-    where
-        F: OnClose<E>,
-    {
-        self.callback.on_close(error);
+impl<K, S, E> AutoPinnedExtend for Router<K, S, E> {}
+
+impl<K: Key, S, E> Router<K, S, E> {
+    fn remove(&mut self, key: &K, error: Option<E>) {
         self.next.remove(key);
         self.close.remove(key);
-        if let Some(connection) = self.connections.remove(key) {
-            connection.next.waker.wake();
-            connection.ready.waker.wake();
-            connection.flush.waker.wake();
-            connection.close.waker.wake();
-        }
+        let connection = self.connections.remove(key).expect("unknown key");
+        connection.next.waker.wake();
+        connection.ready.waker.wake();
+        connection.flush.waker.wake();
+        connection.close.waker.wake();
+        self.closed.push_back((connection.stream, error));
     }
 
     /// Add new connection with its unique key.
@@ -61,13 +69,14 @@ impl<K: Key, S, F> Router<K, S, F> {
     }
 }
 
-impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>, F: OnClose<E>> Stream
-    for Router<K, S, F>
-{
-    type Item = Result<(K, In), Infallible>;
+impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Router<K, S, E> {
+    type Item = MultiItem<(K, In), S, E>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
+        if let Some((stream, error)) = this.closed.pop_front() {
+            return Poll::Ready(Some(MultiItem::Closed(stream, error)));
+        }
         while let Some(key) = this.next.next() {
             if let Some(connection) = this.connections.get_mut(&key)
                 && let Poll::Ready(o) = connection
@@ -77,7 +86,7 @@ impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>, F: OnClose<E>> Str
                 match o {
                     Some(Ok(item)) => {
                         this.next.downgrade().insert(key.clone());
-                        return Poll::Ready(Some(Ok((key, item))));
+                        return Poll::Ready(Some(MultiItem::Item((key, item))));
                     }
                     Some(Err(e)) => {
                         this.remove(&key, Some(e));
@@ -96,9 +105,13 @@ impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>, F: OnClose<E>> Str
     }
 }
 
-impl<Out, K: Key, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> RouteSink<K, Out>
-    for Router<K, S, F>
-{
+impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>> FusedStream for Router<K, S, E> {
+    fn is_terminated(&self) -> bool {
+        self.closed.is_empty() && self.connections.is_empty()
+    }
+}
+
+impl<Out, K: Key, E, S: Unpin + Sink<Out, Error = E>> RouteSink<K, Out> for Router<K, S, E> {
     type Error = Infallible;
 
     fn poll_ready(
@@ -174,7 +187,7 @@ impl<Out, K: Key, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> RouteSink<K
     }
 }
 
-impl<K: Key, S, F> Extend<(K, S)> for Router<K, S, F> {
+impl<K: Key, S, E> Extend<(K, S)> for Router<K, S, E> {
     fn extend<T: IntoIterator<Item = (K, S)>>(&mut self, iter: T) {
         for (key, stream) in iter {
             self.push(key, stream)
@@ -183,8 +196,10 @@ impl<K: Key, S, F> Extend<(K, S)> for Router<K, S, F> {
 }
 
 /// [`RouteSink`]/[`Stream`] Returned by [`RouterKeyedExt::route_keyed`].
-pub type RouterExtending<F, R> =
-    ExtendingRoute<Router<<R as RouterKeyedExt>::K, <R as RouterKeyedExt>::S, F>, R>;
+pub type RouterExtending<R> = ExtendingRoute<
+    Router<<R as RouterKeyedExt>::K, <R as RouterKeyedExt>::S, <R as RouterKeyedExt>::E>,
+    R,
+>;
 
 /// Extension trait to auto-extend a [`Router`] from a stream of connections.
 pub trait RouterKeyedExt: Sized {
@@ -197,7 +212,7 @@ pub trait RouterKeyedExt: Sized {
 
     /// Extend the stream of connections (`self`) into a [`Router`].
     #[must_use]
-    fn route_keyed<F: OnClose<Self::E>>(self, callback: F) -> RouterExtending<F, Self>;
+    fn route_keyed(self) -> RouterExtending<Self>;
 }
 
 impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = (K, S)>>
@@ -207,15 +222,7 @@ impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Ite
     type S = S;
     type E = E;
 
-    fn route_keyed<F: OnClose<Self::E>>(self, callback: F) -> RouterExtending<F, Self> {
-        ExtendingRoute(Extending::new(
-            self,
-            Router {
-                connections: Default::default(),
-                next: Default::default(),
-                close: Default::default(),
-                callback,
-            },
-        ))
+    fn route_keyed(self) -> RouterExtending<Self> {
+        ExtendingRoute(Extending::new(self, Default::default()))
     }
 }
