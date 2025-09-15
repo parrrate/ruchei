@@ -17,7 +17,6 @@
 
 pub mod buffered_slab;
 pub mod bufferless_slab;
-pub mod ignore;
 pub mod replay;
 pub mod replay_slab;
 pub mod trie;
