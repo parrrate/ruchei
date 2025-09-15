@@ -1,4 +1,5 @@
 use std::{
+    collections::VecDeque,
     convert::Infallible,
     pin::Pin,
     task::{Context, Poll},
@@ -10,7 +11,7 @@ use ruchei_collections::{as_linked_slab::AsLinkedSlab, linked_slab::LinkedSlab};
 pub use ruchei_route::{RouteExt, RouteSink, Unroute, WithRoute};
 
 use crate::{
-    callback::OnClose,
+    multi_item::MultiItem,
     pinned_extend::{Extending, ExtendingRoute, PinnedExtend},
     ready_slab::{Connection, ConnectionWaker, Ready},
 };
@@ -21,28 +22,35 @@ const OP_COUNT: usize = 2;
 
 /// [`RouteSink`]/[`Stream`] implemented over the stream of incoming [`Sink`]s/[`Stream`]s.
 #[pin_project]
-pub struct Router<S, F> {
+pub struct Router<S, E> {
     connections: LinkedSlab<Connection<S>, OP_COUNT>,
     #[pin]
     next: Ready,
     #[pin]
     close: Ready,
-    callback: F,
+    closed: VecDeque<(S, Option<E>)>,
 }
 
-impl<S, F> Router<S, F> {
-    fn remove<E>(self: Pin<&mut Self>, key: usize, error: Option<E>)
-    where
-        F: OnClose<E>,
-    {
-        let this = self.project();
-        this.callback.on_close(error);
-        if let Some(connection) = this.connections.try_remove(key) {
-            connection.next.waker.wake();
-            connection.ready.waker.wake();
-            connection.flush.waker.wake();
-            connection.close.waker.wake();
+impl<S, E> Default for Router<S, E> {
+    fn default() -> Self {
+        Self {
+            connections: Default::default(),
+            next: Default::default(),
+            close: Default::default(),
+            closed: Default::default(),
         }
+    }
+}
+
+impl<S, E> Router<S, E> {
+    fn remove(self: Pin<&mut Self>, key: usize, error: Option<E>) {
+        let this = self.project();
+        let connection = this.connections.remove(key);
+        connection.next.waker.wake();
+        connection.ready.waker.wake();
+        connection.flush.waker.wake();
+        connection.close.waker.wake();
+        this.closed.push_back((connection.stream, error));
     }
 
     /// Add new connection.
@@ -64,11 +72,14 @@ impl<S, F> Router<S, F> {
     }
 }
 
-impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, F: OnClose<E>> Stream for Router<S, F> {
-    type Item = Result<(usize, In), Infallible>;
+impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Router<S, E> {
+    type Item = MultiItem<(usize, In), S, E>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.as_mut().project();
+        if let Some((stream, error)) = this.closed.pop_front() {
+            return Poll::Ready(Some(MultiItem::Closed(stream, error)));
+        }
         this.next.register(cx);
         while let Some(key) = this.next.as_mut().next::<OP_WAKE_NEXT>(this.connections) {
             if let Some(connection) = this.connections.get_mut(key)
@@ -79,7 +90,7 @@ impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, F: OnClose<E>> Stream for 
                 match o {
                     Some(Ok(item)) => {
                         this.next.downgrade().insert(key);
-                        return Poll::Ready(Some(Ok((key, item))));
+                        return Poll::Ready(Some(MultiItem::Item((key, item))));
                     }
                     Some(Err(e)) => {
                         self.as_mut().remove(key, Some(e));
@@ -99,9 +110,13 @@ impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, F: OnClose<E>> Stream for 
     }
 }
 
-impl<Out, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> RouteSink<usize, Out>
-    for Router<S, F>
-{
+impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>> FusedStream for Router<S, E> {
+    fn is_terminated(&self) -> bool {
+        self.closed.is_empty() && self.connections.is_empty()
+    }
+}
+
+impl<Out, E, S: Unpin + Sink<Out, Error = E>> RouteSink<usize, Out> for Router<S, E> {
     type Error = Infallible;
 
     fn poll_ready(
@@ -178,7 +193,7 @@ impl<Out, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> RouteSink<usize, Ou
     }
 }
 
-impl<S, F> PinnedExtend<S> for Router<S, F> {
+impl<S, E> PinnedExtend<S> for Router<S, E> {
     fn extend_pinned<T: IntoIterator<Item = S>>(mut self: Pin<&mut Self>, iter: T) {
         for stream in iter {
             self.as_mut().push(stream)
@@ -187,7 +202,8 @@ impl<S, F> PinnedExtend<S> for Router<S, F> {
 }
 
 /// [`RouteSink`]/[`Stream`] Returned by [`RouterSlabExt::route_slab`].
-pub type RouterExtending<F, R> = ExtendingRoute<Router<<R as RouterSlabExt>::S, F>, R>;
+pub type RouterExtending<R> =
+    ExtendingRoute<Router<<R as RouterSlabExt>::S, <R as RouterSlabExt>::E>, R>;
 
 /// Extension trait to auto-extend a [`Router`] from a stream of connections.
 pub trait RouterSlabExt: Sized {
@@ -198,7 +214,7 @@ pub trait RouterSlabExt: Sized {
 
     /// Extend the stream of connections (`self`) into a [`Router`].
     #[must_use]
-    fn route_slab<F: OnClose<Self::E>>(self, callback: F) -> RouterExtending<F, Self>;
+    fn route_slab(self) -> RouterExtending<Self>;
 }
 
 impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = S>> RouterSlabExt
@@ -207,15 +223,7 @@ impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = S>> 
     type S = S;
     type E = E;
 
-    fn route_slab<F: OnClose<Self::E>>(self, callback: F) -> RouterExtending<F, Self> {
-        ExtendingRoute(Extending::new(
-            self,
-            Router {
-                connections: Default::default(),
-                next: Default::default(),
-                close: Default::default(),
-                callback,
-            },
-        ))
+    fn route_slab(self) -> RouterExtending<Self> {
+        ExtendingRoute(Extending::new(self, Default::default()))
     }
 }
