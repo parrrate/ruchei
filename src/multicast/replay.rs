@@ -320,10 +320,10 @@ impl<
     F: OnClose<E>,
 > Stream for Multicast<S, Out, F>
 {
-    type Item = Result<In, Infallible>;
+    type Item = In;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.poll_next_raw(cx).map(|o| o.map(Ok))
+        self.poll_next_raw(cx)
     }
 }
 

@@ -26,6 +26,7 @@ async fn main() {
         })
         .map(|s| s.poll_on_wake())
         .multicast_replay(|_| {})
+        .map(Ok)
         .echo_buffered()
         .await
         .unwrap();

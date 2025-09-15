@@ -21,6 +21,7 @@ async fn main() {
             .concurrent()
             .filter_map(|r| async { r.ok() })
             .multicast_buffered(|_| {})
+            .map(Ok)
             .read_callback(|message| print!("{message}"))
     );
     loop {

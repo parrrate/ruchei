@@ -21,6 +21,7 @@ async fn main() {
         .filter_map(|r| async { r.ok() })
         .map(|s| s.filter(|m| ready(m.as_ref().is_ok_and(|m| !m.is_close()))))
         .deal_slab(|_| {})
+        .map(Ok)
         .echo_bufferless()
         .await
         .unwrap();

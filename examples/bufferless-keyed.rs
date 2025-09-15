@@ -21,6 +21,7 @@ async fn main() {
         .filter_map(|r| async { r.ok() })
         .map(|s| (rand::random::<u64>(), s))
         .multicast_bufferless_keyed(|_| {})
+        .map(Ok)
         .echo_bufferless()
         .await
         .unwrap();

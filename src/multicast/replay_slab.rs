@@ -239,7 +239,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, F: OnClose<E>, E> Multicast<S, T, 
 impl<S: Unpin + TryStream<Error = E> + Sink<T, Error = E>, T: Clone, F: OnClose<E>, E> Stream
     for Multicast<S, T, F>
 {
-    type Item = Result<S::Ok, Infallible>;
+    type Item = S::Ok;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.next_flush.next.register(cx.waker());
@@ -254,7 +254,7 @@ impl<S: Unpin + TryStream<Error = E> + Sink<T, Error = E>, T: Clone, F: OnClose<
                 match o {
                     Some(Ok(item)) => {
                         this.next.downgrade().insert(key);
-                        return Poll::Ready(Some(Ok(item)));
+                        return Poll::Ready(Some(item));
                     }
                     Some(Err(e)) => {
                         self.as_mut().remove(key, Some(e));

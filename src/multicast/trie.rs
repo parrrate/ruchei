@@ -90,7 +90,7 @@ impl<S, F> Multicast<S, F> {
 impl<K: AsRef<[u8]>, O, E, S: Unpin + TryStream<Ok = SubRequest<K, O>, Error = E>, F: OnClose<E>>
     Stream for Multicast<S, F>
 {
-    type Item = Result<O, Infallible>;
+    type Item = O;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.as_mut().project();
@@ -117,7 +117,7 @@ impl<K: AsRef<[u8]>, O, E, S: Unpin + TryStream<Ok = SubRequest<K, O>, Error = E
                             SubRequest::Unsub(route) => {
                                 this.connections.mt_remove(&key, route.as_ref())
                             }
-                            SubRequest::Other(item) => return Poll::Ready(Some(Ok(item))),
+                            SubRequest::Other(item) => return Poll::Ready(Some(item)),
                         }
                     }
                     Some(Err(e)) => {

@@ -143,6 +143,7 @@ async fn main() {
     test_two(|streams| async move {
         streams
             .multicast_replay(|_| {})
+            .map(Ok)
             .echo_buffered()
             .await
             .unwrap()
@@ -151,6 +152,7 @@ async fn main() {
     test_two(|streams| async move {
         streams
             .multicast_buffered(|_| {})
+            .map(Ok)
             .echo_buffered()
             .await
             .unwrap()
@@ -159,6 +161,7 @@ async fn main() {
     test_two(|streams| async move {
         streams
             .multicast_bufferless(|_| {})
+            .map(Ok)
             .echo_buffered()
             .await
             .unwrap()
@@ -169,6 +172,7 @@ async fn main() {
         streams
             .map(|s| s.isolate_inner(inner.clone()))
             .multicast_bufferless(|_| {})
+            .map(Ok)
             .isolate_outer(outer)
             .echo_buffered()
             .await

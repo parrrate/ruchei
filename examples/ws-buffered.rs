@@ -20,6 +20,7 @@ async fn main() {
         .concurrent()
         .filter_map(|r| async { r.ok() })
         .multicast_buffered(|_| {})
+        .map(Ok)
         .echo_buffered()
         .await
         .unwrap();

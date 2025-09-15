@@ -54,6 +54,7 @@ async fn main() {
             receiver
                 .timeout_unused(|| ready(()))
                 .multicast_replay(|_| {})
+                .map(Ok)
                 .echo_buffered()
                 .await
                 .unwrap();

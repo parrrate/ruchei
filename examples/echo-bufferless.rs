@@ -25,6 +25,7 @@ async fn main() {
         .filter_map(|r| async { r.ok() })
         .map(|s| s.isolate_inner(inner.clone()).poll_on_wake())
         .multicast_bufferless(|_| {})
+        .map(Ok)
         .isolate_outer(outer)
         .echo_bufferless()
         .await

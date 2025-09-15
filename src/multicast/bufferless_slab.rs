@@ -77,7 +77,7 @@ impl<S, F> Multicast<S, F> {
 }
 
 impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, F: OnClose<E>> Stream for Multicast<S, F> {
-    type Item = Result<In, Infallible>;
+    type Item = In;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.as_mut().project();
@@ -97,7 +97,7 @@ impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, F: OnClose<E>> Stream for 
                 match o {
                     Some(Ok(item)) => {
                         this.next.downgrade().insert(key);
-                        return Poll::Ready(Some(Ok(item)));
+                        return Poll::Ready(Some(item));
                     }
                     Some(Err(e)) => {
                         self.as_mut().remove(key, Some(e));

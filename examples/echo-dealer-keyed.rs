@@ -22,6 +22,7 @@ async fn main() {
         .map(|s| s.filter(|m| ready(m.as_ref().is_ok_and(|m| !m.is_close()))))
         .map(|s| (rand::random::<u64>(), s))
         .deal_keyed(|_| {})
+        .map(Ok)
         .echo_bufferless()
         .await
         .unwrap();

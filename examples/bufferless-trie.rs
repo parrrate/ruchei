@@ -30,6 +30,7 @@ async fn main() {
         })
         .map(|s| s.with(|(_, m)| ready(Ok(m))))
         .multicast_trie(|_: Option<async_tungstenite::tungstenite::Error>| {})
+        .map(Ok)
         .map_ok(|m| ("prefix", m))
         .echo_bufferless()
         .await
