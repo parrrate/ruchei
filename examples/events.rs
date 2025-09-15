@@ -15,7 +15,7 @@ use async_std::{
 };
 use async_tungstenite::tungstenite::{self, Message};
 use futures_util::{
-    Future, FutureExt, Sink, SinkExt, Stream, StreamExt,
+    Future, FutureExt, Sink, SinkExt, Stream, StreamExt, TryStream, TryStreamExt,
     future::Ready,
     lock::{Mutex, OwnedMutexGuard, OwnedMutexLockFuture},
     ready,
@@ -55,8 +55,12 @@ struct Client<S, K> {
     joined: HashMap<K, Joined>,
 }
 
-impl<E, K: Unpin + Clone + Eq + Hash, T, S: Unpin + FusedStream<Item = Result<Command<K, T>, E>>>
-    Stream for Client<S, K>
+impl<
+    E,
+    K: Unpin + Clone + Eq + Hash,
+    T,
+    S: Unpin + FusedStream + TryStream<Ok = Command<K, T>, Error = E>,
+> Stream for Client<S, K>
 {
     type Item = Event<S, K, T>;
 
@@ -68,7 +72,7 @@ impl<E, K: Unpin + Clone + Eq + Hash, T, S: Unpin + FusedStream<Item = Result<Co
             return Poll::Ready(None);
         }
         Poll::Ready(loop {
-            match ready!(stream.poll_next_unpin(cx)) {
+            match ready!(stream.try_poll_next_unpin(cx)) {
                 Some(Ok(Command::Publish(k, t))) => break Some(Event::Publish(k, t)),
                 Some(Ok(Command::Join(k))) => {
                     if this.joined.contains_key(&k) {
@@ -188,7 +192,7 @@ impl<
     E,
     K: Unpin + Clone + Eq + Hash,
     T: Clone,
-    S: Unpin + FusedStream<Item = Result<Command<K, T>, E>> + Sink<(K, T), Error = E>,
+    S: Unpin + FusedStream + TryStream<Ok = Command<K, T>, Error = E> + Sink<(K, T), Error = E>,
 > Future for Finalize<S, K, T>
 {
     type Output = K;
@@ -222,7 +226,7 @@ impl<
     E,
     K: Unpin + Clone + Eq + Hash,
     T: Clone,
-    S: Unpin + FusedStream<Item = Result<Command<K, T>, E>> + Sink<(K, T), Error = E>,
+    S: Unpin + FusedStream + TryStream<Ok = Command<K, T>, Error = E> + Sink<(K, T), Error = E>,
     R: FusedStream<Item = S>,
 > Future for Server<R, S, K, T>
 {
@@ -292,7 +296,7 @@ impl<
     E,
     K: Unpin + Clone + Eq + Hash,
     T,
-    S: Unpin + FusedStream<Item = Result<Command<K, T>, E>>,
+    S: Unpin + FusedStream + TryStream<Ok = Command<K, T>, Error = E>,
     R: Stream<Item = S>,
 > ServeEvents for R
 {
@@ -327,11 +331,11 @@ enum EventError {
     UknownCommand,
 }
 
-impl<S: Stream<Item = Result<Message, tungstenite::Error>>> Stream for EventStream<S> {
+impl<S: TryStream<Ok = Message, Error = tungstenite::Error>> Stream for EventStream<S> {
     type Item = Result<Command<String, String>, EventError>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.project().0.poll_next(cx).map(|o| {
+        self.project().0.try_poll_next(cx).map(|o| {
             o.map(|r| {
                 let s = r?.into_text()?;
                 let s = s.trim();
