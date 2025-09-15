@@ -10,3 +10,8 @@ rust-version.workspace = true
 
 [dependencies]
 futures-sink.workspace = true
+futures-util = { version = "0.3.31", optional = true, default-features = false }
+
+[features]
+futures-util = ["dep:futures-util"]
+std = ["futures-util?/std"]

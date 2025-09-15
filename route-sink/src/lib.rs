@@ -1,9 +1,14 @@
-use std::{
+#![no_std]
+
+use core::{
     pin::Pin,
     task::{Context, Poll},
 };
 
 use futures_sink::Sink;
+
+#[cfg(feature = "futures-util")]
+mod futures_util_impls;
 
 pub trait FlushRoute<Route, Msg>: Sink<(Route, Msg)> {
     fn poll_flush_route(
