@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `multicast_bufferless_keyed`
 - `multicast_ignore`
 - `multicast_replay`
+- `read_callback`
 
 ### Fixed
 
