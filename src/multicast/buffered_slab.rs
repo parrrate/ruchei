@@ -27,15 +27,13 @@ const OP_WAKE_CLOSE: usize = 2;
 const OP_IS_S_PRE_F: usize = 3;
 /// `start`ed, already reached the `flush_target`
 const OP_IS_S_POST_F: usize = 4;
-const OP_IS_BEHIND: usize = 5;
-const OP_IS_NOT_BEHIND: usize = 6;
-/// `OP_IS_S_PRE_F` and `OP_IS_NOT_BEHIND`
-const OP_IS_FLUSHING: usize = 7;
+/// `OP_IS_S_PRE_F` and `sent == items.len()`
+const OP_IS_FLUSHING: usize = 5;
 /// ordered by `sent`
-const OP_SENT_COUNT: usize = 8;
+const OP_SENT_COUNT: usize = 6;
 /// first representative of `OP_SENT_COUNT` per `sent`
-const OP_SENT_FIRST: usize = 9;
-const OP_COUNT: usize = 10;
+const OP_SENT_FIRST: usize = 7;
+const OP_COUNT: usize = 8;
 
 pub(crate) struct Connection<S> {
     pub(crate) stream: S,
@@ -311,7 +309,6 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, F: OnClose<E>, E> Multicast<S, T, 
         this.next.wake();
         this.ready.wake();
         this.close.wake();
-        assert!(this.connections.link_push_back::<OP_IS_NOT_BEHIND>(key));
         assert!(this.connections.link_push_back::<OP_SENT_COUNT>(key));
         if this.first_sent_all.is_none() {
             assert!(this.connections.link_push_back::<OP_SENT_FIRST>(key));
@@ -321,7 +318,6 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, F: OnClose<E>, E> Multicast<S, T, 
 
     fn start_flush_one(self: Pin<&mut Self>, key: usize) {
         let this = self.project();
-        assert!(this.connections.link_contains::<OP_IS_NOT_BEHIND>(key));
         assert!(this.connections[key].sent == this.items.len());
         assert!(this.connections.link_contains::<OP_IS_S_PRE_F>(key));
         assert!(this.connections[key].flushed < *this.flush_target);
@@ -336,7 +332,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, F: OnClose<E>, E> Multicast<S, T, 
         cx: &mut Context<'_>,
     ) -> Poll<Result<(), S::Error>> {
         let mut this = self.as_mut().project();
-        assert!(this.connections.link_contains::<OP_IS_BEHIND>(key));
+        assert!(this.connections[key].sent < this.items.len());
         while this.connections[key].sent < this.items.len() {
             ready!(this.connections[key].stream.poll_ready_unpin(cx))?;
             let sent = this.connections[key].sent;
@@ -352,8 +348,6 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, F: OnClose<E>, E> Multicast<S, T, 
             self.as_mut().increment_sent(key, sent);
             this = self.as_mut().project();
         }
-        assert!(this.connections.link_pop_at::<OP_IS_BEHIND>(key));
-        assert!(this.connections.link_push_back::<OP_IS_NOT_BEHIND>(key));
         if this.connections.link_contains::<OP_IS_S_PRE_F>(key) {
             self.as_mut().start_flush_one(key);
         }
@@ -368,7 +362,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, F: OnClose<E>, E> Multicast<S, T, 
     ) -> Poll<Result<(), S::Error>> {
         let this = self.project();
         assert!(this.connections.link_contains::<OP_IS_FLUSHING>(key));
-        assert!(this.connections.link_contains::<OP_IS_NOT_BEHIND>(key));
+        assert!(this.connections[key].sent == this.items.len());
         assert!(this.connections.link_contains::<OP_IS_S_PRE_F>(key));
         ready!(this.connections[key].stream.poll_flush_unpin(cx))?;
         this.connections[key].flushed = this.connections[key].sent;
@@ -381,7 +375,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, F: OnClose<E>, E> Multicast<S, T, 
         let mut this = self.as_mut().project();
         this.ready.register(cx);
         while let Some(key) = this.ready.as_mut().next::<OP_WAKE_READY>(this.connections) {
-            if this.connections.link_contains::<OP_IS_BEHIND>(key)
+            if this.connections[key].sent < this.items.len()
                 && let Some(connection) = this.connections.get_mut(key)
                 && let Poll::Ready(Err(e)) = connection
                     .ready
@@ -398,7 +392,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, F: OnClose<E>, E> Multicast<S, T, 
             this.items.items.pop_front();
             this.items.offset += 1;
         }
-        if this.connections.link_empty::<OP_IS_BEHIND>() {
+        if this.items.items.is_empty() {
             Poll::Ready(())
         } else {
             Poll::Pending
@@ -442,7 +436,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, F: OnClose<E>, E> Multicast<S, T, 
         while let Some(key) = this.connections.link_pop_front::<OP_IS_S_POST_F>() {
             assert!(this.connections[key].flushed < *this.flush_target);
             this.connections.link_push_back::<OP_IS_S_PRE_F>(key);
-            if this.connections.link_contains::<OP_IS_NOT_BEHIND>(key) {
+            if this.connections[key].sent == this.items.len() {
                 self.as_mut().start_flush_one(key);
                 this = self.as_mut().project();
             }
@@ -505,12 +499,13 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, F: OnClose<E>, E> Sink<T> for Mult
 
     fn start_send(self: Pin<&mut Self>, item: T) -> Result<(), Self::Error> {
         let this = self.project();
-        this.items.push(item, this.first_sent_all.take());
-        while let Some(key) = this.connections.link_pop_front::<OP_IS_NOT_BEHIND>() {
-            this.connections.link_pop_at::<OP_IS_FLUSHING>(key);
-            this.connections.link_push_back::<OP_IS_BEHIND>(key);
-            this.ready.downgrade().insert(key);
+        let mut key = this.first_sent_all.as_ref().copied();
+        while let Some(k) = key {
+            this.connections.link_pop_at::<OP_IS_FLUSHING>(k);
+            this.ready.downgrade().insert(k);
+            (_, key) = this.connections.link_of::<OP_SENT_COUNT>(key);
         }
+        this.items.push(item, this.first_sent_all.take());
         Ok(())
     }
 
