@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "internal/ruchei-sample",
+    "route-sink",
     "ruchei-callback",
     "ruchei-collections",
     "ruchei-extra",
