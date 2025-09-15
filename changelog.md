@@ -11,21 +11,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `into_reply_buffer`
 - `multicast_replay_slab`
 - `multicast_trie`
+- `MultiItem`
 
 ### Changed
 
 - Dropped `Clone` bound for `group_sequential` context
 - More `TryStream`-based `impl`s (instead of `Stream<Item = Result<T, E>>`)
+- Combinators over multiple streams now yield `MultiItem` instead of calling an `OnClose`
+- All those combinators are also now `Default`
+
+### Deprecated
+
+- `OnClose`
+
+### Removed
+
+- Previously deprecated `deal` and `route` aliases
+- `deal_keyed`
+- `multicast_buffered`
+- `multicast_bufferless`
+- `multicast_bufferless_keyed`
+- `multicast_ignore`
+- `multicast_replay`
 
 ### Fixed
 
 - Some `multicast_bufferless_slab` bugs resulting in a deadlock
 
-### Removed
-
-- Previously deprecated `deal` and `route` aliases
-
-### [0.0.96] - 2025-07-19
+## [0.0.96] - 2025-07-19
 
 ### Added
 
