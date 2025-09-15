@@ -97,6 +97,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
         connection.flush.waker.wake();
         connection.close.waker.wake();
         this.closed.push_back((connection.stream, error));
+        this.next.wake();
     }
 
     pub fn push(self: Pin<&mut Self>, stream: S) {

@@ -60,6 +60,7 @@ impl<S, E> Multicast<S, E> {
         connection.flush.waker.wake();
         connection.close.waker.wake();
         this.closed.push_back((connection.stream, error));
+        this.next.wake();
     }
 
     pub fn push(self: Pin<&mut Self>, stream: S) {

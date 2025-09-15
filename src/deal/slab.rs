@@ -61,6 +61,7 @@ impl<S, E> Dealer<S, E> {
         connection.flush.waker.wake();
         connection.close.waker.wake();
         this.closed.push_back((connection.stream, error));
+        this.next.wake();
     }
 
     /// Add new connection with its unique key.
