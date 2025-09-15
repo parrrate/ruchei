@@ -202,7 +202,6 @@ impl<
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
         match this.0.poll_next(cx) {
-            Poll::Ready(Some(Ok(i) | Err(i))) => match i {},
             Poll::Ready(None) => Poll::Ready(this.1.take().unwrap()),
             Poll::Pending => Poll::Pending,
         }
