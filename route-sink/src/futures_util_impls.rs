@@ -1,7 +1,7 @@
 use futures_sink::Sink;
 use futures_util::{
     Stream, TryFuture, TryStream,
-    stream::{AndThen, Enumerate, Filter, FilterMap, FlatMap},
+    stream::{AndThen, Enumerate, Filter, FilterMap, FlatMap, FlatMapUnordered},
 };
 
 use crate::{FlushRoute, ReadyRoute, ReadySome};
@@ -171,6 +171,33 @@ impl<St, U, F, Route, Msg, E> ReadySome<Route, Msg> for FlatMap<St, U, F>
 where
     St: ReadySome<Route, Msg, Error = E>,
     Self: Sink<(Route, Msg), Error = E>,
+{
+    delegate_rs!(Route);
+}
+
+impl<St, U, F, Route, Msg> FlushRoute<Route, Msg> for FlatMapUnordered<St, U, F>
+where
+    St: Stream + FlushRoute<Route, Msg>,
+    U: Stream + Unpin,
+    F: FnMut(St::Item) -> U,
+{
+    delegate_fr!(Route);
+}
+
+impl<St, U, F, Route, Msg> ReadyRoute<Route, Msg> for FlatMapUnordered<St, U, F>
+where
+    St: Stream + ReadyRoute<Route, Msg>,
+    U: Stream + Unpin,
+    F: FnMut(St::Item) -> U,
+{
+    delegate_rr!(Route);
+}
+
+impl<St, U, F, Route, Msg> ReadySome<Route, Msg> for FlatMapUnordered<St, U, F>
+where
+    St: Stream + ReadySome<Route, Msg>,
+    U: Stream + Unpin,
+    F: FnMut(St::Item) -> U,
 {
     delegate_rs!(Route);
 }
