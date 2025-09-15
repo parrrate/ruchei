@@ -9,7 +9,8 @@ use ruchei::{
     concurrent::ConcurrentExt,
     echo::buffered::EchoBuffered,
     group_concurrent::{Group, GroupConcurrent},
-    multicast::replay::MulticastReplay,
+    multi_item::MultiItemExt,
+    multicast::replay_slab::MulticastReplaySlab,
     poll_on_wake::PollOnWakeExt,
     timeout_unused::TimeoutUnused,
 };
@@ -53,8 +54,8 @@ async fn main() {
             let _guard = guard;
             receiver
                 .timeout_unused(|| ready(()))
-                .multicast_replay(|_| {})
-                .map(Ok)
+                .multicast_replay_slab()
+                .multi_item_ignore()
                 .echo_buffered()
                 .await
                 .unwrap();

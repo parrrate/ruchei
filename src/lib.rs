@@ -28,4 +28,3 @@ pub mod route;
 pub mod rw_isolation;
 pub mod switching;
 pub mod timeout_unused;
-mod wait_all;

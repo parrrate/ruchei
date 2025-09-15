@@ -5,8 +5,9 @@ use std::time::Duration;
 use async_std::{net::TcpListener, task};
 use futures_util::StreamExt;
 use ruchei::{
-    concurrent::ConcurrentExt, echo::buffered::EchoBuffered, multicast::replay::MulticastReplay,
-    poll_on_wake::PollOnWakeExt, timeout_unused::TimeoutUnused,
+    concurrent::ConcurrentExt, echo::buffered::EchoBuffered, multi_item::MultiItemExt,
+    multicast::replay_slab::MulticastReplaySlab, poll_on_wake::PollOnWakeExt,
+    timeout_unused::TimeoutUnused,
 };
 
 #[async_std::main]
@@ -25,8 +26,8 @@ async fn main() {
             task::sleep(Duration::from_secs(10)).await;
         })
         .map(|s| s.poll_on_wake())
-        .multicast_replay(|_| {})
-        .map(Ok)
+        .multicast_replay_slab()
+        .multi_item_ignore()
         .echo_buffered()
         .await
         .unwrap();

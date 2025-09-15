@@ -17,7 +17,7 @@ use ruchei::{
     multi_item::MultiItemExt,
     multicast::{
         buffered_slab::MulticastBufferedSlab, bufferless_slab::MulticastBufferlessSlab,
-        replay::MulticastReplay,
+        replay_slab::MulticastReplaySlab,
     },
     rw_isolation::{IsolateInner, IsolateOuter, isolation},
 };
@@ -144,8 +144,8 @@ async fn test_two<Fut: Future<Output = ()>>(f: impl Fn(UnboundedReceiver<Channel
 async fn main() {
     test_two(|streams| async move {
         streams
-            .multicast_replay(|_| {})
-            .map(Ok)
+            .multicast_replay_slab()
+            .multi_item_ignore()
             .echo_buffered()
             .await
             .unwrap()
