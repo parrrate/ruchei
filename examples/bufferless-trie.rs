@@ -5,6 +5,7 @@ use futures_util::{SinkExt, StreamExt, TryStreamExt, future::ready};
 use ruchei::{
     concurrent::ConcurrentExt,
     echo::bufferless::EchoBufferless,
+    multi_item::MultiItemExt,
     multicast::trie::{MulticastTrie, SubRequest},
     poll_on_wake::PollOnWakeExt,
 };
@@ -28,9 +29,9 @@ async fn main() {
             })
             .try_flatten()
         })
-        .map(|s| s.with(|(_, m)| ready(Ok(m))))
-        .multicast_trie(|_: Option<async_tungstenite::tungstenite::Error>| {})
-        .map(Ok)
+        .map(|s| s.with(|(_, m)| ready(Ok::<_, async_tungstenite::tungstenite::Error>(m))))
+        .multicast_trie()
+        .multi_item_ignore()
         .map_ok(|m| ("prefix", m))
         .echo_bufferless()
         .await
