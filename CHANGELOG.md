@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - all those combinators are also now `Default`
 
-- reworker `route_keyed` to be implemented via `route_slab`
+- rework `route_keyed` to be implemented via `route_slab`
 
 ### Deprecated
 
