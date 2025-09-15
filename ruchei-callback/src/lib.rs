@@ -10,12 +10,14 @@
 /// Act when one of inner channels gets closed instead of closing the outer channel. Used with [`multicast`].
 ///
 /// [`multicast`]: https://docs.rs/ruchei/0.0.81/ruchei/multicast/index.html
+#[deprecated]
 pub trait OnClose<E>: Clone {
     /// Get notified about something getting closed (optionally with an error).
     fn on_close(&self, error: Option<E>);
 }
 
 /// Implemented only for [`Sized`] because stored.
+#[expect(deprecated)]
 impl<E, F: Clone + Fn(Option<E>)> OnClose<E> for F {
     fn on_close(&self, error: Option<E>) {
         self(error)
