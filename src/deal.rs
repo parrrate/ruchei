@@ -2,5 +2,4 @@
 //!
 //! [`Sink`]: futures_util::Sink
 
-pub mod keyed;
 pub mod slab;

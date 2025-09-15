@@ -3,7 +3,7 @@
 use async_net::TcpListener;
 use futures_util::StreamExt;
 use ruchei::{
-    concurrent::ConcurrentExt, deal::keyed::DealerKeyedExt, multi_item::MultiItem,
+    concurrent::ConcurrentExt, deal::slab::DealerSlabExt, multi_item::MultiItem,
     poll_on_wake::PollOnWakeExt,
 };
 
@@ -19,8 +19,7 @@ async fn main() {
         .fuse()
         .concurrent()
         .filter_map(|r| async { r.ok() })
-        .map(|s| (rand::random::<u64>(), s))
-        .deal_keyed()
+        .deal_slab()
         .for_each(|item| {
             match item {
                 MultiItem::Item(item) => {
