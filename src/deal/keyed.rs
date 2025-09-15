@@ -123,7 +123,7 @@ impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Dealer<
 
 impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>> FusedStream for Dealer<K, S, E> {
     fn is_terminated(&self) -> bool {
-        self.connections.is_empty()
+        self.closed.is_empty() && self.connections.is_empty()
     }
 }
 
