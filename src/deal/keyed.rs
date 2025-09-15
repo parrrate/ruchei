@@ -225,7 +225,7 @@ impl<Out, K: Key, E, S: Unpin + Sink<Out, Error = E>> Sink<Out> for Dealer<K, S,
     }
 }
 
-impl<K: Key, S, F> Extend<(K, S)> for Dealer<K, S, F> {
+impl<K: Key, S, E> Extend<(K, S)> for Dealer<K, S, E> {
     fn extend<T: IntoIterator<Item = (K, S)>>(&mut self, iter: T) {
         for (key, stream) in iter {
             self.push(key, stream)

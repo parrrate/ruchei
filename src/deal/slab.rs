@@ -233,7 +233,7 @@ impl<Out, E, S: Unpin + Sink<Out, Error = E>> Sink<Out> for Dealer<S, E> {
     }
 }
 
-impl<S, F> PinnedExtend<S> for Dealer<S, F> {
+impl<S, E> PinnedExtend<S> for Dealer<S, E> {
     fn extend_pinned<T: IntoIterator<Item = S>>(mut self: Pin<&mut Self>, iter: T) {
         for stream in iter {
             self.as_mut().push(stream)
