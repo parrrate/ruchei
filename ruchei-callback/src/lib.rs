@@ -27,12 +27,14 @@ impl<E, F: Clone + Fn(Option<E>)> OnClose<E> for F {
 /// Used with [`ReadCallback`].
 ///
 /// [`ReadCallback`]: https://docs.rs/ruchei/0.0.81/ruchei/read_callback/index.html
+#[deprecated]
 pub trait OnItem<T> {
     /// Receive an item.
     fn on_item(&self, message: T);
 }
 
 /// Implemented only for [`Sized`] because stored.
+#[expect(deprecated)]
 impl<T, F: Fn(T)> OnItem<T> for F {
     fn on_item(&self, message: T) {
         self(message)
