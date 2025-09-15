@@ -160,7 +160,7 @@ impl<K: Key, S, E> Router<K, S, E> {
         let this = self.project();
         let ctr = *this.ctr;
         *this.ctr += 1;
-        this.router.push(One { ctr, key, stream });
+        this.router.extend_pinned([One { ctr, key, stream }]);
     }
 }
 
