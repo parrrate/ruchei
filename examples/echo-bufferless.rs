@@ -5,7 +5,8 @@ use futures_util::StreamExt;
 use ruchei::{
     concurrent::ConcurrentExt,
     echo::bufferless::EchoBufferless,
-    multicast::bufferless::MulticastBufferless,
+    multi_item::MultiItemExt,
+    multicast::bufferless_slab::MulticastBufferlessSlab,
     poll_on_wake::PollOnWakeExt,
     rw_isolation::{IsolateInner, IsolateOuter, isolation},
 };
@@ -24,8 +25,8 @@ async fn main() {
         .concurrent()
         .filter_map(|r| async { r.ok() })
         .map(|s| s.isolate_inner(inner.clone()).poll_on_wake())
-        .multicast_bufferless(|_| {})
-        .map(Ok)
+        .multicast_bufferless_slab()
+        .multi_item_ignore()
         .isolate_outer(outer)
         .echo_bufferless()
         .await

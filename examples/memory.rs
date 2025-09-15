@@ -16,7 +16,7 @@ use ruchei::{
     echo::buffered::EchoBuffered,
     multi_item::MultiItemExt,
     multicast::{
-        buffered_slab::MulticastBufferedSlab, bufferless::MulticastBufferless,
+        buffered_slab::MulticastBufferedSlab, bufferless_slab::MulticastBufferlessSlab,
         replay::MulticastReplay,
     },
     rw_isolation::{IsolateInner, IsolateOuter, isolation},
@@ -162,8 +162,8 @@ async fn main() {
     .await;
     test_two(|streams| async move {
         streams
-            .multicast_bufferless(|_| {})
-            .map(Ok)
+            .multicast_bufferless_slab()
+            .multi_item_ignore()
             .echo_buffered()
             .await
             .unwrap()
@@ -173,8 +173,8 @@ async fn main() {
         let (inner, outer) = isolation();
         streams
             .map(|s| s.isolate_inner(inner.clone()))
-            .multicast_bufferless(|_| {})
-            .map(Ok)
+            .multicast_bufferless_slab()
+            .multi_item_ignore()
             .isolate_outer(outer)
             .echo_buffered()
             .await

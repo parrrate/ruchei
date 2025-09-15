@@ -16,7 +16,6 @@
 //! [`send`]: futures_util::Sink::start_send
 
 pub mod buffered_slab;
-pub mod bufferless;
 pub mod bufferless_slab;
 pub mod ignore;
 pub mod replay;
