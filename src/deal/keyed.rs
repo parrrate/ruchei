@@ -1,6 +1,7 @@
 use std::{
-    collections::HashSet,
+    collections::{HashSet, VecDeque},
     convert::Infallible,
+    hash::Hash,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -10,16 +11,16 @@ use futures_util::{
 };
 use linked_hash_map::LinkedHashMap;
 use linked_hash_set::LinkedHashSet;
-use ruchei_callback::OnClose;
 
 use crate::{
+    multi_item::MultiItem,
     pinned_extend::{AutoPinnedExtend, Extending},
     ready_keyed::{Connection, ConnectionWaker, Ready},
     route::Key,
 };
 
 /// [`Sink`]/[`Stream`] implemented over the stream of incoming [`Sink`]s/[`Stream`]s.
-pub struct Dealer<K, S, F> {
+pub struct Dealer<K, S, E> {
     connections: LinkedHashMap<K, Connection<K, S>>,
     next: Ready<K>,
     wready: AtomicWaker,
@@ -27,31 +28,42 @@ pub struct Dealer<K, S, F> {
     flushing: HashSet<K>,
     flush: Ready<K>,
     close: Ready<K>,
-    callback: F,
+    closed: VecDeque<(S, Option<E>)>,
 }
 
-impl<K, S, F> Unpin for Dealer<K, S, F> {}
+impl<K: Hash + Eq, S, E> Default for Dealer<K, S, E> {
+    fn default() -> Self {
+        Self {
+            connections: Default::default(),
+            next: Default::default(),
+            wready: Default::default(),
+            started: Default::default(),
+            flushing: Default::default(),
+            flush: Default::default(),
+            close: Default::default(),
+            closed: Default::default(),
+        }
+    }
+}
 
-impl<K, S, F> AutoPinnedExtend for Dealer<K, S, F> {}
+impl<K, S, E> Unpin for Dealer<K, S, E> {}
 
-impl<K: Key, S, F> Dealer<K, S, F> {
-    fn remove<E>(&mut self, key: &K, error: Option<E>)
-    where
-        F: OnClose<E>,
-    {
-        self.callback.on_close(error);
+impl<K, S, E> AutoPinnedExtend for Dealer<K, S, E> {}
+
+impl<K: Key, S, E> Dealer<K, S, E> {
+    fn remove(&mut self, key: &K, error: Option<E>) {
         self.next.remove(key);
         self.wready.wake();
         self.started.remove(key);
         self.flushing.remove(key);
         self.flush.remove(key);
         self.close.remove(key);
-        if let Some(connection) = self.connections.remove(key) {
-            connection.next.waker.wake();
-            connection.ready.waker.wake();
-            connection.flush.waker.wake();
-            connection.close.waker.wake();
-        }
+        let connection = self.connections.remove(key).expect("unknown key");
+        connection.next.waker.wake();
+        connection.ready.waker.wake();
+        connection.flush.waker.wake();
+        connection.close.waker.wake();
+        self.closed.push_back((connection.stream, error));
     }
 
     /// Add new connection with its unique key.
@@ -73,13 +85,14 @@ impl<K: Key, S, F> Dealer<K, S, F> {
     }
 }
 
-impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>, F: OnClose<E>> Stream
-    for Dealer<K, S, F>
-{
-    type Item = In;
+impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Dealer<K, S, E> {
+    type Item = MultiItem<In, S, E>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
+        if let Some((stream, error)) = this.closed.pop_front() {
+            return Poll::Ready(Some(MultiItem::Closed(stream, error)));
+        }
         while let Some(key) = this.next.next() {
             if let Some(connection) = this.connections.get_mut(&key)
                 && let Poll::Ready(o) = connection
@@ -89,7 +102,7 @@ impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>, F: OnClose<E>> Str
                 match o {
                     Some(Ok(item)) => {
                         this.next.downgrade().insert(key);
-                        return Poll::Ready(Some(item));
+                        return Poll::Ready(Some(MultiItem::Item(item)));
                     }
                     Some(Err(e)) => {
                         this.remove(&key, Some(e));
@@ -108,15 +121,13 @@ impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>, F: OnClose<E>> Str
     }
 }
 
-impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>, F: OnClose<E>> FusedStream
-    for Dealer<K, S, F>
-{
+impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>> FusedStream for Dealer<K, S, E> {
     fn is_terminated(&self) -> bool {
         self.connections.is_empty()
     }
 }
 
-impl<Out, K: Key, E, S: Unpin + Sink<Out, Error = E>, F: OnClose<E>> Sink<Out> for Dealer<K, S, F> {
+impl<Out, K: Key, E, S: Unpin + Sink<Out, Error = E>> Sink<Out> for Dealer<K, S, E> {
     type Error = Infallible;
 
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -223,8 +234,10 @@ impl<K: Key, S, F> Extend<(K, S)> for Dealer<K, S, F> {
 }
 
 /// [`Sink`]/[`Stream`] Returned by [`DealerKeyedExt::deal_keyed`].
-pub type DealerExtending<F, R> =
-    Extending<Dealer<<R as DealerKeyedExt>::K, <R as DealerKeyedExt>::S, F>, R>;
+pub type DealerExtending<R> = Extending<
+    Dealer<<R as DealerKeyedExt>::K, <R as DealerKeyedExt>::S, <R as DealerKeyedExt>::E>,
+    R,
+>;
 
 /// Extension trait to auto-extend a [`Dealer`] from a stream of connections.
 pub trait DealerKeyedExt: Sized {
@@ -237,7 +250,7 @@ pub trait DealerKeyedExt: Sized {
 
     /// Extend the stream of connections (`self`) into a [`Dealer`].
     #[must_use]
-    fn deal_keyed<F: OnClose<Self::E>>(self, callback: F) -> DealerExtending<F, Self>;
+    fn deal_keyed(self) -> DealerExtending<Self>;
 }
 
 impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = (K, S)>>
@@ -247,19 +260,7 @@ impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Ite
     type S = S;
     type E = E;
 
-    fn deal_keyed<F: OnClose<Self::E>>(self, callback: F) -> DealerExtending<F, Self> {
-        Extending::new(
-            self,
-            Dealer {
-                connections: Default::default(),
-                next: Default::default(),
-                wready: Default::default(),
-                started: Default::default(),
-                flushing: Default::default(),
-                flush: Default::default(),
-                close: Default::default(),
-                callback,
-            },
-        )
+    fn deal_keyed(self) -> DealerExtending<Self> {
+        Extending::new(self, Dealer::default())
     }
 }
