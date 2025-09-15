@@ -19,7 +19,6 @@ use ruchei::{
         buffered_slab::MulticastBufferedSlab, bufferless_slab::MulticastBufferlessSlab,
         replay_slab::MulticastReplaySlab,
     },
-    rw_isolation::{IsolateInner, IsolateOuter, isolation},
 };
 
 #[pin_project]
@@ -170,12 +169,9 @@ async fn main() {
     })
     .await;
     test_two(|streams| async move {
-        let (inner, outer) = isolation();
         streams
-            .map(|s| s.isolate_inner(inner.clone()))
             .multicast_bufferless_slab()
             .multi_item_ignore()
-            .isolate_outer(outer)
             .echo_buffered()
             .await
             .unwrap()
