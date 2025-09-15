@@ -23,9 +23,10 @@ use futures_util::{
 };
 use pin_project::pin_project;
 use ruchei::{
-    callback::{OnClose, Start},
+    callback::Start,
     concurrent::ConcurrentExt,
-    multicast::buffered::{Multicast, MulticastBuffered},
+    multi_item::MultiItem,
+    multicast::buffered_slab::{Multicast, MulticastBufferedSlab},
     pinned_extend::Extending,
     poll_on_wake::PollOnWakeExt,
     timeout_unused::{KeepAlive, TimeoutUnused, WithTimeout},
@@ -165,13 +166,6 @@ impl<Item, S: Unpin + FusedStream + Sink<Item>> Sink<Item> for Active<S> {
     }
 }
 
-#[derive(Clone)]
-struct Ignore;
-
-impl<E> OnClose<E> for Ignore {
-    fn on_close(&self, _: Option<E>) {}
-}
-
 struct ReadyStart;
 
 impl Start for ReadyStart {
@@ -185,7 +179,7 @@ impl Start for ReadyStart {
 type ActiveReceiver<S> = WithTimeout<Receiver<Active<S>>, Ready<()>, ReadyStart>;
 
 type ActiveMulticast<S, K, T> =
-    Extending<Multicast<WithExtra<Active<S>, KeepAlive>, (K, T), Ignore>, ActiveReceiver<S>>;
+    Extending<Multicast<WithExtra<Active<S>, KeepAlive>, (K, T), Error>, ActiveReceiver<S>>;
 
 #[pin_project]
 struct Finalize<S, K, T>(#[pin] SplitStream<ActiveMulticast<S, K, T>>, Option<K>);
@@ -200,11 +194,11 @@ impl<
     type Output = K;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.project();
-        match this.0.poll_next(cx) {
-            Poll::Ready(None) => Poll::Ready(this.1.take().unwrap()),
-            Poll::Pending => Poll::Pending,
+        let mut this = self.project();
+        while let Some(item) = ready!(this.0.as_mut().poll_next(cx)) {
+            let MultiItem::Closed(_, _) = item;
         }
+        Poll::Ready(this.1.take().unwrap())
     }
 }
 
@@ -270,7 +264,7 @@ impl<
                         let (sender, receiver) = unbounded();
                         let (sink, stream) = receiver
                             .timeout_unused(ReadyStart)
-                            .multicast_buffered(Ignore)
+                            .multicast_buffered_slab()
                             .split();
                         this.finalizing.push(Finalize(stream, Some(k.clone())));
                         (sink, sender)

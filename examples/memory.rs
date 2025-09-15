@@ -14,9 +14,11 @@ use futures_util::{
 use pin_project::pin_project;
 use ruchei::{
     echo::buffered::EchoBuffered,
-    multicast::buffered::MulticastBuffered,
-    multicast::bufferless::MulticastBufferless,
-    multicast::replay::MulticastReplay,
+    multi_item::MultiItemExt,
+    multicast::{
+        buffered_slab::MulticastBufferedSlab, bufferless::MulticastBufferless,
+        replay::MulticastReplay,
+    },
     rw_isolation::{IsolateInner, IsolateOuter, isolation},
 };
 
@@ -151,8 +153,8 @@ async fn main() {
     .await;
     test_two(|streams| async move {
         streams
-            .multicast_buffered(|_| {})
-            .map(Ok)
+            .multicast_buffered_slab()
+            .multi_item_ignore()
             .echo_buffered()
             .await
             .unwrap()

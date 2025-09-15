@@ -5,8 +5,8 @@ use std::{pin::pin, time::Duration};
 use async_std::{net::TcpListener, task::sleep};
 use futures_util::{SinkExt, StreamExt};
 use ruchei::{
-    concurrent::ConcurrentExt, multicast::buffered::MulticastBuffered,
-    read_callback::ReadCallbackExt,
+    concurrent::ConcurrentExt, multi_item::MultiItemExt,
+    multicast::buffered_slab::MulticastBufferedSlab, read_callback::ReadCallbackExt,
 };
 
 #[async_std::main]
@@ -20,8 +20,8 @@ async fn main() {
             .fuse()
             .concurrent()
             .filter_map(|r| async { r.ok() })
-            .multicast_buffered(|_| {})
-            .map(Ok)
+            .multicast_buffered_slab()
+            .multi_item_ignore()
             .read_callback(|message| print!("{message}"))
     );
     loop {

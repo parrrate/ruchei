@@ -15,7 +15,6 @@
 //! [polling for `next`]: futures_util::Stream::poll_next
 //! [`send`]: futures_util::Sink::start_send
 
-pub mod buffered;
 pub mod buffered_slab;
 pub mod bufferless;
 pub mod bufferless_keyed;
