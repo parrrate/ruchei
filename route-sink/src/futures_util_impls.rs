@@ -1,10 +1,11 @@
 use futures_sink::Sink;
+#[cfg(feature = "std")]
+use futures_util::stream::{FlatMapUnordered, TryFlattenUnordered};
 use futures_util::{
     Stream, TryFuture, TryStream,
     stream::{
-        AndThen, Enumerate, Filter, FilterMap, FlatMap, FlatMapUnordered, Flatten, Fuse,
-        IntoStream, Map, MapErr, MapOk, Then, TryFilter, TryFilterMap, TryFlatten,
-        TryFlattenUnordered,
+        AndThen, Enumerate, Filter, FilterMap, FlatMap, Flatten, Fuse, IntoStream, Map, MapErr,
+        MapOk, Then, TryFilter, TryFilterMap, TryFlatten,
     },
 };
 
@@ -179,6 +180,7 @@ where
     delegate_rs!(Route);
 }
 
+#[cfg(feature = "std")]
 impl<St, U, F, Route, Msg> FlushRoute<Route, Msg> for FlatMapUnordered<St, U, F>
 where
     St: Stream + FlushRoute<Route, Msg>,
@@ -188,6 +190,7 @@ where
     delegate_fr!(Route);
 }
 
+#[cfg(feature = "std")]
 impl<St, U, F, Route, Msg> ReadyRoute<Route, Msg> for FlatMapUnordered<St, U, F>
 where
     St: Stream + ReadyRoute<Route, Msg>,
@@ -197,6 +200,7 @@ where
     delegate_rr!(Route);
 }
 
+#[cfg(feature = "std")]
 impl<St, U, F, Route, Msg> ReadySome<Route, Msg> for FlatMapUnordered<St, U, F>
 where
     St: Stream + ReadySome<Route, Msg>,
@@ -440,6 +444,7 @@ where
     delegate_rs!(Route);
 }
 
+#[cfg(feature = "std")]
 impl<St, Route, Msg> FlushRoute<Route, Msg> for TryFlattenUnordered<St>
 where
     St: TryStream + FlushRoute<Route, Msg>,
@@ -449,6 +454,7 @@ where
     delegate_fr!(Route);
 }
 
+#[cfg(feature = "std")]
 impl<St, Route, Msg> ReadyRoute<Route, Msg> for TryFlattenUnordered<St>
 where
     St: TryStream + ReadyRoute<Route, Msg>,
@@ -458,6 +464,7 @@ where
     delegate_rr!(Route);
 }
 
+#[cfg(feature = "std")]
 impl<St, Route, Msg> ReadySome<Route, Msg> for TryFlattenUnordered<St>
 where
     St: TryStream + ReadySome<Route, Msg>,
