@@ -287,6 +287,10 @@ impl<T, const N: usize> AsLinkedSlab for LinkedSlab<T, N> {
         Some(value.value)
     }
 
+    fn contains(&self, key: usize) -> bool {
+        self.slab.contains(key)
+    }
+
     fn get(&self, key: usize) -> Option<&Self::T> {
         Some(&self.slab.get(key)?.value)
     }

@@ -182,6 +182,10 @@ impl<T, const N: usize> AsLinkedSlab for LinkedSlabMultiTrie<T, N> {
         }
     }
 
+    fn contains(&self, key: usize) -> bool {
+        self.collections.contains(key)
+    }
+
     fn get(&self, key: usize) -> Option<&Self::T> {
         Some(&self.collections.get(key)?.0)
     }

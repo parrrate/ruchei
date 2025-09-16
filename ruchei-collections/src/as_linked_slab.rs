@@ -17,6 +17,7 @@ pub trait AsLinkedSlab: Index<usize> + IndexMut<usize> {
     fn insert(&mut self, value: Self::T) -> usize;
     fn vacant_key(&mut self) -> usize;
     fn try_remove(&mut self, key: usize) -> Option<Self::T>;
+    fn contains(&self, key: usize) -> bool;
     fn get(&self, key: usize) -> Option<&Self::T>;
     fn get_mut(&mut self, key: usize) -> Option<&mut Self::T>;
     fn is_empty(&self) -> bool;
