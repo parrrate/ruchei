@@ -197,6 +197,7 @@ pub trait RouteSink<Route, Msg> {
 }
 
 /// See [notes][RouteSink#for-sinks]
+#[diagnostic::do_not_recommend]
 impl<Route, Msg, E, T: ?Sized + Sink<(Route, Msg), Error = E>> RouteSink<Route, Msg> for T {
     type Error = E;
 
