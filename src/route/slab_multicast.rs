@@ -272,6 +272,38 @@ impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>> Sink<(usize, Out)> for Rout
     }
 }
 
+impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>> Sink<(Out,)> for Router<S, E> {
+    type Error = Infallible;
+
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.poll_ready(cx).map(Ok)
+    }
+
+    fn start_send(mut self: Pin<&mut Self>, (msg,): (Out,)) -> Result<(), Self::Error> {
+        let mut this = self.as_mut().project();
+        while let Some(key) = this.connections.link_pop_front::<OP_IS_READIED>() {
+            if let Some(connection) = this.connections.get_mut(key) {
+                if let Err(e) = connection.stream.start_send_unpin(msg.clone()) {
+                    self.as_mut().remove(key, Some(e));
+                } else {
+                    this.connections.link_push_back::<OP_IS_STARTED>(key);
+                    this.ready.downgrade().insert(key);
+                }
+            }
+            this = self.as_mut().project();
+        }
+        Ok(())
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.poll_flush(cx).map(Ok)
+    }
+
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.poll_close(cx).map(Ok)
+    }
+}
+
 impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>> FlushRoute<usize, Out> for Router<S, E> {
     fn poll_flush_route(
         mut self: Pin<&mut Self>,
