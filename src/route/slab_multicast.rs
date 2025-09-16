@@ -151,6 +151,36 @@ impl<S, E> Router<S, E> {
             Poll::Pending
         }
     }
+
+    pub fn poll_close<Out>(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()>
+    where
+        S: Unpin + Sink<Out, Error = E>,
+    {
+        let mut this = self.as_mut().project();
+        this.close.register(cx);
+        while let Some(key) = this.close.as_mut().next::<OP_WAKE_CLOSE>(this.connections) {
+            if let Some(connection) = this.connections.get_mut(key)
+                && let Poll::Ready(r) = connection
+                    .close
+                    .poll(cx, |cx| connection.stream.poll_close_unpin(cx))
+            {
+                match r {
+                    Ok(()) => {
+                        self.as_mut().remove(key, None);
+                    }
+                    Err(e) => {
+                        self.as_mut().remove(key, Some(e));
+                    }
+                }
+            }
+            this = self.as_mut().project();
+        }
+        if this.connections.is_empty() {
+            Poll::Ready(())
+        } else {
+            Poll::Pending
+        }
+    }
 }
 
 impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Router<S, E> {
@@ -237,31 +267,8 @@ impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>> Sink<(usize, Out)> for Rout
         self.poll_flush(cx).map(Ok)
     }
 
-    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let mut this = self.as_mut().project();
-        this.close.register(cx);
-        while let Some(key) = this.close.as_mut().next::<OP_WAKE_CLOSE>(this.connections) {
-            if let Some(connection) = this.connections.get_mut(key)
-                && let Poll::Ready(r) = connection
-                    .close
-                    .poll(cx, |cx| connection.stream.poll_close_unpin(cx))
-            {
-                match r {
-                    Ok(()) => {
-                        self.as_mut().remove(key, None);
-                    }
-                    Err(e) => {
-                        self.as_mut().remove(key, Some(e));
-                    }
-                }
-            }
-            this = self.as_mut().project();
-        }
-        if this.connections.is_empty() {
-            Poll::Ready(Ok(()))
-        } else {
-            Poll::Pending
-        }
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.poll_close(cx).map(Ok)
     }
 }
 
