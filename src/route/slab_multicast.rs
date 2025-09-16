@@ -86,6 +86,34 @@ impl<S, E> Router<S, E> {
         this.ready.wake();
         this.close.wake();
     }
+
+    pub fn poll_ready_all<Out>(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()>
+    where
+        S: Unpin + Sink<Out, Error = E>,
+    {
+        let mut this = self.as_mut().project();
+        this.ready.register(cx);
+        while let Some(key) = this.ready.as_mut().next::<OP_WAKE_READY>(this.connections) {
+            if !this.connections.link_contains::<OP_IS_READIED>(key)
+                && let Some(connection) = this.connections.get_mut(key)
+                && let Poll::Ready(r) = connection
+                    .ready
+                    .poll(cx, |cx| connection.stream.poll_ready_unpin(cx))
+            {
+                if let Err(e) = r {
+                    self.as_mut().remove(key, Some(e));
+                } else {
+                    this.connections.link_push_back::<OP_IS_READIED>(key);
+                }
+            }
+            this = self.as_mut().project();
+        }
+        if this.connections.link_len::<OP_IS_READIED>() == this.connections.len() {
+            Poll::Ready(())
+        } else {
+            Poll::Pending
+        }
+    }
 }
 
 impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Router<S, E> {
@@ -148,29 +176,8 @@ impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>> FusedStream for Router<S, 
 impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>> Sink<(usize, Out)> for Router<S, E> {
     type Error = Infallible;
 
-    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let mut this = self.as_mut().project();
-        this.ready.register(cx);
-        while let Some(key) = this.ready.as_mut().next::<OP_WAKE_READY>(this.connections) {
-            if !this.connections.link_contains::<OP_IS_READIED>(key)
-                && let Some(connection) = this.connections.get_mut(key)
-                && let Poll::Ready(r) = connection
-                    .ready
-                    .poll(cx, |cx| connection.stream.poll_ready_unpin(cx))
-            {
-                if let Err(e) = r {
-                    self.as_mut().remove(key, Some(e));
-                } else {
-                    this.connections.link_push_back::<OP_IS_READIED>(key);
-                }
-            }
-            this = self.as_mut().project();
-        }
-        if this.connections.link_len::<OP_IS_READIED>() == this.connections.len() {
-            Poll::Ready(Ok(()))
-        } else {
-            Poll::Pending
-        }
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.poll_ready_all(cx).map(Ok)
     }
 
     fn start_send(mut self: Pin<&mut Self>, (key, msg): (usize, Out)) -> Result<(), Self::Error> {
