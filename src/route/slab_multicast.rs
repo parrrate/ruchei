@@ -154,6 +154,7 @@ impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>> RouteSink<usize, Out> for R
         cx: &mut Context<'_>,
     ) -> Poll<Result<(), Self::Error>> {
         let this = self.as_mut().project();
+        this.ready.compact::<OP_WAKE_READY>(this.connections);
         if let Some(connection) = this.connections.get_mut(key) {
             if let Err(e) = ready!(
                 connection
@@ -339,8 +340,8 @@ pub trait RouteSlabMulticastExt: Sized + FusedStream<Item = Self::S> {
     }
 }
 
-impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = S>> RouteSlabMulticastExt
-    for R
+impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = S>>
+    RouteSlabMulticastExt for R
 {
     type S = S;
     type In = In;
