@@ -87,7 +87,7 @@ impl<S, E> Router<S, E> {
         this.close.wake();
     }
 
-    pub fn poll_ready_all<Out>(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()>
+    pub fn poll_ready<Out>(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()>
     where
         S: Unpin + Sink<Out, Error = E>,
     {
@@ -177,7 +177,7 @@ impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>> Sink<(usize, Out)> for Rout
     type Error = Infallible;
 
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.poll_ready_all(cx).map(Ok)
+        self.poll_ready(cx).map(Ok)
     }
 
     fn start_send(mut self: Pin<&mut Self>, (key, msg): (usize, Out)) -> Result<(), Self::Error> {
