@@ -20,7 +20,7 @@ async fn main() {
         .concurrent()
         .filter_map(|r| async { r.ok() })
         .route_slab()
-        .multi_item_ignore_route()
+        .multi_item_ignore()
         .echo_route()
         .await
         .unwrap();

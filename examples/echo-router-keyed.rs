@@ -21,7 +21,7 @@ async fn main() {
         .filter_map(|r| async { r.ok() })
         .map(|s| (rand::random::<u64>(), s))
         .route_keyed()
-        .multi_item_ignore_route()
+        .multi_item_ignore()
         .echo_route()
         .await
         .unwrap();

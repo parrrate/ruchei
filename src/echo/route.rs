@@ -7,8 +7,8 @@ use std::{
 
 use futures_util::{Future, TryStream};
 use pin_project::pin_project;
+use route_sink::ReadyRoute;
 use ruchei_collections::{as_linked_slab::AsLinkedSlab, linked_slab::LinkedSlab};
-use ruchei_route::RouteSink;
 
 use crate::{
     ready_slab::{ConnectionWaker, Ready},
@@ -61,7 +61,7 @@ impl<K: Key, T, S> Echo<S, K, T> {
     }
 }
 
-impl<K: Key, T, E, S: TryStream<Ok = (K, T), Error = E> + RouteSink<K, T, Error = E>> Future
+impl<K: Key, T, E, S: TryStream<Ok = (K, T), Error = E> + ReadyRoute<K, T, Error = E>> Future
     for Echo<S, K, T>
 {
     type Output = Result<(), E>;
@@ -77,14 +77,12 @@ impl<K: Key, T, E, S: TryStream<Ok = (K, T), Error = E> + RouteSink<K, T, Error 
             }
         }
         while let Some(ix) = this.send.as_mut().next::<OP_WAKE_SEND>(this.connections) {
-            let mut ready = false;
             while let Some(connection) = this.connections.get_mut(ix) {
                 if connection.msgs.is_empty() {
                     match connection.send.poll(cx, |cx| {
-                        this.router.as_mut().poll_flush(&connection.key, cx)
+                        this.router.as_mut().poll_flush_route(&connection.key, cx)
                     })? {
                         Poll::Ready(()) => {
-                            ready = true;
                             self.as_mut().remove(ix);
                             this = self.as_mut().project();
                         }
@@ -94,29 +92,22 @@ impl<K: Key, T, E, S: TryStream<Ok = (K, T), Error = E> + RouteSink<K, T, Error 
                     }
                 } else {
                     match connection.send.poll(cx, |cx| {
-                        this.router.as_mut().poll_ready(&connection.key, cx)
+                        this.router.as_mut().poll_ready_route(&connection.key, cx)
                     })? {
                         Poll::Ready(()) => {
-                            ready = true;
-                            this.router.as_mut().start_send(
+                            this.router.as_mut().start_send((
                                 connection.key.clone(),
                                 connection
                                     .msgs
                                     .pop_front()
                                     .expect("no first item but not empty?"),
-                            )?;
+                            ))?;
                         }
                         Poll::Pending => {
                             break;
                         }
                     }
                 }
-            }
-            if ready
-                && !this.router.is_routing()
-                && let Some(&ix) = this.map.values().next()
-            {
-                this.send.downgrade().insert(ix);
             }
         }
         Poll::Pending
@@ -139,7 +130,7 @@ pub trait EchoRoute: Sized {
     }
 }
 
-impl<K: Key, T, E, S: TryStream<Ok = (K, T), Error = E> + RouteSink<K, T, Error = E>> EchoRoute
+impl<K: Key, T, E, S: TryStream<Ok = (K, T), Error = E> + ReadyRoute<K, T, Error = E>> EchoRoute
     for S
 {
     type K = K;

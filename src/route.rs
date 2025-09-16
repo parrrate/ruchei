@@ -2,8 +2,6 @@
 
 use std::hash::Hash;
 
-pub use ruchei_route::{RouteExt, RouteSink, Unroute, WithRoute};
-
 pub mod keyed;
 pub mod slab;
 pub mod slab_multicast;

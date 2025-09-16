@@ -7,12 +7,12 @@ use std::{
 
 use futures_util::{Sink, SinkExt, Stream, TryStream, TryStreamExt, ready, stream::FusedStream};
 use pin_project::pin_project;
+use route_sink::{FlushRoute, ReadyRoute};
 use ruchei_collections::{as_linked_slab::AsLinkedSlab, linked_slab::LinkedSlab};
-pub use ruchei_route::{RouteExt, RouteSink, Unroute, WithRoute};
 
 use crate::{
     multi_item::MultiItem,
-    pinned_extend::{Extending, ExtendingRoute, PinnedExtend},
+    pinned_extend::{Extending, PinnedExtend},
     ready_slab::{Connection, ConnectionWaker, Ready},
 };
 
@@ -117,28 +117,18 @@ impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>> FusedStream for Router<S, 
     }
 }
 
-impl<Out, E, S: Unpin + Sink<Out, Error = E>> RouteSink<usize, Out> for Router<S, E> {
+impl<Out, E, S: Unpin + Sink<Out, Error = E>> Sink<(usize, Out)> for Router<S, E> {
     type Error = Infallible;
 
-    fn poll_ready(
-        mut self: Pin<&mut Self>,
-        key: &usize,
-        cx: &mut Context<'_>,
-    ) -> Poll<Result<(), Self::Error>> {
-        let this = self.as_mut().project();
-        if let Some(connection) = this.connections.get_mut(*key)
-            && let Err(e) = ready!(
-                connection
-                    .ready
-                    .poll(cx, |cx| connection.stream.poll_ready_unpin(cx))
-            )
-        {
-            self.remove(*key, Some(e));
-        }
-        Poll::Ready(Ok(()))
+    fn poll_ready(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Pending
     }
 
-    fn start_send(mut self: Pin<&mut Self>, key: usize, msg: Out) -> Result<(), Self::Error> {
+    fn poll_flush(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Pending
+    }
+
+    fn start_send(mut self: Pin<&mut Self>, (key, msg): (usize, Out)) -> Result<(), Self::Error> {
         let this = self.as_mut().project();
         if let Some(connection) = this.connections.get_mut(key)
             && let Err(e) = connection.stream.start_send_unpin(msg)
@@ -146,24 +136,6 @@ impl<Out, E, S: Unpin + Sink<Out, Error = E>> RouteSink<usize, Out> for Router<S
             self.remove(key, Some(e));
         }
         Ok(())
-    }
-
-    fn poll_flush(
-        mut self: Pin<&mut Self>,
-        key: &usize,
-        cx: &mut Context<'_>,
-    ) -> Poll<Result<(), Self::Error>> {
-        let this = self.as_mut().project();
-        if let Some(connection) = this.connections.get_mut(*key)
-            && let Err(e) = ready!(
-                connection
-                    .flush
-                    .poll(cx, |cx| connection.stream.poll_flush_unpin(cx))
-            )
-        {
-            self.remove(*key, Some(e));
-        }
-        Poll::Ready(Ok(()))
     }
 
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -194,6 +166,46 @@ impl<Out, E, S: Unpin + Sink<Out, Error = E>> RouteSink<usize, Out> for Router<S
     }
 }
 
+impl<Out, E, S: Unpin + Sink<Out, Error = E>> FlushRoute<usize, Out> for Router<S, E> {
+    fn poll_flush_route(
+        mut self: Pin<&mut Self>,
+        key: &usize,
+        cx: &mut Context<'_>,
+    ) -> Poll<Result<(), Self::Error>> {
+        let this = self.as_mut().project();
+        if let Some(connection) = this.connections.get_mut(*key)
+            && let Err(e) = ready!(
+                connection
+                    .flush
+                    .poll(cx, |cx| connection.stream.poll_flush_unpin(cx))
+            )
+        {
+            self.remove(*key, Some(e));
+        }
+        Poll::Ready(Ok(()))
+    }
+}
+
+impl<Out, E, S: Unpin + Sink<Out, Error = E>> ReadyRoute<usize, Out> for Router<S, E> {
+    fn poll_ready_route(
+        mut self: Pin<&mut Self>,
+        key: &usize,
+        cx: &mut Context<'_>,
+    ) -> Poll<Result<(), Self::Error>> {
+        let this = self.as_mut().project();
+        if let Some(connection) = this.connections.get_mut(*key)
+            && let Err(e) = ready!(
+                connection
+                    .ready
+                    .poll(cx, |cx| connection.stream.poll_ready_unpin(cx))
+            )
+        {
+            self.remove(*key, Some(e));
+        }
+        Poll::Ready(Ok(()))
+    }
+}
+
 impl<S, E> PinnedExtend<S> for Router<S, E> {
     fn extend_pinned<T: IntoIterator<Item = S>>(mut self: Pin<&mut Self>, iter: T) {
         for stream in iter {
@@ -204,7 +216,7 @@ impl<S, E> PinnedExtend<S> for Router<S, E> {
 
 /// [`RouteSink`]/[`Stream`] Returned by [`RouterSlabExt::route_slab`].
 pub type RouterExtending<R> =
-    ExtendingRoute<Router<<R as RouterSlabExt>::S, <R as RouterSlabExt>::E>, R>;
+    Extending<Router<<R as RouterSlabExt>::S, <R as RouterSlabExt>::E>, R>;
 
 /// Extension trait to auto-extend a [`Router`] from a stream of connections.
 pub trait RouterSlabExt: Sized {
@@ -225,6 +237,6 @@ impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = S>> 
     type E = E;
 
     fn route_slab(self) -> RouterExtending<Self> {
-        ExtendingRoute(Extending::new(self, Default::default()))
+        Extending::new(self, Default::default())
     }
 }

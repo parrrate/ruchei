@@ -32,6 +32,7 @@ authors.workspace = true
 rust-version.workspace = true
 
 [workspace.dependencies]
+route-sink = { path = "route-sink", version = "0.1.0" }
 ruchei-callback = { path = "ruchei-callback", version = "0.1.1" }
 ruchei-collections = { path = "ruchei-collections", version = "=0.0.0-a.0" }
 ruchei-extra = { path = "ruchei-extra", version = "0.1.1" }
@@ -48,10 +49,10 @@ pin-project = "1"
 slab = "0.4.9"
 
 [dependencies]
+route-sink = { workspace = true, features = ["futures-util"] }
 ruchei-callback.workspace = true
 ruchei-collections.workspace = true
 ruchei-extra.workspace = true
-ruchei-route = { workspace = true, features = ["unroute"] }
 
 futures-channel.workspace = true
 futures-util.workspace = true

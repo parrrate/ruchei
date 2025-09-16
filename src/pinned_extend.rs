@@ -10,7 +10,7 @@ use std::{
 
 use futures_util::{Sink, Stream, stream::FusedStream};
 use pin_project::pin_project;
-use ruchei_route::RouteSink;
+use route_sink::{FlushRoute, ReadyRoute, ReadySome};
 
 /// Auto-derive [`PinnedExtend`] from [`Extend`].
 pub trait AutoPinnedExtend {}
@@ -150,6 +150,43 @@ impl<Item, S: Sink<Item>, R> Sink<Item> for Extending<S, R> {
     }
 }
 
+impl<Route, Msg, S: FlushRoute<Route, Msg>, R> FlushRoute<Route, Msg> for Extending<S, R> {
+    fn poll_flush_route(
+        self: Pin<&mut Self>,
+        route: &Route,
+        cx: &mut Context<'_>,
+    ) -> Poll<Result<(), Self::Error>> {
+        self.project().inner.poll_flush_route(route, cx)
+    }
+
+    fn poll_close_route(
+        self: Pin<&mut Self>,
+        route: &Route,
+        cx: &mut Context<'_>,
+    ) -> Poll<Result<(), Self::Error>> {
+        self.project().inner.poll_close_route(route, cx)
+    }
+}
+
+impl<Route, Msg, S: ReadyRoute<Route, Msg>, R> ReadyRoute<Route, Msg> for Extending<S, R> {
+    fn poll_ready_route(
+        self: Pin<&mut Self>,
+        route: &Route,
+        cx: &mut Context<'_>,
+    ) -> Poll<Result<(), Self::Error>> {
+        self.project().inner.poll_ready_route(route, cx)
+    }
+}
+
+impl<Route, Msg, S: ReadySome<Route, Msg>, R> ReadySome<Route, Msg> for Extending<S, R> {
+    fn poll_ready_some(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Result<Route, Self::Error>> {
+        self.project().inner.poll_ready_some(cx)
+    }
+}
+
 pub trait ExtendingExt<A>: Sized {
     #[must_use]
     fn extending<S: PinnedExtend<A>>(self, inner: S) -> Extending<S, Self>;
@@ -167,55 +204,5 @@ impl<S: Default, R> From<R> for Extending<S, R> {
             incoming,
             inner: Default::default(),
         }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-#[pin_project]
-pub struct ExtendingRoute<S, R>(#[pin] pub Extending<S, R>);
-
-impl<A, S: Stream + PinnedExtend<A>, R: FusedStream<Item = A>> Stream for ExtendingRoute<S, R> {
-    type Item = S::Item;
-
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.project().0.poll_next(cx)
-    }
-}
-
-impl<A, S: FusedStream + PinnedExtend<A>, R: FusedStream<Item = A>> FusedStream
-    for ExtendingRoute<S, R>
-{
-    fn is_terminated(&self) -> bool {
-        self.0.is_terminated()
-    }
-}
-
-impl<A, Route, Msg, E, S: RouteSink<Route, Msg, Error = E>, R: FusedStream<Item = A>>
-    RouteSink<Route, Msg> for ExtendingRoute<S, R>
-{
-    type Error = E;
-
-    fn poll_ready(
-        self: Pin<&mut Self>,
-        route: &Route,
-        cx: &mut Context<'_>,
-    ) -> Poll<Result<(), Self::Error>> {
-        self.project().0.as_pin_mut().poll_ready(route, cx)
-    }
-
-    fn start_send(self: Pin<&mut Self>, route: Route, msg: Msg) -> Result<(), Self::Error> {
-        self.project().0.as_pin_mut().start_send(route, msg)
-    }
-
-    fn poll_flush(
-        self: Pin<&mut Self>,
-        route: &Route,
-        cx: &mut Context<'_>,
-    ) -> Poll<Result<(), Self::Error>> {
-        self.project().0.as_pin_mut().poll_flush(route, cx)
-    }
-
-    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.project().0.as_pin_mut().poll_close(cx)
     }
 }

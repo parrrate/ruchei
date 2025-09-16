@@ -8,11 +8,11 @@ use std::{
 use futures_util::{Sink, Stream, TryStream, ready, stream::FusedStream};
 use linked_hash_map::LinkedHashMap;
 use pin_project::pin_project;
-pub use ruchei_route::{RouteExt, RouteSink, Unroute, WithRoute};
+use route_sink::{FlushRoute, ReadyRoute};
 
 use crate::{
     multi_item::MultiItem,
-    pinned_extend::{Extending, ExtendingRoute, PinnedExtend},
+    pinned_extend::{Extending, PinnedExtend},
 };
 
 use super::Key;
@@ -111,35 +111,35 @@ impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>> FusedStream for Ro
     }
 }
 
-impl<Out, K: Key, E, S: Unpin + Sink<Out, Error = E>> RouteSink<K, Out> for Router<K, S, E> {
+impl<Out, K: Key, E, S: Unpin + Sink<Out, Error = E>> Sink<(K, Out)> for Router<K, S, E> {
     type Error = Infallible;
 
-    fn poll_ready(
-        self: Pin<&mut Self>,
-        key: &K,
-        cx: &mut Context<'_>,
-    ) -> Poll<Result<(), Self::Error>> {
-        let this = self.project();
-        if let Some(routes) = this.routes.get(key) {
-            let route = routes.back().expect("empty routes per key").1;
-            this.router.poll_ready(route, cx)
-        } else {
-            Poll::Ready(Ok(()))
-        }
+    fn poll_ready(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Pending
     }
 
-    fn start_send(self: Pin<&mut Self>, key: K, msg: Out) -> Result<(), Self::Error> {
+    fn start_send(self: Pin<&mut Self>, (key, msg): (K, Out)) -> Result<(), Self::Error> {
         let key = &key;
         let this = self.project();
         if let Some(routes) = this.routes.get(key) {
             let route = *routes.back().expect("empty routes per key").1;
-            this.router.start_send(route, msg)
+            this.router.start_send((route, msg))
         } else {
             Ok(())
         }
     }
 
-    fn poll_flush(
+    fn poll_flush(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Pending
+    }
+
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.project().router.poll_close(cx)
+    }
+}
+
+impl<Out, K: Key, E, S: Unpin + Sink<Out, Error = E>> FlushRoute<K, Out> for Router<K, S, E> {
+    fn poll_flush_route(
         self: Pin<&mut Self>,
         key: &K,
         cx: &mut Context<'_>,
@@ -147,14 +147,26 @@ impl<Out, K: Key, E, S: Unpin + Sink<Out, Error = E>> RouteSink<K, Out> for Rout
         let this = self.project();
         if let Some(routes) = this.routes.get(key) {
             let route = routes.back().expect("empty routes per key").1;
-            this.router.poll_flush(route, cx)
+            this.router.poll_flush_route(route, cx)
         } else {
             Poll::Ready(Ok(()))
         }
     }
+}
 
-    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.project().router.poll_close(cx)
+impl<Out, K: Key, E, S: Unpin + Sink<Out, Error = E>> ReadyRoute<K, Out> for Router<K, S, E> {
+    fn poll_ready_route(
+        self: Pin<&mut Self>,
+        key: &K,
+        cx: &mut Context<'_>,
+    ) -> Poll<Result<(), Self::Error>> {
+        let this = self.project();
+        if let Some(routes) = this.routes.get(key) {
+            let route = routes.back().expect("empty routes per key").1;
+            this.router.poll_ready_route(route, cx)
+        } else {
+            Poll::Ready(Ok(()))
+        }
     }
 }
 
@@ -176,7 +188,7 @@ impl<K: Key, S, E> PinnedExtend<(K, S)> for Router<K, S, E> {
 }
 
 /// [`RouteSink`]/[`Stream`] Returned by [`RouterKeyedExt::route_keyed`].
-pub type RouterExtending<R> = ExtendingRoute<
+pub type RouterExtending<R> = Extending<
     Router<<R as RouterKeyedExt>::K, <R as RouterKeyedExt>::S, <R as RouterKeyedExt>::E>,
     R,
 >;
@@ -203,6 +215,6 @@ impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Ite
     type E = E;
 
     fn route_keyed(self) -> RouterExtending<Self> {
-        ExtendingRoute(Extending::new(self, Default::default()))
+        Extending::new(self, Default::default())
     }
 }
