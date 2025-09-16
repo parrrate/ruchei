@@ -114,6 +114,43 @@ impl<S, E> Router<S, E> {
             Poll::Pending
         }
     }
+
+    pub fn poll_flush<Out>(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()>
+    where
+        S: Unpin + Sink<Out, Error = E>,
+    {
+        let mut this = self.as_mut().project();
+        this.flush.register(cx);
+        this.flush.downgrade().extend(
+            this.connections
+                .link_pops::<OP_IS_STARTED, _, _>(|key, _| key),
+        );
+        while let Some(key) = this.flush.as_mut().next::<OP_WAKE_FLUSH>(this.connections) {
+            if let Some(connection) = this.connections.get_mut(key) {
+                this.ready.downgrade().insert(key);
+                match connection
+                    .flush
+                    .poll(cx, |cx| connection.stream.poll_flush_unpin(cx))
+                {
+                    Poll::Ready(Ok(())) => {
+                        this.connections.link_pop_at::<OP_IS_FLUSHING>(key);
+                    }
+                    Poll::Ready(Err(e)) => {
+                        self.as_mut().remove(key, Some(e));
+                    }
+                    Poll::Pending => {
+                        this.connections.link_push_back::<OP_IS_FLUSHING>(key);
+                    }
+                }
+                this = self.as_mut().project();
+            }
+        }
+        if this.connections.link_empty::<OP_IS_FLUSHING>() {
+            Poll::Ready(())
+        } else {
+            Poll::Pending
+        }
+    }
 }
 
 impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Router<S, E> {
@@ -196,38 +233,8 @@ impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>> Sink<(usize, Out)> for Rout
         Ok(())
     }
 
-    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let mut this = self.as_mut().project();
-        this.flush.register(cx);
-        this.flush.downgrade().extend(
-            this.connections
-                .link_pops::<OP_IS_STARTED, _, _>(|key, _| key),
-        );
-        while let Some(key) = this.flush.as_mut().next::<OP_WAKE_FLUSH>(this.connections) {
-            if let Some(connection) = this.connections.get_mut(key) {
-                this.ready.downgrade().insert(key);
-                match connection
-                    .flush
-                    .poll(cx, |cx| connection.stream.poll_flush_unpin(cx))
-                {
-                    Poll::Ready(Ok(())) => {
-                        this.connections.link_pop_at::<OP_IS_FLUSHING>(key);
-                    }
-                    Poll::Ready(Err(e)) => {
-                        self.as_mut().remove(key, Some(e));
-                    }
-                    Poll::Pending => {
-                        this.connections.link_push_back::<OP_IS_FLUSHING>(key);
-                    }
-                }
-                this = self.as_mut().project();
-            }
-        }
-        if this.connections.link_empty::<OP_IS_FLUSHING>() {
-            Poll::Ready(Ok(()))
-        } else {
-            Poll::Pending
-        }
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.poll_flush(cx).map(Ok)
     }
 
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
