@@ -58,8 +58,8 @@ pub struct WithReply<S, T, F> {
 }
 
 impl<S: Sink<T>, T, F> WithReply<S, T, F> {
-    fn flush_buffer(mut self: Pin<&mut Self>, flush: bool) -> Poll<Result<(), S::Error>> {
-        let mut this = self.as_mut().project();
+    fn start_buffer(self: Pin<&mut Self>) -> Poll<Result<(), S::Error>> {
+        let mut this = self.project();
         let waker = this.wakers.clone().into();
         let mut cx = Context::from_waker(&waker);
         if this.reply.is_some() {
@@ -69,7 +69,14 @@ impl<S: Sink<T>, T, F> WithReply<S, T, F> {
             this.stream.start_send(item)?;
             this.wakers.wake_by_ref();
         }
-        if flush && *this.needs_flush {
+        Poll::Ready(Ok(()))
+    }
+
+    fn flush_if_needed(mut self: Pin<&mut Self>) -> Poll<Result<(), S::Error>> {
+        let this = self.as_mut().project();
+        let waker = this.wakers.clone().into();
+        let mut cx = Context::from_waker(&waker);
+        if *this.needs_flush {
             ready!(self.poll_flush_raw(&mut cx))?;
         }
         Poll::Ready(Ok(()))
@@ -129,7 +136,8 @@ impl<
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.wakers.next.register(cx.waker());
         loop {
-            ready!(self.as_mut().flush_buffer(true))?;
+            ready!(self.as_mut().start_buffer())?;
+            ready!(self.as_mut().flush_if_needed())?;
             let Some(item) = ready!(self.as_mut().project().stream.try_poll_next(cx)?) else {
                 break Poll::Ready(None);
             };
@@ -151,7 +159,7 @@ impl<S: Sink<T, Error = E>, T, E, F> Sink<T> for WithReply<S, T, F> {
 
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.wakers.ready.register(cx.waker());
-        ready!(self.as_mut().flush_buffer(false))?;
+        ready!(self.as_mut().start_buffer())?;
         self.project().stream.poll_ready(cx)
     }
 
@@ -162,7 +170,7 @@ impl<S: Sink<T, Error = E>, T, E, F> Sink<T> for WithReply<S, T, F> {
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.wakers.flush.register(cx.waker());
-        ready!(self.as_mut().flush_buffer(false))?;
+        ready!(self.as_mut().start_buffer())?;
         self.poll_flush_raw(cx)
     }
 
