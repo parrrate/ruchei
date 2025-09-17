@@ -50,7 +50,7 @@ pin-project = "1"
 slab = "0.4.9"
 
 [dependencies]
-route-sink = { workspace = true, features = ["futures-util"] }
+route-sink = { workspace = true, features = ["futures-util", "std"] }
 ruchei-callback.workspace = true
 ruchei-collections.workspace = true
 ruchei-extra.workspace = true

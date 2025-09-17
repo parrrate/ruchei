@@ -10,6 +10,8 @@ use futures_sink::Sink;
 mod core_impls;
 #[cfg(feature = "futures-util")]
 mod futures_util_impls;
+#[cfg(feature = "std")]
+mod std_impls;
 
 pub trait FlushRoute<Route, Msg>: Sink<(Route, Msg)> {
     fn poll_flush_route(
