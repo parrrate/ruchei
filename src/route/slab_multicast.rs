@@ -2,7 +2,7 @@ use std::{
     collections::VecDeque,
     convert::Infallible,
     pin::Pin,
-    task::{Context, Poll, Wake},
+    task::{Context, Poll},
 };
 
 use futures_util::{Sink, SinkExt, Stream, TryStream, TryStreamExt, ready, stream::FusedStream};
@@ -195,16 +195,6 @@ impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Router<S, E> {
         while let Some(key) = this.next.as_mut().next::<OP_WAKE_NEXT>(this.connections) {
             if !this.connections.contains(key) {
                 continue;
-            }
-            if this.connections.link_pop_at::<OP_IS_READIED>(key)
-                && let Some(connection) = this.connections.get_mut(key)
-            {
-                connection.ready.wake_by_ref();
-            }
-            if this.connections.link_pop_at::<OP_IS_FLUSHING>(key)
-                && let Some(connection) = this.connections.get_mut(key)
-            {
-                connection.flush.wake_by_ref();
             }
             if let Some(connection) = this.connections.get_mut(key)
                 && let Poll::Ready(o) = connection

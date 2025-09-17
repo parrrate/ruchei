@@ -97,12 +97,6 @@ impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Multicast<S, E>
         }
         this.next.register(cx);
         while let Some(key) = this.next.as_mut().next::<OP_WAKE_NEXT>(this.connections) {
-            if this.connections.link_pop_at::<OP_IS_READIED>(key) {
-                this.ready.downgrade().insert(key);
-            }
-            if this.connections.link_pop_at::<OP_IS_FLUSHING>(key) {
-                this.flush.downgrade().insert(key);
-            }
             if let Some(connection) = this.connections.get_mut(key)
                 && let Poll::Ready(o) = connection
                     .next
