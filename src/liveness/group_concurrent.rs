@@ -16,11 +16,10 @@
 //! # use ruchei::{
 //! #     concurrent::ConcurrentExt,
 //! #     echo::buffered::EchoBuffered,
-//! #     group_concurrent::{Group, GroupConcurrent},
+//! #     liveness::{group_concurrent::{Group, GroupConcurrent}, timeout_unused::TimeoutUnused},
 //! #     multi_item::MultiItemExt,
 //! #     multicast::replay_slab::MulticastReplaySlab,
 //! #     poll_on_wake::PollOnWakeExt,
-//! #     timeout_unused::TimeoutUnused,
 //! # };
 //! /* imports omitted */
 //!
