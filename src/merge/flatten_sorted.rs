@@ -12,6 +12,8 @@ use futures_util::{
 };
 use pin_project::pin_project;
 
+use super::pair_item::PairItem;
+
 struct Unordered<T>(T);
 
 impl<T> PartialEq for Unordered<T> {
@@ -101,55 +103,21 @@ impl<S> DerefMut for FlattenOptions<S> {
     }
 }
 
-pub trait Sortable: Sized {
-    type K: Ord;
-    type V;
-
-    fn into_kv(self) -> Result<(Self::K, Self::V), Self>;
-    fn from_kv(k: Self::K, v: Self::V) -> Self;
-}
-
-impl<K: Ord, V> Sortable for (K, V) {
-    type K = K;
-    type V = V;
-
-    fn into_kv(self) -> Result<(Self::K, Self::V), Self> {
-        Ok(self)
-    }
-
-    fn from_kv(k: Self::K, v: Self::V) -> Self {
-        (k, v)
-    }
-}
-
-impl<K: Ord, V, E> Sortable for Result<(K, V), E> {
-    type K = K;
-    type V = V;
-
-    fn into_kv(self) -> Result<(Self::K, Self::V), Self> {
-        self.map_err(Err)
-    }
-
-    fn from_kv(k: Self::K, v: Self::V) -> Self {
-        Ok((k, v))
-    }
-}
-
-type KOf<S> = <<S as Stream>::Item as Sortable>::K;
-type VOf<S> = <<S as Stream>::Item as Sortable>::V;
+type KOf<S> = <<S as Stream>::Item as PairItem>::K;
+type VOf<S> = <<S as Stream>::Item as PairItem>::V;
 
 type HeapEntry<S> = (Reverse<KOf<S>>, Unordered<(VOf<S>, S)>);
 
-pub struct FlattenSorted<S: Stream<Item: Sortable>> {
+pub struct FlattenSorted<S: Stream<Item: PairItem>> {
     /// these all have the same last `Option<K>` which is `<= Some(waiting.peek().unwrap().0)`
     active: FlattenOptions<FuturesUnordered<OneThenSelf<S>>>,
     waiting: BinaryHeap<HeapEntry<S>>,
     floor: Vec<(KOf<S>, VOf<S>, S)>,
 }
 
-impl<S: Stream<Item: Sortable>> Unpin for FlattenSorted<S> {}
+impl<S: Stream<Item: PairItem>> Unpin for FlattenSorted<S> {}
 
-impl<K: Ord, V, S: Unpin + Stream<Item: Sortable<K = K, V = V>>> Stream for FlattenSorted<S> {
+impl<K: Ord, V, S: Unpin + Stream<Item: PairItem<K = K, V = V>>> Stream for FlattenSorted<S> {
     type Item = S::Item;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -157,11 +125,11 @@ impl<K: Ord, V, S: Unpin + Stream<Item: Sortable<K = K, V = V>>> Stream for Flat
         loop {
             if let Some((k, v, s)) = this.floor.pop() {
                 this.active.push(OneThenSelf { stream: Some(s) });
-                break Poll::Ready(Some(Sortable::from_kv(k, v)));
+                break Poll::Ready(Some(PairItem::from_kv(k, v)));
             }
             assert!(this.floor.is_empty());
             while let Some((kv, s)) = ready!(this.active.poll_next_unpin(cx)) {
-                let (k, v) = match kv.into_kv() {
+                let (k, v) = match kv.into_kv::<V>() {
                     Ok(kv) => kv,
                     Err(kv) => return Poll::Ready(Some(kv)),
                 };
@@ -185,13 +153,13 @@ impl<K: Ord, V, S: Unpin + Stream<Item: Sortable<K = K, V = V>>> Stream for Flat
     }
 }
 
-impl<S: Unpin + Stream<Item: Sortable>> FusedStream for FlattenSorted<S> {
+impl<S: Unpin + Stream<Item: PairItem<K: Ord>>> FusedStream for FlattenSorted<S> {
     fn is_terminated(&self) -> bool {
         self.active.is_empty() && self.waiting.is_empty()
     }
 }
 
-pub trait FlattenSortedExt: Sized + IntoIterator<Item: Stream<Item: Sortable>> {
+pub trait FlattenSortedExt: Sized + IntoIterator<Item: Stream<Item: PairItem<K: Ord>>> {
     #[must_use]
     fn flatten_sorted(self) -> FlattenSorted<Self::Item> {
         let active = FlattenOptions {
@@ -208,7 +176,7 @@ pub trait FlattenSortedExt: Sized + IntoIterator<Item: Stream<Item: Sortable>> {
     }
 }
 
-impl<I: IntoIterator<Item: Stream<Item: Sortable>>> FlattenSortedExt for I {}
+impl<I: IntoIterator<Item: Stream<Item: PairItem<K: Ord>>>> FlattenSortedExt for I {}
 
 #[test]
 fn interleave() {
