@@ -25,11 +25,11 @@ use pin_project::pin_project;
 use ruchei::{
     callback::Start,
     concurrent::ConcurrentExt,
+    liveness::timeout_unused::{KeepAlive, TimeoutUnused, WithTimeout},
     multi_item::MultiItem,
     multicast::buffered_slab::{Multicast, MulticastBufferedSlab},
     pinned_extend::Extending,
     poll_on_wake::PollOnWakeExt,
-    timeout_unused::{KeepAlive, TimeoutUnused, WithTimeout},
 };
 use ruchei_extra::WithExtra;
 

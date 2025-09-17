@@ -5,9 +5,9 @@ use std::time::Duration;
 use async_std::{net::TcpListener, task};
 use futures_util::StreamExt;
 use ruchei::{
-    concurrent::ConcurrentExt, echo::buffered::EchoBuffered, multi_item::MultiItemExt,
+    concurrent::ConcurrentExt, echo::buffered::EchoBuffered,
+    liveness::timeout_unused::TimeoutUnused, multi_item::MultiItemExt,
     multicast::replay_slab::MulticastReplaySlab, poll_on_wake::PollOnWakeExt,
-    timeout_unused::TimeoutUnused,
 };
 
 #[async_std::main]
