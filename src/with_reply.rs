@@ -52,13 +52,14 @@ pub struct WithReply<S, T, F> {
     #[pin]
     stream: S,
     reply: Option<T>,
+    start: Option<T>,
     needs_flush: bool,
     wakers: Arc<Wakers>,
     filter: F,
 }
 
 impl<S: Sink<T>, T, F> WithReply<S, T, F> {
-    fn start_buffer(self: Pin<&mut Self>) -> Poll<Result<(), S::Error>> {
+    fn poll_reply(self: Pin<&mut Self>) -> Poll<Result<(), S::Error>> {
         let mut this = self.project();
         let waker = this.wakers.clone().into();
         let mut cx = Context::from_waker(&waker);
@@ -72,14 +73,33 @@ impl<S: Sink<T>, T, F> WithReply<S, T, F> {
         Poll::Ready(Ok(()))
     }
 
-    fn flush_if_needed(mut self: Pin<&mut Self>) -> Poll<Result<(), S::Error>> {
+    fn poll_start(self: Pin<&mut Self>) -> Poll<Result<(), S::Error>> {
+        let mut this = self.project();
+        let waker = this.wakers.clone().into();
+        let mut cx = Context::from_waker(&waker);
+        if this.start.is_some() {
+            ready!(this.stream.as_mut().poll_ready(&mut cx))?;
+        }
+        if let Some(item) = this.start.take() {
+            this.stream.start_send(item)?;
+            this.wakers.wake_by_ref();
+        }
+        Poll::Ready(Ok(()))
+    }
+
+    fn poll(mut self: Pin<&mut Self>) -> Poll<Result<(), S::Error>> {
+        ready!(self.as_mut().poll_reply())?;
+        self.poll_start()
+    }
+
+    fn poll_flush_if_needed(mut self: Pin<&mut Self>) -> Result<(), S::Error> {
         let this = self.as_mut().project();
         let waker = this.wakers.clone().into();
         let mut cx = Context::from_waker(&waker);
         if *this.needs_flush {
-            ready!(self.poll_flush_raw(&mut cx))?;
+            let _ = self.poll_flush_raw(&mut cx)?;
         }
-        Poll::Ready(Ok(()))
+        Ok(())
     }
 
     fn poll_flush_raw(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), S::Error>> {
@@ -104,6 +124,7 @@ impl<S: Sink<T>, T, F> WithReply<S, T, F> {
         Self {
             stream,
             reply: buffer,
+            start: None,
             needs_flush,
             wakers: Default::default(),
             filter,
@@ -136,8 +157,8 @@ impl<
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.wakers.next.register(cx.waker());
         loop {
-            ready!(self.as_mut().start_buffer())?;
-            ready!(self.as_mut().flush_if_needed())?;
+            ready!(self.as_mut().poll_reply())?;
+            self.as_mut().poll_flush_if_needed()?;
             let Some(item) = ready!(self.as_mut().project().stream.try_poll_next(cx)?) else {
                 break Poll::Ready(None);
             };
@@ -159,18 +180,19 @@ impl<S: Sink<T, Error = E>, T, E, F> Sink<T> for WithReply<S, T, F> {
 
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.wakers.ready.register(cx.waker());
-        ready!(self.as_mut().start_buffer())?;
+        ready!(self.as_mut().poll())?;
         self.project().stream.poll_ready(cx)
     }
 
     fn start_send(self: Pin<&mut Self>, item: T) -> Result<(), Self::Error> {
-        assert!(self.reply.is_none());
-        self.project().stream.start_send(item)
+        assert!(self.start.is_none());
+        *self.project().start = Some(item);
+        Ok(())
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.wakers.flush.register(cx.waker());
-        ready!(self.as_mut().start_buffer())?;
+        ready!(self.as_mut().poll())?;
         self.poll_flush_raw(cx)
     }
 
