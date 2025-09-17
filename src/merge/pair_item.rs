@@ -1,18 +1,18 @@
 use futures_util::Stream;
 
 pub trait PairCategory {
-    type Pair<K, V>: PairItem<Category = Self, K = K, V = V>;
+    type Pair<K, V>: PairItem<C = Self, K = K, V = V>;
 }
 
 pub type Pair<C, K, V> = <C as PairCategory>::Pair<K, V>;
 
 pub type PairResult<P, V> = Result<
     (<P as PairItem>::K, <P as PairItem>::V),
-    Pair<<P as PairItem>::Category, <P as PairItem>::K, V>,
+    Pair<<P as PairItem>::C, <P as PairItem>::K, V>,
 >;
 
 pub trait PairItem: Sized {
-    type Category: PairCategory<Pair<Self::K, Self::V> = Self>;
+    type C: PairCategory<Pair<Self::K, Self::V> = Self>;
     type K;
     type V;
 
@@ -25,7 +25,7 @@ impl PairCategory for () {
 }
 
 impl<K, V> PairItem for (K, V) {
-    type Category = ();
+    type C = ();
     type K = K;
     type V = V;
 
@@ -43,7 +43,7 @@ impl<E> PairCategory for Result<(), E> {
 }
 
 impl<K, V, E> PairItem for Result<(K, V), E> {
-    type Category = Result<(), E>;
+    type C = Result<(), E>;
     type K = K;
     type V = V;
 
