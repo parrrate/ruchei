@@ -56,23 +56,27 @@ impl<K, V, E> PairItem for Result<(K, V), E> {
     }
 }
 
-pub trait PairStream: Stream<Item: PairItem<K = Self::K, V = Self::V>> {
+pub trait PairStream: Stream<Item: PairItem<C = Self::C, K = Self::K, V = Self::V>> {
+    type C;
     type K;
     type V;
 }
 
-impl<K, V, S: Stream<Item: PairItem<K = K, V = V>>> PairStream for S {
+impl<C, K, V, S: Stream<Item: PairItem<C = C, K = K, V = V>>> PairStream for S {
+    type C = C;
     type K = K;
     type V = V;
 }
 
 pub trait StreamPair {
+    type C;
     type K;
-    type L: PairStream<K = Self::K>;
-    type R: PairStream<K = Self::K>;
+    type L: PairStream<C = Self::C, K = Self::K>;
+    type R: PairStream<C = Self::C, K = Self::K>;
 }
 
-impl<K, L: PairStream<K = K>, R: PairStream<K = K>> StreamPair for (L, R) {
+impl<C, K, L: PairStream<C = C, K = K>, R: PairStream<C = C, K = K>> StreamPair for (L, R) {
+    type C = C;
     type K = K;
     type L = L;
     type R = R;
