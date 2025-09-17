@@ -57,12 +57,19 @@ impl<K, V, E> PairItem for Result<(K, V), E> {
 }
 
 pub trait PairStream: Stream<Item: PairItem<C = Self::C, K = Self::K, V = Self::V>> {
-    type C;
+    type C: PairCategory<Pair<Self::K, Self::V> = Self::Item>;
     type K;
     type V;
 }
 
-impl<C, K, V, S: Stream<Item: PairItem<C = C, K = K, V = V>>> PairStream for S {
+impl<
+    C: PairCategory<Pair<K, V> = Item>,
+    K,
+    V,
+    Item: PairItem<C = C, K = K, V = V>,
+    S: Stream<Item = Item>,
+> PairStream for S
+{
     type C = C;
     type K = K;
     type V = V;
