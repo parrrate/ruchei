@@ -7,6 +7,7 @@ use core::{
 
 use futures_sink::Sink;
 
+mod core_impls;
 #[cfg(feature = "futures-util")]
 mod futures_util_impls;
 
