@@ -10,7 +10,7 @@ use pin_project::pin_project;
 use super::pair_item::{PairCategory, PairItem, PairStream, StreamPair};
 
 #[pin_project]
-pub struct ZipSorted<
+pub struct GroupSorted<
     L,
     R,
     K = <(L, R) as StreamPair>::K,
@@ -27,13 +27,13 @@ pub struct ZipSorted<
 impl<
     C: PairCategory,
     K: Ord,
-    Lv,
+    Lv: Clone,
     Rv,
     Li: PairItem<C = C, K = K, V = Lv>,
     Ri: PairItem<C = C, K = K, V = Rv>,
     L: PairStream<C = C, K = K, V = Lv, Item = Li>,
     R: PairStream<C = C, K = K, V = Rv, Item = Ri>,
-> Stream for ZipSorted<L, R>
+> Stream for GroupSorted<L, R>
 {
     type Item = C::Pair<K, (Lv, Rv)>;
 
@@ -75,7 +75,10 @@ impl<
                 };
                 match lk.cmp(&rk) {
                     Ordering::Less => *this.last = Some((rk, Either::Right(rv))),
-                    Ordering::Equal => break Some(PairItem::from_kv(lk, (lv, rv))),
+                    Ordering::Equal => {
+                        *this.last = Some((lk, Either::Left(lv.clone())));
+                        break Some(PairItem::from_kv(rk, (lv, rv)));
+                    }
                     Ordering::Greater => *this.last = Some((lk, Either::Left(lv))),
                 }
             } else {
@@ -91,28 +94,31 @@ impl<
     }
 }
 
-pub fn zip_sorted<L: PairStream, R: PairStream>(l: L, r: R) -> ZipSorted<L, R>
+pub fn group_sorted<L: PairStream, R: PairStream>(l: L, r: R) -> GroupSorted<L, R>
 where
-    ZipSorted<L, R>: Stream,
+    GroupSorted<L, R>: Stream,
     (L, R): StreamPair,
 {
-    ZipSorted { l, r, last: None }
+    GroupSorted { l, r, last: None }
 }
 
-pub trait ZipSortedExt: Sized + PairStream<K: Ord> {
-    fn zip_sorted<R: PairStream<C = Self::C, K = Self::K>>(self, right: R) -> ZipSorted<Self, R> {
-        zip_sorted(self, right)
+pub trait GroupSortedExt: Sized + PairStream<K: Ord, V: Clone> {
+    fn group_sorted<R: PairStream<C = Self::C, K = Self::K>>(
+        self,
+        right: R,
+    ) -> GroupSorted<Self, R> {
+        group_sorted(self, right)
     }
 }
 
-impl<L: PairStream<K: Ord>> ZipSortedExt for L {}
+impl<L: PairStream<K: Ord, V: Clone>> GroupSortedExt for L {}
 
 #[test]
 fn simple() {
     use futures_util::StreamExt;
     let l = futures_util::stream::iter([(1, 2), (4, 5)]);
     let r = futures_util::stream::iter([(1, 3), (4, 6)]);
-    let s = async_io::block_on(l.zip_sorted(r).collect::<Vec<_>>());
+    let s = async_io::block_on(l.group_sorted(r).collect::<Vec<_>>());
     assert_eq!(s, [(1, (2, 3)), (4, (5, 6))]);
 }
 
@@ -121,7 +127,7 @@ fn l_extra() {
     use futures_util::StreamExt;
     let l = futures_util::stream::iter([(1, 2), (3, 3), (4, 5)]);
     let r = futures_util::stream::iter([(1, 3), (4, 6)]);
-    let s = async_io::block_on(l.zip_sorted(r).collect::<Vec<_>>());
+    let s = async_io::block_on(l.group_sorted(r).collect::<Vec<_>>());
     assert_eq!(s, [(1, (2, 3)), (4, (5, 6))]);
 }
 
@@ -130,7 +136,7 @@ fn r_extra() {
     use futures_util::StreamExt;
     let l = futures_util::stream::iter([(1, 2), (4, 5)]);
     let r = futures_util::stream::iter([(1, 3), (3, 3), (4, 6)]);
-    let s = async_io::block_on(l.zip_sorted(r).collect::<Vec<_>>());
+    let s = async_io::block_on(l.group_sorted(r).collect::<Vec<_>>());
     assert_eq!(s, [(1, (2, 3)), (4, (5, 6))]);
 }
 
@@ -139,6 +145,6 @@ fn duplicate_key() {
     use futures_util::StreamExt;
     let l = futures_util::stream::iter([(1, 2), (1, 4)]);
     let r = futures_util::stream::iter([(1, 3), (1, 5)]);
-    let s = async_io::block_on(l.zip_sorted(r).collect::<Vec<_>>());
-    assert_eq!(s, [(1, (2, 3)), (1, (4, 5))]);
+    let s = async_io::block_on(l.group_sorted(r).collect::<Vec<_>>());
+    assert_eq!(s, [(1, (2, 3)), (1, (2, 5))]);
 }
