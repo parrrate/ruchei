@@ -6,6 +6,7 @@ members = [
     "ruchei-collections",
     "ruchei-extra",
     "ruchei-route",
+    "ruchei-test",
 ]
 
 [workspace.package]
