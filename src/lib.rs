@@ -21,7 +21,7 @@ mod owned_close;
 pub mod pinned_extend;
 pub mod poll_on_wake;
 mod ready_slab;
-pub mod reply_buffer;
+pub mod with_reply;
 pub mod route;
 pub mod switching;
 pub mod timeout_unused;

@@ -48,24 +48,24 @@ impl Wake for Wakers {
 }
 
 #[pin_project]
-pub struct ReplyBuffer<S, T, F> {
+pub struct WithReply<S, T, F> {
     #[pin]
     stream: S,
-    buffer: Option<T>,
+    reply: Option<T>,
     needs_flush: bool,
     wakers: Arc<Wakers>,
     filter: F,
 }
 
-impl<S: Sink<T>, T, F> ReplyBuffer<S, T, F> {
+impl<S: Sink<T>, T, F> WithReply<S, T, F> {
     fn flush_buffer(mut self: Pin<&mut Self>, flush: bool) -> Poll<Result<(), S::Error>> {
         let mut this = self.as_mut().project();
         let waker = this.wakers.clone().into();
         let mut cx = Context::from_waker(&waker);
-        if this.buffer.is_some() {
+        if this.reply.is_some() {
             ready!(this.stream.as_mut().poll_ready(&mut cx))?;
         }
-        if let Some(item) = this.buffer.take() {
+        if let Some(item) = this.reply.take() {
             this.stream.start_send(item)?;
             this.wakers.wake_by_ref();
         }
@@ -85,10 +85,10 @@ impl<S: Sink<T>, T, F> ReplyBuffer<S, T, F> {
         Poll::Ready(Ok(()))
     }
 
-    fn set_buffer(self: Pin<&mut Self>, reply: T) {
-        assert!(self.buffer.is_none());
+    fn set_reply(self: Pin<&mut Self>, reply: T) {
+        assert!(self.reply.is_none());
         let this = self.project();
-        *this.buffer = Some(reply);
+        *this.reply = Some(reply);
         *this.needs_flush = true;
     }
 
@@ -96,7 +96,7 @@ impl<S: Sink<T>, T, F> ReplyBuffer<S, T, F> {
         let needs_flush = buffer.is_some();
         Self {
             stream,
-            buffer,
+            reply: buffer,
             needs_flush,
             wakers: Default::default(),
             filter,
@@ -104,17 +104,17 @@ impl<S: Sink<T>, T, F> ReplyBuffer<S, T, F> {
     }
 }
 
-pub trait IntoReplyBuffer<T>: Sized + Sink<T> + TryStream {
-    fn into_reply_buffer<F: ReplyBufferFilter<Self::Ok, Reply = T>>(
+pub trait WithReplyExt<T>: Sized + Sink<T> + TryStream {
+    fn with_reply<F: ReplyBufferFilter<Self::Ok, Reply = T>>(
         self,
         buffer: Option<T>,
         filter: F,
-    ) -> ReplyBuffer<Self, T, F> {
-        ReplyBuffer::new(self, buffer, filter)
+    ) -> WithReply<Self, T, F> {
+        WithReply::new(self, buffer, filter)
     }
 }
 
-impl<S: TryStream<Ok = U, Error = E> + Sink<T, Error = E>, T, U, E> IntoReplyBuffer<T> for S {}
+impl<S: TryStream<Ok = U, Error = E> + Sink<T, Error = E>, T, U, E> WithReplyExt<T> for S {}
 
 impl<
     S: TryStream<Ok = U, Error = E> + Sink<T, Error = E>,
@@ -122,7 +122,7 @@ impl<
     U,
     E,
     F: ReplyBufferFilter<U, Reply = T>,
-> Stream for ReplyBuffer<S, T, F>
+> Stream for WithReply<S, T, F>
 {
     type Item = Result<F::Filtered, E>;
 
@@ -137,7 +137,7 @@ impl<
                 break Poll::Ready(None);
             };
             if let Some(reply) = reply {
-                self.as_mut().set_buffer(reply);
+                self.as_mut().set_reply(reply);
             }
             if let Some(item) = item {
                 break Poll::Ready(Some(Ok(item)));
@@ -146,7 +146,7 @@ impl<
     }
 }
 
-impl<S: Sink<T, Error = E>, T, E, F> Sink<T> for ReplyBuffer<S, T, F> {
+impl<S: Sink<T, Error = E>, T, E, F> Sink<T> for WithReply<S, T, F> {
     type Error = E;
 
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -156,7 +156,7 @@ impl<S: Sink<T, Error = E>, T, E, F> Sink<T> for ReplyBuffer<S, T, F> {
     }
 
     fn start_send(self: Pin<&mut Self>, item: T) -> Result<(), Self::Error> {
-        assert!(self.buffer.is_none());
+        assert!(self.reply.is_none());
         self.project().stream.start_send(item)
     }
 
