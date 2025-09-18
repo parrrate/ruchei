@@ -24,13 +24,28 @@
 //! ```
 
 use std::{
-    marker::PhantomData,
     pin::Pin,
-    task::{Context, Poll},
+    sync::Arc,
+    task::{Context, Poll, Wake},
 };
 
 use futures_util::{Sink, Stream, TryStream, ready, stream::FusedStream, task::AtomicWaker};
 use pin_project::pin_project;
+
+#[derive(Default)]
+struct Wakers {
+    next: AtomicWaker,
+    ready: AtomicWaker,
+    flush: AtomicWaker,
+}
+
+impl Wake for Wakers {
+    fn wake(self: Arc<Self>) {
+        self.next.wake();
+        self.ready.wake();
+        self.flush.wake();
+    }
+}
 
 /// When a new [`Stream`]`+`[`Sink`] becomes available, closes the existing one, then switches to a
 /// next one.
@@ -43,39 +58,57 @@ pub struct Switching<R, S, Out> {
     #[pin]
     current: Option<S>,
     swap: Option<S>,
-    waker_next: AtomicWaker,
-    waker_ready: AtomicWaker,
-    waker_flush: AtomicWaker,
-    _out: PhantomData<Out>,
+    w: Arc<Wakers>,
+    buffer: Option<Out>,
 }
 
 impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: FusedStream<Item = S>>
     Switching<R, S, Out>
 {
-    fn ensure_current(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), E>> {
+    fn poll_current(self: Pin<&mut Self>) -> Poll<Result<(), E>> {
         let mut this = self.project();
+        let waker = this.w.clone().into();
+        let cx = &mut Context::from_waker(&waker);
         loop {
             match this.swap {
                 Some(_) => {
                     if let Some(current) = this.current.as_mut().as_pin_mut() {
                         ready!(current.poll_close(cx))?;
                     }
-                    this.waker_next.wake();
-                    this.waker_ready.wake();
-                    this.waker_flush.wake();
                     this.current.as_mut().set(this.swap.take());
+                    this.w.wake_by_ref();
                 }
                 None => {
                     if !this.incoming.is_terminated()
                         && let Poll::Ready(Some(swap)) = this.incoming.as_mut().poll_next(cx)
                     {
                         *this.swap = Some(swap);
+                        this.w.wake_by_ref();
                         continue;
                     }
                     break Poll::Ready(Ok(()));
                 }
             }
         }
+    }
+
+    fn poll_buffer(self: Pin<&mut Self>) -> Poll<Result<(), E>> {
+        let mut this = self.project();
+        let waker = this.w.clone().into();
+        let cx = &mut Context::from_waker(&waker);
+        if this.buffer.is_some() {
+            if let Some(current) = this.current.as_mut().as_pin_mut() {
+                ready!(current.poll_ready(cx))?;
+            } else {
+                return Poll::Pending;
+            }
+        }
+        if let Some(item) = this.buffer.take()
+            && let Some(current) = this.current.as_mut().as_pin_mut()
+        {
+            current.start_send(item)?;
+        }
+        Poll::Ready(Ok(()))
     }
 }
 
@@ -85,9 +118,10 @@ impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: Fus
     type Item = Result<In, E>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        ready!(self.as_mut().ensure_current(cx))?;
+        self.w.next.register(cx.waker());
+        ready!(self.as_mut().poll_current())?;
+        let _ = self.as_mut().poll_buffer()?;
         let mut this = self.project();
-        this.waker_next.register(cx.waker());
         if let Some(current) = this.current.as_mut().as_pin_mut() {
             if let Some(r) = ready!(current.try_poll_next(cx)) {
                 return Poll::Ready(Some(r));
@@ -116,27 +150,23 @@ impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: Fus
     type Error = E;
 
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        ready!(self.as_mut().ensure_current(cx))?;
-        let this = self.project();
-        this.waker_ready.register(cx.waker());
-        match this.current.as_pin_mut() {
-            Some(current) => current.poll_ready(cx),
-            None => Poll::Ready(Ok(())),
-        }
+        self.w.ready.register(cx.waker());
+        ready!(self.as_mut().poll_current())?;
+        self.as_mut().poll_buffer()
     }
 
     fn start_send(self: Pin<&mut Self>, item: Out) -> Result<(), Self::Error> {
-        let mut this = self.project();
-        match this.current.as_mut().as_pin_mut() {
-            Some(current) => current.start_send(item),
-            None => Ok(()),
-        }
+        let this = self.project();
+        assert!(this.buffer.is_none());
+        *this.buffer = Some(item);
+        Ok(())
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        ready!(self.as_mut().ensure_current(cx))?;
+        self.w.flush.register(cx.waker());
+        ready!(self.as_mut().poll_current())?;
+        ready!(self.as_mut().poll_buffer())?;
         let this = self.project();
-        this.waker_flush.register(cx.waker());
         match this.current.as_pin_mut() {
             Some(current) => current.poll_flush(cx),
             None => Poll::Ready(Ok(())),
@@ -144,7 +174,8 @@ impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: Fus
     }
 
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        ready!(self.as_mut().ensure_current(cx))?;
+        ready!(self.as_mut().poll_current())?;
+        ready!(self.as_mut().poll_buffer())?;
         let mut this = self.project();
         if let Some(current) = this.current.as_mut().as_pin_mut() {
             ready!(current.poll_close(cx))?;
@@ -180,10 +211,8 @@ impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: Fus
             incoming: self,
             current: None,
             swap: None,
-            waker_next: Default::default(),
-            waker_ready: Default::default(),
-            waker_flush: Default::default(),
-            _out: PhantomData,
+            w: Default::default(),
+            buffer: None,
         }
     }
 }
