@@ -4,7 +4,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures_util::{Stream, future::Either, ready};
+use futures_util::{Stream, future::Either};
 use pin_project::pin_project;
 
 use super::pair_item::{PairCategory, PairItem, PairStream, StreamPair};
@@ -39,37 +39,35 @@ impl<
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
+        macro_rules! try_next {
+            ($s:ident) => {
+                match this.$s.as_mut().poll_next(cx) {
+                    Poll::Ready(Some(kv)) => match kv.into_kv::<(Lv, Rv)>() {
+                        Ok(kv) => kv,
+                        Err(e) => {
+                            this.last.take();
+                            return Poll::Ready(Some(e));
+                        }
+                    },
+                    Poll::Ready(None) => {
+                        this.last.take();
+                        return Poll::Ready(None);
+                    }
+                    Poll::Pending => return Poll::Pending,
+                }
+            };
+        }
         Poll::Ready(loop {
             if let Some((k, v)) = this.last.take() {
                 let (lk, lv, rk, rv) = match v {
                     Either::Left(lv) => {
                         let lk = k;
-                        let Poll::Ready(rkv) = this.r.as_mut().poll_next(cx) else {
-                            *this.last = Some((lk, Either::Left(lv)));
-                            return Poll::Pending;
-                        };
-                        let Some(rkv) = rkv else {
-                            break None;
-                        };
-                        let (rk, rv) = match rkv.into_kv::<(Lv, Rv)>() {
-                            Ok(rkv) => rkv,
-                            Err(e) => break Some(e),
-                        };
+                        let (rk, rv) = try_next!(r);
                         (lk, lv, rk, rv)
                     }
                     Either::Right(rv) => {
                         let rk = k;
-                        let Poll::Ready(lkv) = this.l.as_mut().poll_next(cx) else {
-                            *this.last = Some((rk, Either::Right(rv)));
-                            return Poll::Pending;
-                        };
-                        let Some(lkv) = lkv else {
-                            break None;
-                        };
-                        let (lk, lv) = match lkv.into_kv::<(Lv, Rv)>() {
-                            Ok(lkv) => lkv,
-                            Err(e) => break Some(e),
-                        };
+                        let (lk, lv) = try_next!(l);
                         (lk, lv, rk, rv)
                     }
                 };
@@ -79,13 +77,8 @@ impl<
                     Ordering::Greater => *this.last = Some((lk, Either::Left(lv))),
                 }
             } else {
-                let Some(lkv) = ready!(this.l.as_mut().poll_next(cx)) else {
-                    break None;
-                };
-                match lkv.into_kv::<(Lv, Rv)>() {
-                    Ok((lk, lv)) => *this.last = Some((lk, Either::Left(lv))),
-                    Err(e) => break Some(e),
-                }
+                let (lk, lv) = try_next!(l);
+                *this.last = Some((lk, Either::Left(lv)));
             }
         })
     }
