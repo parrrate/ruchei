@@ -15,6 +15,10 @@ jobs:
       - name: install rust
         uses: dtolnay/rust-toolchain@stable
       - run: echo ok
+      - name: publish
+        run: cargo run --package xtask
+        env:
+          INPUT_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
       - run: bin/release
         env:
           INPUT_TOKEN: ${{ secrets.PUSH_TOKEN }}
