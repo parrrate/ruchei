@@ -96,26 +96,21 @@ impl<
         loop {
             if let Some((k, yielded, next)) = this.last {
                 if let Some(y) = yielded {
+                    macro_rules! next_kv {
+                        ($last:ident, $lag:ident, $y:ident, $lv:ident, $rv:ident) => {{
+                            let $lag = this.$lag[*$y].clone();
+                            *$y += 1;
+                            if *$y == this.$lag.len() {
+                                yielded.take();
+                            }
+                            let $last = this.$last.last().expect("inconsistent state").clone();
+                            ($lv, $rv)
+                        }};
+                    }
                     let k = k.clone();
                     let (lv, rv) = match y {
-                        Either::Left(ly) => {
-                            let lv = this.lv[*ly].clone();
-                            *ly += 1;
-                            if *ly == this.lv.len() {
-                                yielded.take();
-                            }
-                            let rv = this.rv.last().expect("inconsistent state").clone();
-                            (lv, rv)
-                        }
-                        Either::Right(ry) => {
-                            let rv = this.rv[*ry].clone();
-                            *ry += 1;
-                            if *ry == this.rv.len() {
-                                yielded.take();
-                            }
-                            let lv = this.lv.last().expect("inconsistent state").clone();
-                            (lv, rv)
-                        }
+                        Either::Left(y) => next_kv!(lv, rv, y, lv, rv),
+                        Either::Right(y) => next_kv!(rv, lv, y, lv, rv),
                     };
                     return Poll::Ready(Some(PairItem::from_kv(k, (lv, rv))));
                 }
