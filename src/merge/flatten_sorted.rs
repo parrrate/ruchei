@@ -122,6 +122,13 @@ impl<K: Ord, V, S: Unpin + Stream<Item: PairItem<K = K, V = V>>> Stream for Flat
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
+        macro_rules! clear_all {
+            () => {{
+                this.active.clear();
+                this.waiting.clear();
+                this.floor.clear();
+            }};
+        }
         loop {
             if let Some((k, v, s)) = this.floor.pop() {
                 this.active.push(OneThenSelf { stream: Some(s) });
@@ -131,7 +138,10 @@ impl<K: Ord, V, S: Unpin + Stream<Item: PairItem<K = K, V = V>>> Stream for Flat
             while let Some((kv, s)) = ready!(this.active.poll_next_unpin(cx)) {
                 let (k, v) = match kv.into_kv::<V>() {
                     Ok(kv) => kv,
-                    Err(kv) => return Poll::Ready(Some(kv)),
+                    Err(kv) => {
+                        clear_all!();
+                        return Poll::Ready(Some(kv));
+                    }
                 };
                 this.waiting.push((Reverse(k), Unordered((v, s))));
             }
@@ -147,6 +157,7 @@ impl<K: Ord, V, S: Unpin + Stream<Item: PairItem<K = K, V = V>>> Stream for Flat
                 }
             }
             if this.waiting.is_empty() && this.floor.is_empty() {
+                clear_all!();
                 break Poll::Ready(None);
             }
         }
