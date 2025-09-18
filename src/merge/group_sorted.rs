@@ -33,7 +33,7 @@ impl<
     Ri: PairItem<C = C, K = K, V = Rv>,
     L: PairStream<C = C, K = K, V = Lv, Item = Li>,
     R: PairStream<C = C, K = K, V = Rv, Item = Ri>,
-> Stream for GroupSorted<L, R>
+> Stream for GroupSorted<L, R, K, Lv, Rv>
 {
     type Item = C::Pair<K, (Lv, Rv)>;
 
