@@ -13,3 +13,6 @@ flume = "0.11.1"
 futures-util.workspace = true
 multimap = "0.10.1"
 slab.workspace = true
+
+[package.metadata.tagit]
+skip = true
