@@ -9,6 +9,6 @@ fn main() {
     if let Some(package) = package {
         cmd.arg("--package").arg(package);
     }
-    cmd.env("CARGO_REGISTRIES_CRATES_IO_TOKEN", token);
+    cmd.env("CARGO_REGISTRY_TOKEN", token);
     assert!(cmd.status().unwrap().success());
 }
