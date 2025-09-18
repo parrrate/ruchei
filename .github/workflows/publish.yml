@@ -13,6 +13,6 @@ jobs:
       - name: install rust
         uses: dtolnay/rust-toolchain@stable
       - run: echo ok
-      - run: exec bin/release
+      - run: bin/release
         env:
           INPUT_TOKEN: ${{ secrets.PUSH_TOKEN }}
