@@ -5,17 +5,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.98] — 2025-09-18
+
 ### Added
 
 - `group_sorted`
+
 - `product_sorted`
+
 - `route_slab_multicast`
+
 - `zip_sorted`
 
 ### Changed
 
 - `with_reply` (renamed from `into_reply_buffer`)
+
 - `with_reply` made more happy-`Sink`-compliant (less cross-waker messing)
+
 - reworked internals of `switching`
 
 ## [0.0.97] — 2025-09-15
@@ -142,7 +149,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 (baseline)
 
-[unreleased]: https://github.com/parrrate/ruchei/compare/0.0.97...HEAD
+[unreleased]: https://github.com/parrrate/ruchei/compare/0.0.98...HEAD
+[0.0.98]: https://github.com/parrrate/ruchei/compare/0.0.97...0.0.98
 [0.0.97]: https://github.com/parrrate/ruchei/compare/0.0.96...0.0.97
 [0.0.96]: https://github.com/parrrate/ruchei/compare/0.0.95...0.0.96
 [0.0.95]: https://github.com/parrrate/ruchei/compare/0.0.94...0.0.95
