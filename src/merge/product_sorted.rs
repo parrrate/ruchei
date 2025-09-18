@@ -109,8 +109,8 @@ impl<
                     }
                     let k = k.clone();
                     let (lv, rv) = match y {
-                        Either::Left(y) => next_kv!(lv, rv, y, lv, rv),
-                        Either::Right(y) => next_kv!(rv, lv, y, lv, rv),
+                        Either::Left(y) => next_kv!(rv, lv, y, lv, rv),
+                        Either::Right(y) => next_kv!(lv, rv, y, lv, rv),
                     };
                     return Poll::Ready(Some(PairItem::from_kv(k, (lv, rv))));
                 }
