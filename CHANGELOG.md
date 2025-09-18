@@ -5,6 +5,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `group_sorted`
+- `product_sorted`
+- `route_slab_multicast`
+- `zip_sorted`
+
+### Changed
+
+- `with_reply` (renamed from `into_reply_buffer`)
+- `with_reply` made more happy-`Sink`-compliant (less cross-waker messing)
+- reworked internals of `switching`
+
 ## [0.0.97] — 2025-09-15
 
 ### Added
