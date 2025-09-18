@@ -180,7 +180,7 @@ impl<
                         if rk == *k {
                             this.rv.push(rv);
                             if !this.lv.is_empty() {
-                                *yielded = Some(Either::Right(0));
+                                *yielded = Some(Either::Left(0));
                             }
                         } else {
                             assert!(*k < rk);
