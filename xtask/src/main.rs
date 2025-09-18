@@ -5,7 +5,7 @@ fn main() {
     let ref_name = std::env::var("GITHUB_REF_NAME").unwrap();
     let package = ref_name.split_once('/').map(|(n, _)| n);
     let mut cmd = Command::new("cargo");
-    cmd.arg("publish").arg("--dry-run");
+    cmd.arg("publish");
     if let Some(package) = package {
         cmd.arg("--package").arg(package);
     }
