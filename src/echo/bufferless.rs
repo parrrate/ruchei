@@ -70,7 +70,6 @@ impl<T, E, S: TryStream<Ok = T, Error = E>> From<S> for Echo<S, T> {
 pub trait EchoBufferless:
     Sized + FusedStream + TryStream<Ok = Self::T, Error = Self::E> + Sink<Self::T, Error = Self::E>
 {
-    /// Item yielded and accepted by `self` as [`Stream`]/[`Sink`].
     type T;
     type E;
 
