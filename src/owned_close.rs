@@ -1,4 +1,5 @@
 use std::{
+    fmt::Debug,
     marker::PhantomData,
     pin::Pin,
     task::{Context, Poll},
@@ -7,13 +8,21 @@ use std::{
 use futures_util::{Future, Sink};
 use pin_project::pin_project;
 
-#[derive(Debug)]
 #[pin_project]
 #[must_use]
 pub(crate) struct OwnedClose<S, Out> {
     #[pin]
     sink: S,
     _out: PhantomData<Out>,
+}
+
+impl<S: Debug, Out> Debug for OwnedClose<S, Out> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("OwnedClose")
+            .field("sink", &self.sink)
+            .field("_out", &self._out)
+            .finish()
+    }
 }
 
 impl<Out, E, S: Sink<Out, Error = E>> Future for OwnedClose<S, Out> {
