@@ -20,7 +20,7 @@ const OP_WAKE_NEXT: usize = 0;
 const OP_WAKE_CLOSE: usize = 1;
 const OP_COUNT: usize = 2;
 
-/// [`RouteSink`]/[`Stream`] implemented over the stream of incoming [`Sink`]s/[`Stream`]s.
+/// [`ReadyRoute`]/[`Stream`] implemented over the stream of incoming [`Sink`]s/[`Stream`]s.
 #[pin_project]
 pub struct Router<S, E> {
     connections: LinkedSlab<Connection<S>, OP_COUNT>,
@@ -214,7 +214,7 @@ impl<S, E> PinnedExtend<S> for Router<S, E> {
     }
 }
 
-/// [`RouteSink`]/[`Stream`] Returned by [`RouterSlabExt::route_slab`].
+/// [`ReadyRoute`]/[`Stream`] Returned by [`RouterSlabExt::route_slab`].
 pub type RouterExtending<R> =
     Extending<Router<<R as RouterSlabExt>::S, <R as RouterSlabExt>::E>, R>;
 
