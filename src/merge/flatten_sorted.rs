@@ -111,14 +111,14 @@ type VOf<S> = <<S as Stream>::Item as PairItem>::V;
 type HeapEntry<S, K, V> = (Reverse<K>, Unordered<(V, S)>);
 
 #[derive(Debug)]
-pub struct FlattenSorted<S: Stream<Item: PairItem>, K = KOf<S>, V = VOf<S>> {
+pub struct FlattenSorted<S, K = KOf<S>, V = VOf<S>> {
     /// these all have the same last `Option<K>` which is `<= Some(waiting.peek().unwrap().0)`
     active: FlattenOptions<FuturesUnordered<OneThenSelf<S>>>,
     waiting: BinaryHeap<HeapEntry<S, K, V>>,
     floor: Vec<(K, V, S)>,
 }
 
-impl<S: Stream<Item: PairItem>> Unpin for FlattenSorted<S> {}
+impl<S, K, V> Unpin for FlattenSorted<S, K, V> {}
 
 impl<K: Ord, V, S: Unpin + Stream<Item: PairItem<K = K, V = V>>> Stream for FlattenSorted<S, K, V> {
     type Item = S::Item;
