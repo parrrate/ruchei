@@ -94,6 +94,8 @@ use futures_util::{
 };
 use pin_project::pin_project;
 
+use crate::merge::pair_item::PairStream;
+
 /// Closes the [`Group`] when [`Drop`]ped.
 #[derive(Debug)]
 pub struct GroupGuard<K>(OwnedMutexGuard<K>);
@@ -123,7 +125,7 @@ pub trait Group {
 
 #[derive(Debug)]
 #[pin_project]
-pub struct Grouped<S, Sender, K, G> {
+pub struct Grouped<S, G, Sender = <G as Group>::Sender, K = <S as PairStream>::K> {
     #[pin]
     stream: S,
     #[pin]
@@ -138,7 +140,7 @@ impl<
     K: Eq + Hash + Clone,
     S: Stream<Item = (K, Item)>,
     G: Group<Item = Item, Sender = Sender>,
-> Stream for Grouped<S, Sender, K, G>
+> Stream for Grouped<S, G, Sender, K>
 {
     type Item = (G::Receiver, GroupGuard<K>);
 
@@ -164,27 +166,12 @@ impl<
     }
 }
 
-pub trait GroupConcurrent: Sized {
-    type Item;
-
-    type Key;
+pub trait GroupConcurrent: Sized + Stream<Item = (Self::Key, Self::GroupItem)> {
+    type Key: Eq + Hash + Clone;
+    type GroupItem;
 
     #[must_use]
-    fn group_concurrent<G: Group<Item = Self::Item>>(
-        self,
-        group: G,
-    ) -> Grouped<Self, G::Sender, Self::Key, G>;
-}
-
-impl<Item, K: Eq + Hash + Clone, S: Stream<Item = (K, Item)>> GroupConcurrent for S {
-    type Item = Item;
-
-    type Key = K;
-
-    fn group_concurrent<G: Group<Item = Self::Item>>(
-        self,
-        group: G,
-    ) -> Grouped<Self, G::Sender, Self::Key, G> {
+    fn group_concurrent<G: Group<Item = Self::GroupItem>>(self, group: G) -> Grouped<Self, G> {
         Grouped {
             stream: self,
             select: Default::default(),
@@ -192,4 +179,9 @@ impl<Item, K: Eq + Hash + Clone, S: Stream<Item = (K, Item)>> GroupConcurrent fo
             group,
         }
     }
+}
+
+impl<Item, K: Eq + Hash + Clone, S: Stream<Item = (K, Item)>> GroupConcurrent for S {
+    type Key = K;
+    type GroupItem = Item;
 }
