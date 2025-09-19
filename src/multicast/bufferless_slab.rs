@@ -25,7 +25,7 @@ const OP_IS_FLUSHING: usize = 6;
 const OP_COUNT: usize = 7;
 
 #[pin_project]
-pub struct Multicast<S, E> {
+pub struct Multicast<S, E = <S as TryStream>::Error> {
     connections: LinkedSlab<Connection<S>, OP_COUNT>,
     #[pin]
     next: Ready,
@@ -245,17 +245,18 @@ impl<S, E> PinnedExtend<S> for Multicast<S, E> {
     }
 }
 
-pub type MulticastExtending<R> =
-    Extending<Multicast<<R as MulticastBufferlessSlab>::S, <R as MulticastBufferlessSlab>::E>, R>;
+pub type MulticastExtending<R> = Extending<Multicast<<R as MulticastBufferlessSlab>::S>, R>;
 
-pub trait MulticastBufferlessSlab: Sized {
+pub trait MulticastBufferlessSlab: Sized + FusedStream<Item = Self::S> {
     /// Single [`Stream`]/[`Sink`].
-    type S;
+    type S: Unpin + TryStream;
     /// Error.
     type E;
 
     #[must_use]
-    fn multicast_bufferless_slab(self) -> MulticastExtending<Self>;
+    fn multicast_bufferless_slab(self) -> MulticastExtending<Self> {
+        Extending::new(self, Default::default())
+    }
 }
 
 impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = S>>
@@ -263,8 +264,4 @@ impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = S>>
 {
     type S = S;
     type E = E;
-
-    fn multicast_bufferless_slab(self) -> MulticastExtending<Self> {
-        Extending::new(self, Default::default())
-    }
 }
