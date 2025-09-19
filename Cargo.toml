@@ -36,7 +36,7 @@ rust-version.workspace = true
 [workspace.dependencies]
 route-sink = { path = "route-sink", version = "0.1.1" }
 ruchei-callback = { path = "ruchei-callback", version = "0.1.1" }
-ruchei-collections = { path = "ruchei-collections", version = "=0.0.0-a.2" }
+ruchei-collections = { path = "ruchei-collections", version = "=0.0.0-a.3" }
 ruchei-extra = { path = "ruchei-extra", version = "0.1.1" }
 ruchei-route = { path = "ruchei-route", version = "0.1.8", default-features = false }
 ruchei-sample.path = "internal/ruchei-sample"
