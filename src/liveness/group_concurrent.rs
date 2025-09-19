@@ -18,7 +18,7 @@
 //! #     echo::buffered::EchoBuffered,
 //! #     liveness::{group_concurrent::{Group, GroupConcurrent}, timeout_unused::TimeoutUnused},
 //! #     multi_item::MultiItemExt,
-//! #     multicast::replay_slab::MulticastReplaySlab,
+//! #     multicast::replay::MulticastReplay,
 //! #     poll_on_wake::PollOnWakeExt,
 //! # };
 //! /* imports omitted */
@@ -67,7 +67,7 @@
 //!                 // When all participants leave, the group is deleted
 //!                 .timeout_unused(|| ready(()))
 //!                 // All messages within a group are replayed on new connection joining
-//!                 .multicast_replay_slab()
+//!                 .multicast_replay()
 //!                 .multi_item_ignore()
 //!                 .echo_buffered()
 //!                 .await
