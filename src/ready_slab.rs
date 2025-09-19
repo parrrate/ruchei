@@ -26,6 +26,7 @@ impl Wake for SlabWaker {
 
 #[must_use]
 #[pin_project]
+#[derive(Debug)]
 pub(crate) struct Ready(
     UnboundedSender<SlabKey>,
     #[pin] UnboundedReceiver<SlabKey>,
