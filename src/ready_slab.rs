@@ -9,7 +9,7 @@ use futures_util::{Stream, task::AtomicWaker};
 use pin_project::pin_project;
 use ruchei_collections::as_linked_slab::{AsLinkedSlab, SlabKey};
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct SlabWaker {
     waker: AtomicWaker,
 }
