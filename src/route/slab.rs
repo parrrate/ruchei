@@ -22,7 +22,7 @@ const OP_COUNT: usize = 2;
 
 /// [`ReadyRoute`]/[`Stream`] implemented over the stream of incoming [`Sink`]s/[`Stream`]s.
 #[pin_project]
-pub struct Router<S, E> {
+pub struct Router<S, E = <S as TryStream>::Error> {
     connections: LinkedSlab<Connection<S>, OP_COUNT>,
     #[pin]
     next: Ready,
@@ -215,28 +215,18 @@ impl<S, E> PinnedExtend<S> for Router<S, E> {
 }
 
 /// [`ReadyRoute`]/[`Stream`] Returned by [`RouterSlabExt::route_slab`].
-pub type RouterExtending<R> =
-    Extending<Router<<R as RouterSlabExt>::S, <R as RouterSlabExt>::E>, R>;
+pub type RouterExtending<R> = Extending<Router<<R as Stream>::Item>, R>;
 
 /// Extension trait to auto-extend a [`Router`] from a stream of connections.
-pub trait RouterSlabExt: Sized {
-    /// Single [`Stream`]/[`Sink`].
-    type S;
-    /// Error.
-    type E;
-
+pub trait RouterSlabExt: Sized + FusedStream<Item: TryStream> {
     /// Extend the stream of connections (`self`) into a [`Router`].
     #[must_use]
-    fn route_slab(self) -> RouterExtending<Self>;
+    fn route_slab(self) -> RouterExtending<Self> {
+        Extending::new(self, Default::default())
+    }
 }
 
 impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = S>> RouterSlabExt
     for R
 {
-    type S = S;
-    type E = E;
-
-    fn route_slab(self) -> RouterExtending<Self> {
-        Extending::new(self, Default::default())
-    }
 }
