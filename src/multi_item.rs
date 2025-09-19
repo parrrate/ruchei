@@ -6,7 +6,7 @@ use futures_util::{
     stream::{FilterMap, FusedStream},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum MultiItem<S, T = <S as TryStream>::Ok, E = <S as TryStream>::Error> {
     Item(T),
     Closed(S, Option<E>),
