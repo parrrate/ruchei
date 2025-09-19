@@ -114,6 +114,24 @@ impl<E, S: Unpin> Dealer<S, E> {
         }
         Poll::Pending
     }
+
+    fn start_send_first<Out>(mut self: Pin<&mut Self>, msg: Out)
+    where
+        S: Sink<Out, Error = E>,
+    {
+        let this = self.as_mut().project();
+        if let Some(key) = this.connections.front::<OP_DEAL>() {
+            let connection = this
+                .connections
+                .get_refresh::<OP_DEAL>(key)
+                .expect("first key must point to an existing entry");
+            if let Err(e) = connection.stream.start_send_unpin(msg) {
+                self.remove(key, Some(e));
+            } else {
+                this.connections.link_push_back::<OP_IS_STARTED>(key);
+            }
+        };
+    }
 }
 
 impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Dealer<S, E> {
@@ -167,19 +185,8 @@ impl<Out, E, S: Unpin + Sink<Out, Error = E>> Sink<Out> for Dealer<S, E> {
         self.poll_ready_first(cx).map(Ok)
     }
 
-    fn start_send(mut self: Pin<&mut Self>, msg: Out) -> Result<(), Self::Error> {
-        let this = self.as_mut().project();
-        if let Some(key) = this.connections.front::<OP_DEAL>() {
-            let connection = this
-                .connections
-                .get_refresh::<OP_DEAL>(key)
-                .expect("first key must point to an existing entry");
-            if let Err(e) = connection.stream.start_send_unpin(msg) {
-                self.remove(key, Some(e));
-            } else {
-                this.connections.link_push_back::<OP_IS_STARTED>(key);
-            }
-        };
+    fn start_send(self: Pin<&mut Self>, msg: Out) -> Result<(), Self::Error> {
+        self.start_send_first(msg);
         Ok(())
     }
 
