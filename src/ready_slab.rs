@@ -27,19 +27,25 @@ impl Wake for SlabWaker {
 #[must_use]
 #[pin_project]
 #[derive(Debug)]
-pub(crate) struct Ready(
-    UnboundedSender<SlabKey>,
-    #[pin] UnboundedReceiver<SlabKey>,
-    Arc<SlabWaker>,
-    Waker,
-);
+pub(crate) struct Ready {
+    send: UnboundedSender<SlabKey>,
+    #[pin]
+    recv: UnboundedReceiver<SlabKey>,
+    inner: Arc<SlabWaker>,
+    waker: Waker,
+}
 
 impl Default for Ready {
     fn default() -> Self {
-        let (sender, receiver) = unbounded();
+        let (send, recv) = unbounded();
         let inner = Arc::<SlabWaker>::default();
         let waker = inner.clone().into();
-        Self(sender, receiver, inner, waker)
+        Self {
+            send,
+            recv,
+            inner,
+            waker,
+        }
     }
 }
 
@@ -49,17 +55,19 @@ pub(crate) struct ReadyWeak(Option<UnboundedSender<SlabKey>>);
 
 impl Ready {
     pub(crate) fn downgrade(&self) -> ReadyWeak {
-        ReadyWeak(Some(self.0.clone()))
+        ReadyWeak(Some(self.send.clone()))
     }
 
     pub(crate) fn wake(&self) {
-        self.2.wake_by_ref();
+        self.inner.wake_by_ref();
     }
 
     pub(crate) fn compact<const M: usize>(self: Pin<&mut Self>, slab: &mut impl AsLinkedSlab) {
         let mut this = self.project();
-        while let Poll::Ready(Some(key)) =
-            this.1.as_mut().poll_next(&mut Context::from_waker(this.3))
+        while let Poll::Ready(Some(key)) = this
+            .recv
+            .as_mut()
+            .poll_next(&mut Context::from_waker(this.waker))
         {
             slab.link_push_back::<M>(key);
         }
@@ -75,7 +83,7 @@ impl Ready {
     }
 
     pub(crate) fn register(&self, cx: &mut Context<'_>) {
-        self.2.waker.register(cx.waker());
+        self.inner.waker.register(cx.waker());
     }
 }
 
