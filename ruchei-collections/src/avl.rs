@@ -165,6 +165,7 @@ impl<T> Node<T> {
     }
 }
 
+#[derive(Debug)]
 pub struct Avl<T> {
     nodes: Nodes<T>,
     root: Option<NodeId>,
