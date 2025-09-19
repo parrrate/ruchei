@@ -58,7 +58,7 @@ impl<Out, K, E, S: Sink<Out, Error = E>> Sink<Out> for One<K, S> {
 
 /// [`ReadyRoute`]/[`Stream`] implemented over the stream of incoming [`Sink`]s/[`Stream`]s.
 #[pin_project]
-pub struct Router<K, S, E> {
+pub struct Router<K, S, E = <S as TryStream>::Error> {
     #[pin]
     router: super::slab::Router<One<K, S>, E>,
     routes: LinkedHashMap<K, LinkedHashMap<usize, usize>>,
@@ -188,33 +188,24 @@ impl<K: Key, S, E> PinnedExtend<(K, S)> for Router<K, S, E> {
 }
 
 /// [`ReadyRoute`]/[`Stream`] Returned by [`RouterKeyedExt::route_keyed`].
-pub type RouterExtending<R> = Extending<
-    Router<<R as RouterKeyedExt>::K, <R as RouterKeyedExt>::S, <R as RouterKeyedExt>::E>,
-    R,
->;
+pub type RouterExtending<R> =
+    Extending<Router<<R as RouterKeyedExt>::K, <R as RouterKeyedExt>::S>, R>;
 
 /// Extension trait to auto-extend a [`Router`] from a stream of connections.
-pub trait RouterKeyedExt: Sized {
+pub trait RouterKeyedExt: Sized + FusedStream<Item = (Self::K, Self::S)> {
     /// Key.
-    type K;
+    type K: Key;
     /// Single [`Stream`]/[`Sink`].
-    type S;
-    /// Error.
-    type E;
+    type S: Unpin + TryStream;
 
     /// Extend the stream of connections (`self`) into a [`Router`].
     #[must_use]
-    fn route_keyed(self) -> RouterExtending<Self>;
-}
-
-impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = (K, S)>>
-    RouterKeyedExt for R
-{
-    type K = K;
-    type S = S;
-    type E = E;
-
     fn route_keyed(self) -> RouterExtending<Self> {
         Extending::new(self, Default::default())
     }
+}
+
+impl<K: Key, S: Unpin + TryStream, R: FusedStream<Item = (K, S)>> RouterKeyedExt for R {
+    type K = K;
+    type S = S;
 }
