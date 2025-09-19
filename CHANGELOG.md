@@ -5,6 +5,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- everything is now `Debug`
+
+### Changed
+
+- added default type args where possible, some got reordered
+- dropped `_slab` prefixes from module/method names
+  - regular implementations become `*_without_multicast`
+- `Router`s now have opaque `RouteKey`s instead of `usize`
+
+### Fixed
+
+- broken doc links
+- `flush` not happening
+- `Dealer` sometimes potentially dropping messages
+
 ## [0.0.98] — 2025-09-18
 
 ### Added
