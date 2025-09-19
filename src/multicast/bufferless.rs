@@ -171,6 +171,10 @@ impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>> Sink<Out> for Multicast<S, 
                     self.as_mut().remove(key, Some(e));
                 } else {
                     this.connections.link_push_back::<OP_IS_STARTED>(key);
+                    if this.connections.link_contains::<OP_IS_FLUSHING>(key) {
+                        this.connections.link_pop_at::<OP_IS_FLUSHING>(key);
+                        this.flush.wake();
+                    }
                     this.ready.downgrade().insert(key);
                 }
             }
