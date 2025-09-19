@@ -9,7 +9,7 @@ use pin_project::pin_project;
 #[derive(Debug)]
 #[pin_project]
 #[must_use = "futures must be awaited"]
-pub struct Echo<T, S> {
+pub struct Echo<S, T = <S as TryStream>::Ok> {
     #[pin]
     stream: S,
     item: Option<T>,
@@ -17,7 +17,7 @@ pub struct Echo<T, S> {
 }
 
 impl<T, E, S: FusedStream + TryStream<Ok = T, Error = E> + Sink<T, Error = E>> Future
-    for Echo<T, S>
+    for Echo<S, T>
 {
     type Output = Result<(), E>;
 
@@ -57,7 +57,7 @@ impl<T, E, S: FusedStream + TryStream<Ok = T, Error = E> + Sink<T, Error = E>> F
     }
 }
 
-impl<T, E, S: TryStream<Ok = T, Error = E>> From<S> for Echo<T, S> {
+impl<T, E, S: TryStream<Ok = T, Error = E>> From<S> for Echo<S, T> {
     fn from(stream: S) -> Self {
         Self {
             stream,
@@ -67,19 +67,21 @@ impl<T, E, S: TryStream<Ok = T, Error = E>> From<S> for Echo<T, S> {
     }
 }
 
-pub trait EchoBufferless: Sized {
+pub trait EchoBufferless:
+    Sized + FusedStream + TryStream<Ok = Self::T, Error = Self::E> + Sink<Self::T, Error = Self::E>
+{
     /// Item yielded and accepted by `self` as [`Stream`]/[`Sink`].
     type T;
+    type E;
 
-    fn echo_bufferless(self) -> Echo<Self::T, Self>;
+    fn echo_bufferless(self) -> Echo<Self> {
+        self.into()
+    }
 }
 
 impl<T, E, S: FusedStream + TryStream<Ok = T, Error = E> + Sink<T, Error = E>> EchoBufferless
     for S
 {
     type T = T;
-
-    fn echo_bufferless(self) -> Echo<Self::T, Self> {
-        self.into()
-    }
+    type E = E;
 }
