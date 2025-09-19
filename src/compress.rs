@@ -102,13 +102,13 @@ impl<T: IntoIterator + Extend<T::Item>, U: FromPin<C>, S: Stream<Item = T>, C: S
     }
 }
 
-pub trait CompressExt: Stream + Sized {
-    #[must_use]
-    fn compress<U: FromPin<C>, C: Stream<Item = U>>(self, credits: C) -> Compress<Self, C>;
-}
+pub trait SelfExtend: IntoIterator + Extend<Self::Item> {}
 
-impl<T: IntoIterator + Extend<T::Item>, S: Stream<Item = T>> CompressExt for S {
-    fn compress<U: FromPin<C>, C: Stream<Item = U>>(self, credits: C) -> Compress<Self, C> {
+impl<T: IntoIterator + Extend<Self::Item>> SelfExtend for T {}
+
+pub trait CompressExt: Sized + Stream<Item: SelfExtend> {
+    #[must_use]
+    fn compress<C: Stream<Item: FromPin<C>>>(self, credits: C) -> Compress<Self, C> {
         Compress {
             stream: self,
             credits: Some(credits),
@@ -116,3 +116,5 @@ impl<T: IntoIterator + Extend<T::Item>, S: Stream<Item = T>> CompressExt for S {
         }
     }
 }
+
+impl<S: Stream<Item: SelfExtend>> CompressExt for S {}
