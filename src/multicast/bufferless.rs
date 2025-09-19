@@ -251,11 +251,11 @@ impl<S, E> PinnedExtend<S> for Multicast<S, E> {
 
 pub type MulticastExtending<R> = Extending<Multicast<<R as Stream>::Item>, R>;
 
-pub trait MulticastBufferlessSlab: Sized + FusedStream<Item: Unpin + TryStream> {
+pub trait MulticastBufferless: Sized + FusedStream<Item: Unpin + TryStream> {
     #[must_use]
-    fn multicast_bufferless_slab(self) -> MulticastExtending<Self> {
+    fn multicast_bufferless(self) -> MulticastExtending<Self> {
         Extending::new(self, Default::default())
     }
 }
 
-impl<S: Unpin + TryStream, R: FusedStream<Item = S>> MulticastBufferlessSlab for R {}
+impl<S: Unpin + TryStream, R: FusedStream<Item = S>> MulticastBufferless for R {}

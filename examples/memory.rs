@@ -16,7 +16,7 @@ use ruchei::{
     echo::buffered::EchoBuffered,
     multi_item::MultiItemExt,
     multicast::{
-        buffered_slab::MulticastBufferedSlab, bufferless_slab::MulticastBufferlessSlab,
+        buffered_slab::MulticastBufferedSlab, bufferless::MulticastBufferless,
         replay::MulticastReplay,
     },
 };
@@ -161,7 +161,7 @@ async fn main() {
     .await;
     test_two(|streams| async move {
         streams
-            .multicast_bufferless_slab()
+            .multicast_bufferless()
             .multi_item_ignore()
             .echo_buffered()
             .await
@@ -170,7 +170,7 @@ async fn main() {
     .await;
     test_two(|streams| async move {
         streams
-            .multicast_bufferless_slab()
+            .multicast_bufferless()
             .multi_item_ignore()
             .echo_buffered()
             .await

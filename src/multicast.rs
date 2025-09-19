@@ -4,6 +4,6 @@
 //! [`Sink`]: futures_util::Sink
 
 pub mod buffered_slab;
-pub mod bufferless_slab;
+pub mod bufferless;
 pub mod replay;
 pub mod trie;
