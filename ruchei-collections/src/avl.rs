@@ -126,6 +126,7 @@ impl<T> Nodes<T> {
     }
 }
 
+#[derive(Debug)]
 struct Node<T> {
     parent: Option<(Side, NodeId)>,
     value: T,
