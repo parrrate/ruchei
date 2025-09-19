@@ -43,7 +43,7 @@ impl Default for Ready {
 }
 
 #[must_use]
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub(crate) struct ReadyWeak(Option<UnboundedSender<SlabKey>>);
 
 impl Ready {
