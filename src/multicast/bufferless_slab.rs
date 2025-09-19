@@ -28,6 +28,7 @@ const OP_IS_FLUSHING: usize = 6;
 const OP_COUNT: usize = 7;
 
 #[pin_project]
+#[derive(Debug)]
 pub struct Multicast<S, E = <S as TryStream>::Error> {
     connections: LinkedSlab<Connection<S>, OP_COUNT>,
     #[pin]

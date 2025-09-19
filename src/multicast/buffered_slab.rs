@@ -38,6 +38,7 @@ const OP_SENT_COUNT: usize = 6;
 const OP_SENT_FIRST: usize = 7;
 const OP_COUNT: usize = 8;
 
+#[derive(Debug)]
 pub(crate) struct Connection<S> {
     pub(crate) stream: S,
     pub(crate) next: Arc<ConnectionWaker>,
@@ -48,7 +49,7 @@ pub(crate) struct Connection<S> {
     flushed: usize,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct NextFlush {
     next: AtomicWaker,
     flush: AtomicWaker,
@@ -61,11 +62,13 @@ impl Wake for NextFlush {
     }
 }
 
+#[derive(Debug)]
 struct Item<T> {
     item: T,
     first: Option<SlabKey>,
 }
 
+#[derive(Debug)]
 struct Items<T> {
     items: VecDeque<Item<T>>,
     offset: usize,
@@ -99,6 +102,7 @@ impl<T> Index<usize> for Items<T> {
 }
 
 #[pin_project]
+#[derive(Debug)]
 pub struct Multicast<S, T, E = <S as TryStream>::Error> {
     connections: LinkedSlab<Connection<S>, OP_COUNT>,
     #[pin]

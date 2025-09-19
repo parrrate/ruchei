@@ -37,6 +37,7 @@ pub enum SubRequest<K, O> {
 }
 
 #[pin_project]
+#[derive(Debug)]
 pub struct Multicast<S, E = <S as TryStream>::Error> {
     connections: LinkedSlabMultiTrie<Connection<S>, OP_COUNT>,
     #[pin]
