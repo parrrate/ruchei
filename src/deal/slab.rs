@@ -30,6 +30,7 @@ const OP_COUNT: usize = 6;
 
 /// [`Sink`]/[`Stream`] implemented over the stream of incoming [`Sink`]s/[`Stream`]s.
 #[pin_project]
+#[derive(Debug)]
 pub struct Dealer<S, E = <S as TryStream>::Error> {
     connections: LinkedSlab<Connection<S>, OP_COUNT>,
     #[pin]
