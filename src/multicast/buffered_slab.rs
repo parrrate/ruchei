@@ -96,7 +96,7 @@ impl<T> Index<usize> for Items<T> {
 }
 
 #[pin_project]
-pub struct Multicast<S, T, E> {
+pub struct Multicast<S, T, E = <S as TryStream>::Error> {
     connections: LinkedSlab<Connection<S>, OP_COUNT>,
     #[pin]
     next: Ready,
@@ -575,10 +575,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> PinnedExtend<S> for Multicast<S
     }
 }
 
-pub type MulticastExtending<T, R> = Extending<
-    Multicast<<R as MulticastBufferedSlab<T>>::S, T, <R as MulticastBufferedSlab<T>>::E>,
-    R,
->;
+pub type MulticastExtending<T, R> = Extending<Multicast<<R as MulticastBufferedSlab<T>>::S, T>, R>;
 
 pub trait MulticastBufferedSlab<T: Clone>: Sized + FusedStream<Item = Self::S> {
     /// Single [`Stream`]/[`Sink`].
