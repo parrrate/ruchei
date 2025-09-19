@@ -26,7 +26,7 @@ const OP_IS_FLUSHING: usize = 6;
 const OP_COUNT: usize = 7;
 
 #[pin_project]
-pub struct Router<S, E> {
+pub struct Router<S, E = <S as TryStream>::Error> {
     connections: LinkedSlab<Connection<S>, OP_COUNT>,
     #[pin]
     next: Ready,
@@ -365,26 +365,16 @@ impl<S, E> PinnedExtend<S> for Router<S, E> {
     }
 }
 
-pub type RouterExtending<R> =
-    Extending<Router<<R as RouteSlabMulticastExt>::S, <R as RouteSlabMulticastExt>::E>, R>;
+pub type RouterExtending<R> = Extending<Router<<R as Stream>::Item>, R>;
 
-pub trait RouteSlabMulticastExt: Sized + FusedStream<Item = Self::S> {
-    /// Single [`Stream`]/[`Sink`].
-    type S: Unpin + TryStream<Ok = Self::In, Error = Self::E>;
-    type In;
-    /// Error.
-    type E;
-
+pub trait RouteSlabMulticastExt: Sized + FusedStream<Item: Unpin + TryStream> {
     #[must_use]
     fn route_slab_multicast(self) -> RouterExtending<Self> {
-        Extending::new(self, Router::<Self::S, Self::E>::default())
+        Extending::new(self, Router::default())
     }
 }
 
 impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = S>>
     RouteSlabMulticastExt for R
 {
-    type S = S;
-    type In = In;
-    type E = E;
 }
