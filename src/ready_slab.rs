@@ -137,6 +137,7 @@ impl ConnectionWaker {
 }
 
 #[must_use]
+#[derive(Debug)]
 pub(crate) struct Connection<S> {
     pub(crate) stream: S,
     pub(crate) next: Arc<ConnectionWaker>,
