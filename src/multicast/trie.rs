@@ -29,6 +29,7 @@ const OP_IS_READIED: usize = 5;
 const OP_IS_FLUSHING: usize = 6;
 const OP_COUNT: usize = 7;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SubRequest<K, O> {
     Sub(K),
     Unsub(K),
