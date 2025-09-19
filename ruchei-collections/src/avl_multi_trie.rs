@@ -12,6 +12,7 @@ use crate::{
     trie::Trie,
 };
 
+#[derive(Debug)]
 pub struct AvlMultiTrie<T> {
     keys: Trie<BTreeMap<NodeId, usize>>,
     collections: AvlMap<T, Slab<NodeId>>,
