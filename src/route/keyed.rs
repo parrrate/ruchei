@@ -12,7 +12,7 @@ use route_sink::{FlushRoute, ReadyRoute};
 use ruchei_collections::as_linked_slab::SlabKey;
 
 use crate::{
-    multi_item::MultiItem,
+    multi_item::{MultiItem, MultiRouteItem},
     pinned_extend::{Extending, PinnedExtend},
 };
 
@@ -77,7 +77,7 @@ impl<K: Hash + Eq, S, E> Default for Router<K, S, E> {
 }
 
 impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Router<K, S, E> {
-    type Item = MultiItem<(K, S), (K, In), E>;
+    type Item = MultiRouteItem<K, S>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
