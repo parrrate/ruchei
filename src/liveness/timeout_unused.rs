@@ -32,7 +32,7 @@ pub struct KeepAlive {
 /// [`Stream`] closing on timeout.
 #[derive(Debug)]
 #[pin_project]
-pub struct WithTimeout<S, Fut, F> {
+pub struct WithTimeout<S, F, Fut = <F as Start>::Fut> {
     #[pin]
     stream: S,
     #[pin]
@@ -45,7 +45,7 @@ pub struct WithTimeout<S, Fut, F> {
     done: bool,
 }
 
-impl<S, Fut, F> WithTimeout<S, Fut, F> {
+impl<S, Fut, F> WithTimeout<S, F, Fut> {
     /// Pinned mutable reference to the inner stream.
     #[must_use]
     pub fn as_pin_mut(self: Pin<&mut Self>) -> Pin<&mut S> {
@@ -65,19 +65,19 @@ impl<S, Fut, F> WithTimeout<S, Fut, F> {
     }
 }
 
-impl<S, Fut, F> AsRef<S> for WithTimeout<S, Fut, F> {
+impl<S, Fut, F> AsRef<S> for WithTimeout<S, F, Fut> {
     fn as_ref(&self) -> &S {
         &self.stream
     }
 }
 
-impl<S, Fut, F> AsMut<S> for WithTimeout<S, Fut, F> {
+impl<S, Fut, F> AsMut<S> for WithTimeout<S, F, Fut> {
     fn as_mut(&mut self) -> &mut S {
         &mut self.stream
     }
 }
 
-impl<S: Stream, Fut: Future<Output = ()>, F: Start<Fut = Fut>> Stream for WithTimeout<S, Fut, F> {
+impl<S: Stream, Fut: Future<Output = ()>, F: Start<Fut = Fut>> Stream for WithTimeout<S, F, Fut> {
     type Item = WithExtra<S::Item, KeepAlive>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -111,14 +111,14 @@ impl<S: Stream, Fut: Future<Output = ()>, F: Start<Fut = Fut>> Stream for WithTi
 }
 
 impl<S: FusedStream, Fut: Future<Output = ()>, F: Start<Fut = Fut>> FusedStream
-    for WithTimeout<S, Fut, F>
+    for WithTimeout<S, F, Fut>
 {
     fn is_terminated(&self) -> bool {
         self.done || self.stream.is_terminated()
     }
 }
 
-impl<S, Fut, F> WithTimeout<S, Fut, F> {
+impl<S, Fut, F> WithTimeout<S, F, Fut> {
     #[must_use]
     fn new(stream: S, start: F) -> Self {
         let mutex = Arc::new(Mutex::new(Alive));
@@ -138,23 +138,17 @@ impl<S, Fut, F> WithTimeout<S, Fut, F> {
 /// Extension trait combinator for closing [`Stream`]s on timeout.
 pub trait TimeoutUnused: Sized {
     #[must_use]
-    fn timeout_unused<Fut: Future<Output = ()>, F: Start<Fut = Fut>>(
-        self,
-        start: F,
-    ) -> WithTimeout<Self, Fut, F>;
+    fn timeout_unused<F: Start>(self, start: F) -> WithTimeout<Self, F>;
 }
 
 impl<S: Stream> TimeoutUnused for S {
-    fn timeout_unused<Fut: Future<Output = ()>, F: Start<Fut = Fut>>(
-        self,
-        start: F,
-    ) -> WithTimeout<Self, Fut, F> {
+    fn timeout_unused<F: Start>(self, start: F) -> WithTimeout<Self, F> {
         WithTimeout::new(self, start)
     }
 }
 
 impl<S, Fut: Future<Output = ()>, F: Default + Start<Fut = Fut>> From<S>
-    for WithTimeout<S, Fut, F>
+    for WithTimeout<S, F, Fut>
 {
     fn from(stream: S) -> Self {
         Self::new(stream, Default::default())
@@ -162,7 +156,7 @@ impl<S, Fut: Future<Output = ()>, F: Default + Start<Fut = Fut>> From<S>
 }
 
 impl<S: Default, Fut: Future<Output = ()>, F: Default + Start<Fut = Fut>> Default
-    for WithTimeout<S, Fut, F>
+    for WithTimeout<S, F, Fut>
 {
     fn default() -> Self {
         S::default().into()
