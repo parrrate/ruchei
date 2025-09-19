@@ -11,6 +11,7 @@ use crate::{
     trie::Trie,
 };
 
+#[derive(Debug)]
 pub struct CloneMultiTrie<T> {
     keys: Trie<BTreeMap<T, usize>>,
     collections: BTreeMap<T, Slab<NodeId>>,
