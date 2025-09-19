@@ -95,6 +95,7 @@ impl Extend<SlabKey> for ReadyWeak {
 }
 
 #[must_use]
+#[derive(Debug)]
 pub(crate) struct ConnectionWaker {
     pub(crate) waker: AtomicWaker,
     ready: ReadyWeak,
