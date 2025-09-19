@@ -7,6 +7,7 @@ use futures_util::{Stream, ready};
 use pin_project::pin_project;
 
 #[pin_project]
+#[derive(Debug)]
 pub struct Compress<S: Stream, C> {
     #[pin]
     stream: S,
@@ -15,8 +16,10 @@ pub struct Compress<S: Stream, C> {
     item: Option<S::Item>,
 }
 
+#[derive(Debug)]
 pub struct Credit;
 
+#[derive(Debug)]
 pub struct Credited<C>(pub C);
 
 mod private {
