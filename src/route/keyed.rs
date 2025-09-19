@@ -17,7 +17,7 @@ use crate::{
     pinned_extend::{Extending, PinnedExtend},
 };
 
-use super::{Key, slab::RouteKey};
+use super::{Key, without_multicast::RouteKey};
 
 #[pin_project]
 #[derive(Debug)]
@@ -63,7 +63,7 @@ impl<Out, K, E, S: Sink<Out, Error = E>> Sink<Out> for One<K, S> {
 #[derive(Debug)]
 pub struct Router<K: Hash + Eq, S, E = <S as TryStream>::Error> {
     #[pin]
-    router: super::slab::Router<One<K, S>, E>,
+    router: super::without_multicast::Router<One<K, S>, E>,
     routes: LinkedHashMap<K, LinkedHashSet<RouteKey>>,
 }
 

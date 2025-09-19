@@ -225,19 +225,19 @@ impl<S, E> PinnedExtend<S> for Router<S, E> {
     }
 }
 
-/// [`ReadyRoute`]/[`Stream`] Returned by [`RouterSlabExt::route_slab`].
+/// [`ReadyRoute`]/[`Stream`] Returned by [`RouteWithoutMulticast::route_without_multicast`].
 pub type RouterExtending<R> = Extending<Router<<R as Stream>::Item>, R>;
 
 /// Extension trait to auto-extend a [`Router`] from a stream of connections.
-pub trait RouterSlabExt: Sized + FusedStream<Item: TryStream> {
+pub trait RouteWithoutMulticast: Sized + FusedStream<Item: TryStream> {
     /// Extend the stream of connections (`self`) into a [`Router`].
     #[must_use]
-    fn route_slab(self) -> RouterExtending<Self> {
+    fn route_without_multicast(self) -> RouterExtending<Self> {
         Extending::new(self, Default::default())
     }
 }
 
-impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = S>> RouterSlabExt
-    for R
+impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = S>>
+    RouteWithoutMulticast for R
 {
 }
