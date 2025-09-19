@@ -378,14 +378,14 @@ impl<S, E> PinnedExtend<S> for Router<S, E> {
 
 pub type RouterExtending<R> = Extending<Router<<R as Stream>::Item>, R>;
 
-pub trait RouteSlabMulticastExt: Sized + FusedStream<Item: Unpin + TryStream> {
+pub trait RouteMulticast: Sized + FusedStream<Item: Unpin + TryStream> {
     #[must_use]
-    fn route_slab_multicast(self) -> RouterExtending<Self> {
+    fn route_multicast(self) -> RouterExtending<Self> {
         Extending::new(self, Router::default())
     }
 }
 
-impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = S>>
-    RouteSlabMulticastExt for R
+impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = S>> RouteMulticast
+    for R
 {
 }

@@ -1,7 +1,7 @@
 use std::hash::Hash;
 
 pub mod keyed;
-pub mod slab_multicast;
+pub mod multicast;
 pub mod without_multicast;
 
 /// Helper trait for something that can be used as a key in `Router`s.
