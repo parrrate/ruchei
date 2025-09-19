@@ -32,7 +32,7 @@ use std::{
 use futures_util::{Sink, Stream, TryStream, ready, stream::FusedStream, task::AtomicWaker};
 use pin_project::pin_project;
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct Wakers {
     next: AtomicWaker,
     ready: AtomicWaker,
@@ -52,6 +52,7 @@ impl Wake for Wakers {
 ///
 /// Closes when the incoming stream is done.
 #[pin_project]
+#[derive(Debug)]
 pub struct Switching<R, Out, S = <R as Stream>::Item> {
     #[pin]
     incoming: R,
