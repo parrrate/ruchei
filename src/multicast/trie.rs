@@ -36,7 +36,7 @@ pub enum SubRequest<K, O> {
 }
 
 #[pin_project]
-pub struct Multicast<S, E> {
+pub struct Multicast<S, E = <S as TryStream>::Error> {
     connections: LinkedSlabMultiTrie<Connection<S>, OP_COUNT>,
     #[pin]
     next: Ready,
@@ -286,17 +286,13 @@ impl<S, E> PinnedExtend<S> for Multicast<S, E> {
     }
 }
 
-pub type MulticastExtending<R> =
-    Extending<Multicast<<R as MulticastTrie>::S, <R as MulticastTrie>::E>, R>;
+pub type MulticastExtending<R> = Extending<Multicast<<R as Stream>::Item>, R>;
 
-pub trait MulticastTrie: Sized {
-    /// Single [`Stream`]/[`Sink`].
-    type S;
-    /// Error.
-    type E;
-
+pub trait MulticastTrie: Sized + FusedStream<Item: TryStream> {
     #[must_use]
-    fn multicast_trie(self) -> MulticastExtending<Self>;
+    fn multicast_trie(self) -> MulticastExtending<Self> {
+        Extending::new(self, Default::default())
+    }
 }
 
 impl<
@@ -307,10 +303,4 @@ impl<
     R: FusedStream<Item = S>,
 > MulticastTrie for R
 {
-    type S = S;
-    type E = E;
-
-    fn multicast_trie(self) -> MulticastExtending<Self> {
-        Extending::new(self, Default::default())
-    }
 }
