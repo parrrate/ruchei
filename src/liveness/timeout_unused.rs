@@ -136,16 +136,14 @@ impl<S, Fut, F> WithTimeout<S, F, Fut> {
 }
 
 /// Extension trait combinator for closing [`Stream`]s on timeout.
-pub trait TimeoutUnused: Sized {
+pub trait TimeoutUnused: Sized + Stream {
     #[must_use]
-    fn timeout_unused<F: Start>(self, start: F) -> WithTimeout<Self, F>;
-}
-
-impl<S: Stream> TimeoutUnused for S {
     fn timeout_unused<F: Start>(self, start: F) -> WithTimeout<Self, F> {
         WithTimeout::new(self, start)
     }
 }
+
+impl<S: Stream> TimeoutUnused for S {}
 
 impl<S, Fut: Future<Output = ()>, F: Default + Start<Fut = Fut>> From<S>
     for WithTimeout<S, F, Fut>
