@@ -35,7 +35,7 @@ use pin_project::pin_project;
 /// Order is not guaranteed.
 #[derive(Debug)]
 #[pin_project]
-pub struct Concurrent<R, Fut> {
+pub struct Concurrent<R, Fut = <R as Stream>::Item> {
     #[pin]
     stream: R,
     #[pin]
@@ -84,18 +84,11 @@ impl<Fut, R> From<R> for Concurrent<R, Fut> {
 }
 
 /// Extension trait combinator for concurrent polling on [`Future`]s.
-pub trait ConcurrentExt: Sized {
-    /// Single [`Future`].
-    type Fut;
-
+pub trait ConcurrentExt: Sized + Stream<Item: Future> {
     #[must_use]
-    fn concurrent(self) -> Concurrent<Self, Self::Fut>;
-}
-
-impl<Fut: Future, R: FusedStream<Item = Fut>> ConcurrentExt for R {
-    type Fut = Fut;
-
-    fn concurrent(self) -> Concurrent<Self, Self::Fut> {
+    fn concurrent(self) -> Concurrent<Self> {
         self.into()
     }
 }
+
+impl<R: FusedStream<Item: Future>> ConcurrentExt for R {}
