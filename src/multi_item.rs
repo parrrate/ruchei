@@ -12,6 +12,9 @@ pub enum MultiItem<S, T = <S as TryStream>::Ok, E = <S as TryStream>::Error> {
     Closed(S, Option<E>),
 }
 
+pub type MultiRouteItem<K, S, T = <S as TryStream>::Ok, E = <S as TryStream>::Error> =
+    MultiItem<(K, S), (K, T), E>;
+
 type Fut<R> = Ready<Option<Result<<R as MultiItemExt>::T, Infallible>>>;
 
 type Mi<R> = MultiItem<<R as MultiItemExt>::S, <R as MultiItemExt>::T, <R as MultiItemExt>::E>;
