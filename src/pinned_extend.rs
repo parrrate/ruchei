@@ -187,16 +187,14 @@ impl<Route, Msg, S: ReadySome<Route, Msg>, R> ReadySome<Route, Msg> for Extendin
     }
 }
 
-pub trait ExtendingExt<A>: Sized {
+pub trait ExtendingExt: Sized + FusedStream {
     #[must_use]
-    fn extending<S: PinnedExtend<A>>(self, inner: S) -> Extending<S, Self>;
-}
-
-impl<A, R: FusedStream<Item = A>> ExtendingExt<A> for R {
-    fn extending<S: PinnedExtend<A>>(self, inner: S) -> Extending<S, Self> {
+    fn extending<S: PinnedExtend<Self::Item>>(self, inner: S) -> Extending<S, Self> {
         Extending::new(self, inner)
     }
 }
+
+impl<R: FusedStream> ExtendingExt for R {}
 
 impl<S: Default, R> From<R> for Extending<S, R> {
     fn from(incoming: R) -> Self {
