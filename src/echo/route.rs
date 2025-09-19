@@ -22,12 +22,14 @@ use crate::{
 const OP_WAKE_SEND: usize = 0;
 const OP_COUNT: usize = 1;
 
+#[derive(Debug)]
 struct Connection<K, T> {
     key: K,
     send: Arc<ConnectionWaker>,
     msgs: VecDeque<T>,
 }
 
+#[derive(Debug)]
 #[pin_project]
 #[must_use = "futures must be awaited"]
 pub struct Echo<
