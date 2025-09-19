@@ -7,7 +7,7 @@ use crate::nodes::NodeId;
 
 type Nodes<T> = crate::nodes::Nodes<Node<T>>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum Side {
     L,
     R,
