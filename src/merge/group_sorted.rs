@@ -10,6 +10,7 @@ use pin_project::pin_project;
 use super::pair_item::{PairCategory, PairItem, PairStream, StreamPair};
 
 #[pin_project]
+#[derive(Debug)]
 pub struct GroupSorted<
     L,
     R,
