@@ -1,5 +1,3 @@
-//! See [`ruchei_route`].
-
 use std::hash::Hash;
 
 pub mod keyed;
