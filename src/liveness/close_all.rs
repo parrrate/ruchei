@@ -158,13 +158,11 @@ impl<Out, S: Sink<Out>, R: Stream<Item = S>> From<R> for CloseAll<R, Out> {
     }
 }
 
-pub trait CloseAllExt<Out>: Sized {
+pub trait CloseAllExt<Out>: Sized + Stream<Item: Sink<Out>> {
     #[must_use]
-    fn close_all(self) -> CloseAll<Self, Out>;
-}
-
-impl<Out, S: Sink<Out>, R: Stream<Item = S>> CloseAllExt<Out> for R {
     fn close_all(self) -> CloseAll<Self, Out> {
         self.into()
     }
 }
+
+impl<Out, S: Sink<Out>, R: Stream<Item = S>> CloseAllExt<Out> for R {}
