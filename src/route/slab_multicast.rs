@@ -42,7 +42,7 @@ pub struct Router<S, E = <S as TryStream>::Error> {
     flush: Ready,
     #[pin]
     close: Ready,
-    closed: VecDeque<(SlabKey, S, Option<E>)>,
+    closed: VecDeque<(RouteKey, S, Option<E>)>,
 }
 
 impl<S, E> Default for Router<S, E> {
@@ -66,7 +66,8 @@ impl<S, E> Router<S, E> {
         connection.ready.waker.wake();
         connection.flush.waker.wake();
         connection.close.waker.wake();
-        this.closed.push_back((key, connection.stream, error));
+        this.closed
+            .push_back((RouteKey(key), connection.stream, error));
         this.next.wake();
     }
 
@@ -195,7 +196,7 @@ impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Router<S, E> {
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.as_mut().project();
         if let Some((key, stream, error)) = this.closed.pop_front() {
-            return Poll::Ready(Some(MultiItem::Closed((RouteKey(key), stream), error)));
+            return Poll::Ready(Some(MultiItem::Closed((key, stream), error)));
         }
         this.next.register(cx);
         while let Some(key) = this.next.as_mut().next::<OP_WAKE_NEXT>(this.connections) {
