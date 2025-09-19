@@ -63,10 +63,10 @@ impl<S, E> Router<S, E> {
     fn remove(self: Pin<&mut Self>, key: SlabKey, error: Option<E>) {
         let this = self.project();
         let connection = this.connections.remove(key);
-        connection.next.waker.wake();
-        connection.ready.waker.wake();
-        connection.flush.waker.wake();
-        connection.close.waker.wake();
+        connection.next.wake();
+        connection.ready.wake();
+        connection.flush.wake();
+        connection.close.wake();
         this.closed
             .push_back((RouteKey(key), connection.stream, error));
         this.next.wake();

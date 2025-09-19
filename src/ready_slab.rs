@@ -106,7 +106,7 @@ impl Extend<SlabKey> for ReadyWeak {
 #[must_use]
 #[derive(Debug)]
 pub(crate) struct ConnectionWaker {
-    pub(crate) waker: AtomicWaker,
+    waker: AtomicWaker,
     ready: ReadyWeak,
     key: SlabKey,
 }
@@ -120,12 +120,20 @@ impl ConnectionWaker {
             key,
         })
     }
+
+    pub(crate) fn wake(&self) {
+        self.ready.insert(self.key);
+        self.waker.wake();
+    }
 }
 
 impl Wake for ConnectionWaker {
     fn wake(self: Arc<Self>) {
-        self.ready.insert(self.key);
-        self.waker.wake();
+        (*self).wake();
+    }
+
+    fn wake_by_ref(self: &Arc<Self>) {
+        (**self).wake();
     }
 }
 
