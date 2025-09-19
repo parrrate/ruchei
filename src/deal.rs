@@ -2,4 +2,4 @@
 //!
 //! [`Sink`]: futures_util::Sink
 
-pub mod slab;
+pub mod without_multicast;

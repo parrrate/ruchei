@@ -246,19 +246,19 @@ impl<S, E> PinnedExtend<S> for Dealer<S, E> {
     }
 }
 
-/// [`Sink`]/[`Stream`] Returned by [`DealerSlabExt::deal_slab`].
+/// [`Sink`]/[`Stream`] Returned by [`DealWithoutMulticast::deal_without_multicast`].
 pub type DealerExtending<R> = Extending<Dealer<<R as Stream>::Item>, R>;
 
 /// Extension trait to auto-extend a [`Dealer`] from a stream of connections.
-pub trait DealerSlabExt: Sized + FusedStream<Item: TryStream> {
+pub trait DealWithoutMulticast: Sized + FusedStream<Item: TryStream> {
     /// Extend the stream of connections (`self`) into a [`Dealer`].
     #[must_use]
-    fn deal_slab(self) -> DealerExtending<Self> {
+    fn deal_without_multicast(self) -> DealerExtending<Self> {
         Extending::new(self, Default::default())
     }
 }
 
-impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = S>> DealerSlabExt
+impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = S>> DealWithoutMulticast
     for R
 {
 }
