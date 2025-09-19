@@ -7,16 +7,16 @@ use futures_util::{
 };
 
 #[derive(Debug)]
-pub enum MultiItem<T, S, E> {
+pub enum MultiItem<S, T, E> {
     Item(T),
     Closed(S, Option<E>),
 }
 
 type Fut<R> = Ready<Option<Result<<R as MultiItemExt>::T, Infallible>>>;
 
-type Mi<R> = MultiItem<<R as MultiItemExt>::T, <R as MultiItemExt>::S, <R as MultiItemExt>::E>;
+type Mi<R> = MultiItem<<R as MultiItemExt>::S, <R as MultiItemExt>::T, <R as MultiItemExt>::E>;
 
-pub trait MultiItemExt: Sized + FusedStream<Item = MultiItem<Self::T, Self::S, Self::E>> {
+pub trait MultiItemExt: Sized + FusedStream<Item = MultiItem<Self::S, Self::T, Self::E>> {
     type T;
     type S;
     type E;
@@ -31,7 +31,7 @@ pub trait MultiItemExt: Sized + FusedStream<Item = MultiItem<Self::T, Self::S, S
     }
 }
 
-impl<T, S, E, R: FusedStream<Item = MultiItem<T, S, E>>> MultiItemExt for R {
+impl<T, S, E, R: FusedStream<Item = MultiItem<S, T, E>>> MultiItemExt for R {
     type T = T;
     type S = S;
     type E = E;

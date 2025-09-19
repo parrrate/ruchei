@@ -76,7 +76,7 @@ impl<K: Hash + Eq, S, E> Default for Router<K, S, E> {
 }
 
 impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Router<K, S, E> {
-    type Item = MultiItem<(K, In), (K, S), E>;
+    type Item = MultiItem<(K, S), (K, In), E>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();

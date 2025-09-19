@@ -464,7 +464,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
 impl<S: Unpin + TryStream<Error = E> + Sink<T, Error = E>, T: Clone, E> Stream
     for Multicast<S, T, E>
 {
-    type Item = MultiItem<S::Ok, S, E>;
+    type Item = MultiItem<S, S::Ok, E>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.next_flush.next.register(cx.waker());

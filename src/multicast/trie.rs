@@ -101,7 +101,7 @@ impl<S, E> Multicast<S, E> {
 impl<K: AsRef<[u8]>, O, E, S: Unpin + TryStream<Ok = SubRequest<K, O>, Error = E>> Stream
     for Multicast<S, E>
 {
-    type Item = MultiItem<O, S, E>;
+    type Item = MultiItem<S, O, E>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.as_mut().project();
