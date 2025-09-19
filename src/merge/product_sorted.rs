@@ -16,6 +16,7 @@ type Next<K, Lv, Rv> = Either<Option<(K, Lv)>, Option<(K, Rv)>>;
 type Last<K, Lv, Rv> = (K, Option<Yielded>, Option<Next<K, Lv, Rv>>);
 
 #[pin_project]
+#[derive(Debug)]
 pub struct ProductSorted<
     L,
     R,
