@@ -27,7 +27,7 @@ const OP_COUNT: usize = 6;
 
 /// [`Sink`]/[`Stream`] implemented over the stream of incoming [`Sink`]s/[`Stream`]s.
 #[pin_project]
-pub struct Dealer<S, E> {
+pub struct Dealer<S, E = <S as TryStream>::Error> {
     connections: LinkedSlab<Connection<S>, OP_COUNT>,
     #[pin]
     next: Ready,
@@ -243,28 +243,18 @@ impl<S, E> PinnedExtend<S> for Dealer<S, E> {
 }
 
 /// [`Sink`]/[`Stream`] Returned by [`DealerSlabExt::deal_slab`].
-pub type DealerExtending<R> =
-    Extending<Dealer<<R as DealerSlabExt>::S, <R as DealerSlabExt>::E>, R>;
+pub type DealerExtending<R> = Extending<Dealer<<R as Stream>::Item>, R>;
 
 /// Extension trait to auto-extend a [`Dealer`] from a stream of connections.
-pub trait DealerSlabExt: Sized {
-    /// Single [`Stream`]/[`Sink`].
-    type S;
-    /// Error.
-    type E;
-
+pub trait DealerSlabExt: Sized + FusedStream<Item: TryStream> {
     /// Extend the stream of connections (`self`) into a [`Dealer`].
     #[must_use]
-    fn deal_slab(self) -> DealerExtending<Self>;
+    fn deal_slab(self) -> DealerExtending<Self> {
+        Extending::new(self, Default::default())
+    }
 }
 
 impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = S>> DealerSlabExt
     for R
 {
-    type S = S;
-    type E = E;
-
-    fn deal_slab(self) -> DealerExtending<Self> {
-        Extending::new(self, Default::default())
-    }
 }
