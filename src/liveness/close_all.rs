@@ -14,9 +14,11 @@ use futures_util::{
 };
 use pin_project::pin_project;
 
+#[derive(Debug)]
 struct Closed;
 
 /// Yielded by [`CloseAll`]. Gets closed when incoming stream terminates.
+#[derive(Debug)]
 #[pin_project]
 pub struct CloseOne<S, Out> {
     #[pin]
@@ -111,6 +113,7 @@ impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>> Sink<O
 
 /// Closes all yielded streams ([`CloseOne`]s) on termination of incoming stream.
 #[pin_project]
+#[derive(Debug)]
 pub struct CloseAll<R, Out> {
     #[pin]
     stream: R,
