@@ -56,7 +56,7 @@ impl<Out, K, E, S: Sink<Out, Error = E>> Sink<Out> for One<K, S> {
     }
 }
 
-/// [`RouteSink`]/[`Stream`] implemented over the stream of incoming [`Sink`]s/[`Stream`]s.
+/// [`ReadyRoute`]/[`Stream`] implemented over the stream of incoming [`Sink`]s/[`Stream`]s.
 #[pin_project]
 pub struct Router<K, S, E> {
     #[pin]
@@ -187,7 +187,7 @@ impl<K: Key, S, E> PinnedExtend<(K, S)> for Router<K, S, E> {
     }
 }
 
-/// [`RouteSink`]/[`Stream`] Returned by [`RouterKeyedExt::route_keyed`].
+/// [`ReadyRoute`]/[`Stream`] Returned by [`RouterKeyedExt::route_keyed`].
 pub type RouterExtending<R> = Extending<
     Router<<R as RouterKeyedExt>::K, <R as RouterKeyedExt>::S, <R as RouterKeyedExt>::E>,
     R,
