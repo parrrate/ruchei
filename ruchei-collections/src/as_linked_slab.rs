@@ -1,33 +1,45 @@
 use std::ops::{Index, IndexMut};
 
-pub trait AsLinkedSlab: Index<usize> + IndexMut<usize> {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SlabKey {
+    pub(crate) key: usize,
+    pub(crate) ctr: usize,
+}
+
+pub trait AsLinkedSlab: Index<SlabKey> + IndexMut<SlabKey> {
     const N: usize;
     type T;
 
-    fn front<const M: usize>(&self) -> Option<usize>;
+    fn front<const M: usize>(&self) -> Option<SlabKey>;
     fn link_empty<const M: usize>(&self) -> bool;
     fn link_len<const M: usize>(&self) -> usize;
-    fn link_contains<const M: usize>(&self, key: usize) -> bool;
-    fn link_push_back<const M: usize>(&mut self, key: usize) -> bool;
-    fn link_push_front<const M: usize>(&mut self, key: usize) -> bool;
-    fn link_pop_at<const M: usize>(&mut self, key: usize) -> bool;
-    fn link_pop_front<const M: usize>(&mut self) -> Option<usize>;
-    fn link_of<const M: usize>(&self, key: Option<usize>) -> (Option<usize>, Option<usize>);
-    fn link_insert_between<const M: usize>(&mut self, prev: usize, key: usize, next: usize);
-    fn insert(&mut self, value: Self::T) -> usize;
-    fn vacant_key(&mut self) -> usize;
-    fn try_remove(&mut self, key: usize) -> Option<Self::T>;
-    fn contains(&self, key: usize) -> bool;
-    fn get(&self, key: usize) -> Option<&Self::T>;
-    fn get_mut(&mut self, key: usize) -> Option<&mut Self::T>;
+    fn link_contains<const M: usize>(&self, key: SlabKey) -> bool;
+    fn link_push_back<const M: usize>(&mut self, key: SlabKey) -> bool;
+    fn link_push_front<const M: usize>(&mut self, key: SlabKey) -> bool;
+    fn link_pop_at<const M: usize>(&mut self, key: SlabKey) -> bool;
+    fn link_of<const M: usize>(&self, key: Option<SlabKey>) -> (Option<SlabKey>, Option<SlabKey>);
+    fn link_insert_between<const M: usize>(&mut self, prev: SlabKey, key: SlabKey, next: SlabKey);
+    fn insert(&mut self, value: Self::T) -> SlabKey;
+    fn vacant_key(&mut self) -> SlabKey;
+    fn try_remove(&mut self, key: SlabKey) -> Option<Self::T>;
+    fn contains(&self, key: SlabKey) -> bool;
+    fn get(&self, key: SlabKey) -> Option<&Self::T>;
+    fn get_mut(&mut self, key: SlabKey) -> Option<&mut Self::T>;
     fn is_empty(&self) -> bool;
     fn len(&self) -> usize;
 
+    fn link_pop_front<const M: usize>(&mut self) -> Option<SlabKey> {
+        let key = self.front::<M>()?;
+        let popped = self.link_pop_at::<M>(key);
+        assert!(popped, "key not linked");
+        Some(key)
+    }
+
     fn link_insert<const M: usize>(
         &mut self,
-        prev: Option<usize>,
-        key: usize,
-        next: Option<usize>,
+        prev: Option<SlabKey>,
+        key: SlabKey,
+        next: Option<SlabKey>,
     ) {
         match (prev, next) {
             (None, next) => {
@@ -46,18 +58,18 @@ pub trait AsLinkedSlab: Index<usize> + IndexMut<usize> {
         }
     }
 
-    fn get_refresh<const M: usize>(&mut self, key: usize) -> Option<&mut Self::T> {
+    fn get_refresh<const M: usize>(&mut self, key: SlabKey) -> Option<&mut Self::T> {
         assert!(M < Self::N);
         self.link_pop_at::<M>(key);
         self.link_push_back::<M>(key);
         self.get_mut(key)
     }
 
-    fn remove(&mut self, key: usize) -> Self::T {
+    fn remove(&mut self, key: SlabKey) -> Self::T {
         self.try_remove(key).expect("invalid key")
     }
 
-    fn link_pops<const M: usize, U, F: FnMut(usize, &mut Self) -> U>(
+    fn link_pops<const M: usize, U, F: FnMut(SlabKey, &mut Self) -> U>(
         &mut self,
         f: F,
     ) -> Pops<'_, Self, F, M> {
@@ -68,7 +80,7 @@ pub trait AsLinkedSlab: Index<usize> + IndexMut<usize> {
 
 pub struct Pops<'a, L: ?Sized, F, const M: usize>(&'a mut L, F);
 
-impl<L: AsLinkedSlab, U, F: FnMut(usize, &mut L) -> U, const M: usize> Iterator
+impl<L: AsLinkedSlab, U, F: FnMut(SlabKey, &mut L) -> U, const M: usize> Iterator
     for Pops<'_, L, F, M>
 {
     type Item = U;

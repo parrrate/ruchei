@@ -8,7 +8,10 @@ use std::{
 use futures_util::{Sink, SinkExt, Stream, TryStream, TryStreamExt, ready, stream::FusedStream};
 use pin_project::pin_project;
 use route_sink::{FlushRoute, ReadyRoute};
-use ruchei_collections::{as_linked_slab::AsLinkedSlab, linked_slab::LinkedSlab};
+use ruchei_collections::{
+    as_linked_slab::{AsLinkedSlab, SlabKey},
+    linked_slab::LinkedSlab,
+};
 
 use crate::{
     multi_item::MultiItem,
@@ -43,7 +46,7 @@ impl<S, E> Default for Router<S, E> {
 }
 
 impl<S, E> Router<S, E> {
-    fn remove(self: Pin<&mut Self>, key: usize, error: Option<E>) {
+    fn remove(self: Pin<&mut Self>, key: SlabKey, error: Option<E>) {
         let this = self.project();
         let connection = this.connections.remove(key);
         connection.next.waker.wake();
@@ -74,7 +77,7 @@ impl<S, E> Router<S, E> {
 }
 
 impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Router<S, E> {
-    type Item = MultiItem<S, (usize, In)>;
+    type Item = MultiItem<S, (SlabKey, In)>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.as_mut().project();
@@ -117,7 +120,7 @@ impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>> FusedStream for Router<S, 
     }
 }
 
-impl<Out, E, S: Unpin + Sink<Out, Error = E>> Sink<(usize, Out)> for Router<S, E> {
+impl<Out, E, S: Unpin + Sink<Out, Error = E>> Sink<(SlabKey, Out)> for Router<S, E> {
     type Error = Infallible;
 
     fn poll_ready(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -128,7 +131,7 @@ impl<Out, E, S: Unpin + Sink<Out, Error = E>> Sink<(usize, Out)> for Router<S, E
         Poll::Pending
     }
 
-    fn start_send(mut self: Pin<&mut Self>, (key, msg): (usize, Out)) -> Result<(), Self::Error> {
+    fn start_send(mut self: Pin<&mut Self>, (key, msg): (SlabKey, Out)) -> Result<(), Self::Error> {
         let this = self.as_mut().project();
         if let Some(connection) = this.connections.get_mut(key)
             && let Err(e) = connection.stream.start_send_unpin(msg)
@@ -166,10 +169,10 @@ impl<Out, E, S: Unpin + Sink<Out, Error = E>> Sink<(usize, Out)> for Router<S, E
     }
 }
 
-impl<Out, E, S: Unpin + Sink<Out, Error = E>> FlushRoute<usize, Out> for Router<S, E> {
+impl<Out, E, S: Unpin + Sink<Out, Error = E>> FlushRoute<SlabKey, Out> for Router<S, E> {
     fn poll_flush_route(
         mut self: Pin<&mut Self>,
-        key: &usize,
+        key: &SlabKey,
         cx: &mut Context<'_>,
     ) -> Poll<Result<(), Self::Error>> {
         let this = self.as_mut().project();
@@ -186,10 +189,10 @@ impl<Out, E, S: Unpin + Sink<Out, Error = E>> FlushRoute<usize, Out> for Router<
     }
 }
 
-impl<Out, E, S: Unpin + Sink<Out, Error = E>> ReadyRoute<usize, Out> for Router<S, E> {
+impl<Out, E, S: Unpin + Sink<Out, Error = E>> ReadyRoute<SlabKey, Out> for Router<S, E> {
     fn poll_ready_route(
         mut self: Pin<&mut Self>,
-        key: &usize,
+        key: &SlabKey,
         cx: &mut Context<'_>,
     ) -> Poll<Result<(), Self::Error>> {
         let this = self.as_mut().project();

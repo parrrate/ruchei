@@ -8,7 +8,10 @@ use std::{
 use futures_util::{Future, TryStream};
 use pin_project::pin_project;
 use route_sink::ReadyRoute;
-use ruchei_collections::{as_linked_slab::AsLinkedSlab, linked_slab::LinkedSlab};
+use ruchei_collections::{
+    as_linked_slab::{AsLinkedSlab, SlabKey},
+    linked_slab::LinkedSlab,
+};
 
 use crate::{
     merge::pair_item::PairItem,
@@ -35,13 +38,13 @@ pub struct Echo<
     #[pin]
     router: S,
     connections: LinkedSlab<Connection<K, T>, OP_COUNT>,
-    map: HashMap<K, usize>,
+    map: HashMap<K, SlabKey>,
     #[pin]
     send: Ready,
 }
 
 impl<K: Key, T, S> Echo<S, K, T> {
-    fn remove(self: Pin<&mut Self>, ix: usize) {
+    fn remove(self: Pin<&mut Self>, ix: SlabKey) {
         let this = self.project();
         let key = this.connections.remove(ix).key;
         assert_eq!(this.map.remove(&key).expect("unknown key"), ix);

@@ -6,7 +6,7 @@ use std::{
 use slab::Slab;
 
 use crate::{
-    as_linked_slab::AsLinkedSlab,
+    as_linked_slab::{AsLinkedSlab, SlabKey},
     linked_slab::LinkedSlab,
     multi_trie::{MultiTrie, MultiTrieAddOwned, MultiTrieAddRef, MultiTriePrefix},
     nodes::NodeId,
@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub struct LinkedSlabMultiTrie<T, const N: usize> {
-    keys: Trie<BTreeMap<usize, usize>>,
+    keys: Trie<BTreeMap<SlabKey, usize>>,
     collections: LinkedSlab<(T, Slab<NodeId>), N>,
 }
 
@@ -27,8 +27,8 @@ impl<T, const N: usize> Default for LinkedSlabMultiTrie<T, N> {
     }
 }
 
-impl<T, const N: usize> MultiTrie<usize> for LinkedSlabMultiTrie<T, N> {
-    fn mt_remove(&mut self, collection: &usize, key: &[u8]) {
+impl<T, const N: usize> MultiTrie<SlabKey> for LinkedSlabMultiTrie<T, N> {
+    fn mt_remove(&mut self, collection: &SlabKey, key: &[u8]) {
         let (_, slab) = self
             .collections
             .get_mut(*collection)
@@ -45,14 +45,14 @@ impl<T, const N: usize> MultiTrie<usize> for LinkedSlabMultiTrie<T, N> {
         }
     }
 
-    fn mt_contains(&self, collection: &usize, key: &[u8]) -> bool {
+    fn mt_contains(&self, collection: &SlabKey, key: &[u8]) -> bool {
         let Some((_, map)) = self.keys.get(key) else {
             return false;
         };
         map.contains_key(collection)
     }
 
-    fn mt_clear(&mut self, collection: &usize) {
+    fn mt_clear(&mut self, collection: &SlabKey) {
         let Some((_, slab)) = self.collections.get_mut(*collection) else {
             return;
         };
@@ -66,7 +66,7 @@ impl<T, const N: usize> MultiTrie<usize> for LinkedSlabMultiTrie<T, N> {
         }
     }
 
-    fn mt_is_empty(&self, collection: &usize) -> bool {
+    fn mt_is_empty(&self, collection: &SlabKey) -> bool {
         self.collections
             .get(*collection)
             .expect("SMT expects pre-made collections")
@@ -74,7 +74,7 @@ impl<T, const N: usize> MultiTrie<usize> for LinkedSlabMultiTrie<T, N> {
             .is_empty()
     }
 
-    fn mt_len(&self, collection: &usize) -> usize {
+    fn mt_len(&self, collection: &SlabKey) -> usize {
         self.collections
             .get(*collection)
             .expect("SMT expects pre-made collections")
@@ -83,14 +83,14 @@ impl<T, const N: usize> MultiTrie<usize> for LinkedSlabMultiTrie<T, N> {
     }
 }
 
-impl<T, const N: usize> MultiTrieAddRef<usize> for LinkedSlabMultiTrie<T, N> {
-    fn mt_add_ref(&mut self, collection: &usize, key: &[u8]) {
+impl<T, const N: usize> MultiTrieAddRef<SlabKey> for LinkedSlabMultiTrie<T, N> {
+    fn mt_add_ref(&mut self, collection: &SlabKey, key: &[u8]) {
         self.mt_add_owned(*collection, key);
     }
 }
 
-impl<T, const N: usize> MultiTrieAddOwned<usize> for LinkedSlabMultiTrie<T, N> {
-    fn mt_add_owned(&mut self, collection: usize, key: &[u8]) {
+impl<T, const N: usize> MultiTrieAddOwned<SlabKey> for LinkedSlabMultiTrie<T, N> {
+    fn mt_add_owned(&mut self, collection: SlabKey, key: &[u8]) {
         if self.keys.get(key).is_none() {
             self.keys.insert(key, BTreeMap::new());
         }
@@ -104,7 +104,7 @@ impl<T, const N: usize> MultiTrieAddOwned<usize> for LinkedSlabMultiTrie<T, N> {
 }
 
 impl<T, const N: usize> MultiTriePrefix for LinkedSlabMultiTrie<T, N> {
-    type Collection = usize;
+    type Collection = SlabKey;
 
     fn mt_prefix_collect<'a>(
         &'a self,
@@ -121,7 +121,7 @@ impl<T, const N: usize> AsLinkedSlab for LinkedSlabMultiTrie<T, N> {
     const N: usize = N;
     type T = T;
 
-    fn front<const M: usize>(&self) -> Option<usize> {
+    fn front<const M: usize>(&self) -> Option<SlabKey> {
         self.collections.front::<M>()
     }
 
@@ -133,48 +133,44 @@ impl<T, const N: usize> AsLinkedSlab for LinkedSlabMultiTrie<T, N> {
         self.collections.link_len::<M>()
     }
 
-    fn link_contains<const M: usize>(&self, key: usize) -> bool {
+    fn link_contains<const M: usize>(&self, key: SlabKey) -> bool {
         self.collections.link_contains::<M>(key)
     }
 
-    fn link_push_back<const M: usize>(&mut self, key: usize) -> bool {
+    fn link_push_back<const M: usize>(&mut self, key: SlabKey) -> bool {
         self.collections.link_push_back::<M>(key)
     }
 
-    fn link_push_front<const M: usize>(&mut self, key: usize) -> bool {
+    fn link_push_front<const M: usize>(&mut self, key: SlabKey) -> bool {
         self.collections.link_push_front::<M>(key)
     }
 
-    fn link_pop_at<const M: usize>(&mut self, key: usize) -> bool {
+    fn link_pop_at<const M: usize>(&mut self, key: SlabKey) -> bool {
         self.collections.link_pop_at::<M>(key)
     }
 
-    fn link_pop_front<const M: usize>(&mut self) -> Option<usize> {
-        self.collections.link_pop_front::<M>()
-    }
-
-    fn link_of<const M: usize>(&self, key: Option<usize>) -> (Option<usize>, Option<usize>) {
+    fn link_of<const M: usize>(&self, key: Option<SlabKey>) -> (Option<SlabKey>, Option<SlabKey>) {
         self.collections.link_of::<M>(key)
     }
 
-    fn link_insert_between<const M: usize>(&mut self, prev: usize, key: usize, next: usize) {
+    fn link_insert_between<const M: usize>(&mut self, prev: SlabKey, key: SlabKey, next: SlabKey) {
         self.collections.link_insert_between::<M>(prev, key, next);
     }
 
-    fn insert(&mut self, value: Self::T) -> usize {
+    fn insert(&mut self, value: Self::T) -> SlabKey {
         self.collections.insert((value, Slab::new()))
     }
 
-    fn vacant_key(&mut self) -> usize {
+    fn vacant_key(&mut self) -> SlabKey {
         self.collections.vacant_key()
     }
 
-    fn remove(&mut self, key: usize) -> Self::T {
+    fn remove(&mut self, key: SlabKey) -> Self::T {
         self.mt_clear(&key);
         self.collections.remove(key).0
     }
 
-    fn try_remove(&mut self, key: usize) -> Option<Self::T> {
+    fn try_remove(&mut self, key: SlabKey) -> Option<Self::T> {
         if self.collections.get(key).is_some() {
             Some(self.remove(key))
         } else {
@@ -182,15 +178,15 @@ impl<T, const N: usize> AsLinkedSlab for LinkedSlabMultiTrie<T, N> {
         }
     }
 
-    fn contains(&self, key: usize) -> bool {
+    fn contains(&self, key: SlabKey) -> bool {
         self.collections.contains(key)
     }
 
-    fn get(&self, key: usize) -> Option<&Self::T> {
+    fn get(&self, key: SlabKey) -> Option<&Self::T> {
         Some(&self.collections.get(key)?.0)
     }
 
-    fn get_mut(&mut self, key: usize) -> Option<&mut Self::T> {
+    fn get_mut(&mut self, key: SlabKey) -> Option<&mut Self::T> {
         Some(&mut self.collections.get_mut(key)?.0)
     }
 
@@ -203,17 +199,17 @@ impl<T, const N: usize> AsLinkedSlab for LinkedSlabMultiTrie<T, N> {
     }
 }
 
-impl<T, const N: usize> Index<usize> for LinkedSlabMultiTrie<T, N> {
+impl<T, const N: usize> Index<SlabKey> for LinkedSlabMultiTrie<T, N> {
     type Output = T;
 
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.collections[index].0
+    fn index(&self, key: SlabKey) -> &Self::Output {
+        &self.collections[key].0
     }
 }
 
-impl<T, const N: usize> IndexMut<usize> for LinkedSlabMultiTrie<T, N> {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.collections[index].0
+impl<T, const N: usize> IndexMut<SlabKey> for LinkedSlabMultiTrie<T, N> {
+    fn index_mut(&mut self, key: SlabKey) -> &mut Self::Output {
+        &mut self.collections[key].0
     }
 }
 

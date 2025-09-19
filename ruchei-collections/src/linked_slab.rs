@@ -2,7 +2,7 @@ use std::ops::{Index, IndexMut};
 
 use slab::Slab;
 
-use crate::as_linked_slab::AsLinkedSlab;
+use crate::as_linked_slab::{AsLinkedSlab, SlabKey};
 
 #[derive(Debug, PartialEq, Eq)]
 struct Link {
@@ -31,14 +31,16 @@ impl Link {
 
 #[derive(Debug)]
 struct Value<T, const N: usize> {
+    ctr: usize,
     value: T,
     links: [Option<Link>; N],
 }
 
 impl<T, const N: usize> Value<T, N> {
-    fn new(value: T) -> Self {
+    fn new(ctr: usize, value: T) -> Self {
         const NO_LINK: Option<Link> = None;
         Self {
+            ctr,
             value,
             links: [NO_LINK; N],
         }
@@ -47,6 +49,7 @@ impl<T, const N: usize> Value<T, N> {
 
 #[derive(Debug)]
 pub struct LinkedSlab<T, const N: usize> {
+    ctr: usize,
     slab: Slab<Value<T, N>>,
     links: [Link; N],
     lens: [usize; N],
@@ -54,18 +57,19 @@ pub struct LinkedSlab<T, const N: usize> {
 
 impl<T, const N: usize> Default for LinkedSlab<T, N> {
     fn default() -> Self {
-        Self {
-            slab: Default::default(),
-            links: [Link::EMPTY; N],
-            lens: [0; N],
-        }
+        Self::new()
     }
 }
 
 impl<T, const N: usize> LinkedSlab<T, N> {
     #[must_use]
-    pub fn new() -> Self {
-        Self::default()
+    pub const fn new() -> Self {
+        Self {
+            ctr: 0,
+            slab: Slab::new(),
+            links: [Link::EMPTY; N],
+            lens: [0; N],
+        }
     }
 
     fn prev_next(&mut self, n: usize, prev: usize, next: usize) -> (&mut usize, &mut usize) {
@@ -115,9 +119,11 @@ impl<T, const N: usize> LinkedSlab<T, N> {
         *next_prev = link.prev;
     }
 
-    fn linkable<const M: usize>(&self, key: usize) -> bool {
+    fn linkable<const M: usize>(&self, SlabKey { key, ctr }: SlabKey) -> bool {
         assert!(M < N);
-        if let Some(value) = self.slab.get(key) {
+        if let Some(value) = self.slab.get(key)
+            && value.ctr == ctr
+        {
             value.links[M].is_none()
         } else {
             false
@@ -141,15 +147,28 @@ impl<T, const N: usize> LinkedSlab<T, N> {
         let next = (next != EMPTY).then_some(next);
         (prev, next)
     }
+
+    fn slab_key(&self, key: usize) -> SlabKey {
+        SlabKey {
+            key,
+            ctr: self.slab[key].ctr,
+        }
+    }
+
+    fn key(&self, key: SlabKey) -> usize {
+        assert_eq!(self.slab[key.key].ctr, key.ctr);
+        key.key
+    }
 }
 
 impl<T, const N: usize> AsLinkedSlab for LinkedSlab<T, N> {
     const N: usize = N;
     type T = T;
 
-    fn front<const M: usize>(&self) -> Option<usize> {
+    fn front<const M: usize>(&self) -> Option<SlabKey> {
         assert!(M < N);
         let (_, next) = self.link::<M>()?;
+        let next = self.slab_key(next);
         Some(next)
     }
 
@@ -163,20 +182,23 @@ impl<T, const N: usize> AsLinkedSlab for LinkedSlab<T, N> {
         self.lens[M]
     }
 
-    fn link_contains<const M: usize>(&self, key: usize) -> bool {
+    fn link_contains<const M: usize>(&self, SlabKey { key, ctr }: SlabKey) -> bool {
         assert!(M < N);
-        if let Some(value) = self.slab.get(key) {
+        if let Some(value) = self.slab.get(key)
+            && value.ctr == ctr
+        {
             value.links[M].is_some()
         } else {
             false
         }
     }
 
-    fn link_push_back<const M: usize>(&mut self, key: usize) -> bool {
+    fn link_push_back<const M: usize>(&mut self, key: SlabKey) -> bool {
         assert!(M < N);
         if !self.linkable::<M>(key) {
             return false;
         }
+        let key = self.key(key);
         assert!(self.lens[M] < self.len());
         let link = match self.link::<M>() {
             None => {
@@ -201,11 +223,12 @@ impl<T, const N: usize> AsLinkedSlab for LinkedSlab<T, N> {
         true
     }
 
-    fn link_push_front<const M: usize>(&mut self, key: usize) -> bool {
+    fn link_push_front<const M: usize>(&mut self, key: SlabKey) -> bool {
         assert!(M < N);
         if !self.linkable::<M>(key) {
             return false;
         }
+        let key = self.key(key);
         assert!(self.lens[M] < self.len());
         let link = match self.link::<M>() {
             None => {
@@ -230,8 +253,9 @@ impl<T, const N: usize> AsLinkedSlab for LinkedSlab<T, N> {
         true
     }
 
-    fn link_pop_at<const M: usize>(&mut self, key: usize) -> bool {
+    fn link_pop_at<const M: usize>(&mut self, key: SlabKey) -> bool {
         assert!(M < N);
+        let key = self.key(key);
         if let Some(link) = self.slab.get_mut(key).expect("key not found").links[M].take() {
             self.unlink(link, M, key);
             true
@@ -240,28 +264,31 @@ impl<T, const N: usize> AsLinkedSlab for LinkedSlab<T, N> {
         }
     }
 
-    fn link_pop_front<const M: usize>(&mut self) -> Option<usize> {
-        assert!(M < N);
-        let key = self.front::<M>()?;
-        let popped = self.link_pop_at::<M>(key);
-        assert!(popped, "key not linked");
-        Some(key)
-    }
-
-    fn link_of<const M: usize>(&self, key: Option<usize>) -> (Option<usize>, Option<usize>) {
+    fn link_of<const M: usize>(&self, key: Option<SlabKey>) -> (Option<SlabKey>, Option<SlabKey>) {
         match key {
-            Some(key) => self.item_link::<M>(key),
+            Some(key) => {
+                assert_eq!(self.slab[key.key].ctr, key.ctr);
+                let (prev, next) = self.item_link::<M>(key.key);
+                let prev = prev.map(|prev| self.slab_key(prev));
+                let next = next.map(|next| self.slab_key(next));
+                (prev, next)
+            }
             None => {
                 let Some((prev, next)) = self.link::<M>() else {
                     return (None, None);
                 };
+                let prev = self.slab_key(prev);
+                let next = self.slab_key(next);
                 (Some(prev), Some(next))
             }
         }
     }
 
-    fn link_insert_between<const M: usize>(&mut self, prev: usize, key: usize, next: usize) {
-        assert!(self.slab[key].links[M].is_none(), "already linked");
+    fn link_insert_between<const M: usize>(&mut self, prev: SlabKey, key: SlabKey, next: SlabKey) {
+        assert!(self.slab[key.key].links[M].is_none(), "already linked");
+        let prev = self.key(prev);
+        let key = self.key(key);
+        let next = self.key(next);
         let (prev_next, next_prev) = self.prev_next(M, prev, next);
         *prev_next = key;
         *next_prev = key;
@@ -269,34 +296,58 @@ impl<T, const N: usize> AsLinkedSlab for LinkedSlab<T, N> {
         self.lens[M] += 1;
     }
 
-    fn insert(&mut self, value: Self::T) -> usize {
-        self.slab.insert(Value::new(value))
+    fn insert(&mut self, value: Self::T) -> SlabKey {
+        let ctr = self.ctr;
+        let key = self.slab.insert(Value::new(ctr, value));
+        self.ctr += 1;
+        SlabKey { key, ctr }
     }
 
-    fn vacant_key(&mut self) -> usize {
-        self.slab.vacant_key()
+    fn vacant_key(&mut self) -> SlabKey {
+        let key = self.slab.vacant_key();
+        let ctr = self.ctr;
+        SlabKey { key, ctr }
     }
 
-    fn try_remove(&mut self, key: usize) -> Option<Self::T> {
-        let value = self.slab.try_remove(key)?;
+    fn try_remove(&mut self, key: SlabKey) -> Option<Self::T> {
+        if self
+            .slab
+            .get(key.key)
+            .is_some_and(|value| value.ctr != key.ctr)
+        {
+            return None;
+        }
+        let value = self.slab.try_remove(key.key)?;
         for (n, link) in value.links.into_iter().enumerate() {
             if let Some(link) = link {
-                self.unlink(link, n, key);
+                self.unlink(link, n, key.key);
             }
         }
         Some(value.value)
     }
 
-    fn contains(&self, key: usize) -> bool {
-        self.slab.contains(key)
+    fn contains(&self, key: SlabKey) -> bool {
+        self.slab
+            .get(key.key)
+            .is_some_and(|value| value.ctr == key.ctr)
     }
 
-    fn get(&self, key: usize) -> Option<&Self::T> {
-        Some(&self.slab.get(key)?.value)
+    fn get(&self, key: SlabKey) -> Option<&Self::T> {
+        let value = self.slab.get(key.key)?;
+        if value.ctr == key.ctr {
+            Some(&value.value)
+        } else {
+            None
+        }
     }
 
-    fn get_mut(&mut self, key: usize) -> Option<&mut Self::T> {
-        Some(&mut self.slab.get_mut(key)?.value)
+    fn get_mut(&mut self, key: SlabKey) -> Option<&mut Self::T> {
+        let value = self.slab.get_mut(key.key)?;
+        if value.ctr == key.ctr {
+            Some(&mut value.value)
+        } else {
+            None
+        }
     }
 
     fn is_empty(&self) -> bool {
@@ -308,17 +359,19 @@ impl<T, const N: usize> AsLinkedSlab for LinkedSlab<T, N> {
     }
 }
 
-impl<T, const N: usize> Index<usize> for LinkedSlab<T, N> {
+impl<T, const N: usize> Index<SlabKey> for LinkedSlab<T, N> {
     type Output = T;
 
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.slab[index].value
+    fn index(&self, key: SlabKey) -> &Self::Output {
+        let key = self.key(key);
+        &self.slab[key].value
     }
 }
 
-impl<T, const N: usize> IndexMut<usize> for LinkedSlab<T, N> {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.slab[index].value
+impl<T, const N: usize> IndexMut<SlabKey> for LinkedSlab<T, N> {
+    fn index_mut(&mut self, key: SlabKey) -> &mut Self::Output {
+        let key = self.key(key);
+        &mut self.slab[key].value
     }
 }
 

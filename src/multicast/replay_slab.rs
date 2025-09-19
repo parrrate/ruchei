@@ -10,7 +10,10 @@ use futures_util::{
     Sink, SinkExt, Stream, TryStream, TryStreamExt, ready, stream::FusedStream, task::AtomicWaker,
 };
 use pin_project::pin_project;
-use ruchei_collections::{as_linked_slab::AsLinkedSlab, linked_slab::LinkedSlab};
+use ruchei_collections::{
+    as_linked_slab::{AsLinkedSlab, SlabKey},
+    linked_slab::LinkedSlab,
+};
 
 use crate::{
     multi_item::MultiItem,
@@ -89,7 +92,7 @@ impl<S, T, E> Default for Multicast<S, T, E> {
 }
 
 impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
-    fn remove(self: Pin<&mut Self>, key: usize, error: Option<E>) {
+    fn remove(self: Pin<&mut Self>, key: SlabKey, error: Option<E>) {
         let this = self.project();
         let connection = this.connections.remove(key);
         connection.next.waker.wake();
@@ -130,7 +133,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
         }
     }
 
-    fn start_flush_one(self: Pin<&mut Self>, key: usize) {
+    fn start_flush_one(self: Pin<&mut Self>, key: SlabKey) {
         let this = self.project();
         assert!(this.connections.link_contains::<OP_IS_NOT_BEHIND>(key));
         assert!(this.connections[key].sent == this.items.len());
@@ -143,7 +146,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
     /// wait until `sent` reaches `items.len()`
     fn poll_send_one(
         mut self: Pin<&mut Self>,
-        key: usize,
+        key: SlabKey,
         cx: &mut Context<'_>,
     ) -> Poll<Result<(), S::Error>> {
         let this = self.as_mut().project();
@@ -172,7 +175,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
     /// wait until `flushed` reaches `flush_target`
     fn poll_flush_one(
         self: Pin<&mut Self>,
-        key: usize,
+        key: SlabKey,
         cx: &mut Context<'_>,
     ) -> Poll<Result<(), S::Error>> {
         let this = self.project();

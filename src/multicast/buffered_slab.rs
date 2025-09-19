@@ -11,7 +11,10 @@ use futures_util::{
     Sink, SinkExt, Stream, TryStream, TryStreamExt, ready, stream::FusedStream, task::AtomicWaker,
 };
 use pin_project::pin_project;
-use ruchei_collections::{as_linked_slab::AsLinkedSlab, linked_slab::LinkedSlab};
+use ruchei_collections::{
+    as_linked_slab::{AsLinkedSlab, SlabKey},
+    linked_slab::LinkedSlab,
+};
 
 use crate::{
     multi_item::MultiItem,
@@ -60,7 +63,7 @@ impl Wake for NextFlush {
 
 struct Item<T> {
     item: T,
-    first: Option<usize>,
+    first: Option<SlabKey>,
 }
 
 struct Items<T> {
@@ -82,7 +85,7 @@ impl<T> Items<T> {
         self.items.len() + self.offset
     }
 
-    fn push(&mut self, item: T, first: Option<usize>) {
+    fn push(&mut self, item: T, first: Option<SlabKey>) {
         self.items.push_back(Item { item, first });
     }
 }
@@ -107,7 +110,7 @@ pub struct Multicast<S, T, E = <S as TryStream>::Error> {
     #[pin]
     close: Ready,
     items: Items<T>,
-    first_sent_all: Option<usize>,
+    first_sent_all: Option<SlabKey>,
     flush_target: usize,
     next_flush: Arc<NextFlush>,
     closed: VecDeque<(S, Option<E>)>,
@@ -131,7 +134,7 @@ impl<S, T, E> Default for Multicast<S, T, E> {
 }
 
 impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
-    fn first_for(self: Pin<&mut Self>, sent: usize) -> &mut Option<usize> {
+    fn first_for(self: Pin<&mut Self>, sent: usize) -> &mut Option<SlabKey> {
         let this = self.project();
         if sent == this.items.len() {
             this.first_sent_all
@@ -142,9 +145,9 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
 
     fn uncount_first(
         mut self: Pin<&mut Self>,
-        key: usize,
+        key: SlabKey,
         sent: usize,
-    ) -> (Option<usize>, Option<usize>) {
+    ) -> (Option<SlabKey>, Option<SlabKey>) {
         let mut this = self.as_mut().project();
         assert!(this.connections.link_contains::<OP_SENT_FIRST>(key));
         assert_eq!(this.connections[key].sent, sent);
@@ -169,9 +172,9 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
 
     fn uncount_non_first(
         mut self: Pin<&mut Self>,
-        key: usize,
+        key: SlabKey,
         sent: usize,
-    ) -> (usize, Option<usize>) {
+    ) -> (SlabKey, Option<SlabKey>) {
         let mut this = self.as_mut().project();
         assert!(!this.connections.link_contains::<OP_SENT_FIRST>(key));
         assert_eq!(this.connections[key].sent, sent);
@@ -190,9 +193,9 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
 
     fn uncount(
         mut self: Pin<&mut Self>,
-        key: usize,
+        key: SlabKey,
         sent: usize,
-    ) -> (Option<usize>, Option<usize>) {
+    ) -> (Option<SlabKey>, Option<SlabKey>) {
         let mut this = self.as_mut().project();
         assert_eq!(this.connections[key].sent, sent);
         let (prev, next) = if this.connections.link_contains::<OP_SENT_FIRST>(key) {
@@ -223,9 +226,9 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
 
     fn count(
         mut self: Pin<&mut Self>,
-        prev: Option<usize>,
-        next: Option<usize>,
-        key: usize,
+        prev: Option<SlabKey>,
+        next: Option<SlabKey>,
+        key: SlabKey,
         sent: usize,
     ) {
         let mut this = self.as_mut().project();
@@ -278,7 +281,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
         }
     }
 
-    fn increment_sent(mut self: Pin<&mut Self>, key: usize, sent: usize) {
+    fn increment_sent(mut self: Pin<&mut Self>, key: SlabKey, sent: usize) {
         let (prev, next) = self.as_mut().uncount(key, sent);
         let this = self.as_mut().project();
         this.connections[key].sent += 1;
@@ -286,7 +289,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
         self.count(prev, next, key, sent);
     }
 
-    fn remove(mut self: Pin<&mut Self>, key: usize, error: Option<E>) {
+    fn remove(mut self: Pin<&mut Self>, key: SlabKey, error: Option<E>) {
         let mut this = self.as_mut().project();
         if this.connections.link_contains::<OP_SENT_FIRST>(key) {
             let sent = this.connections[key].sent;
@@ -333,7 +336,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
         }
     }
 
-    fn start_flush_one(self: Pin<&mut Self>, key: usize) {
+    fn start_flush_one(self: Pin<&mut Self>, key: SlabKey) {
         let this = self.project();
         assert!(this.connections[key].sent == this.items.len());
         assert!(this.connections.link_contains::<OP_IS_S_PRE_F>(key));
@@ -345,7 +348,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
     /// wait until `sent` reaches `items.len()`
     fn poll_send_one(
         mut self: Pin<&mut Self>,
-        key: usize,
+        key: SlabKey,
         cx: &mut Context<'_>,
     ) -> Poll<Result<(), S::Error>> {
         let mut this = self.as_mut().project();
@@ -374,7 +377,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
     /// wait until `flushed` reaches `flush_target`
     fn poll_flush_one(
         self: Pin<&mut Self>,
-        key: usize,
+        key: SlabKey,
         cx: &mut Context<'_>,
     ) -> Poll<Result<(), S::Error>> {
         let this = self.project();

@@ -9,7 +9,7 @@ use std::{
 use futures_util::{Sink, SinkExt, Stream, TryStream, TryStreamExt, stream::FusedStream};
 use pin_project::pin_project;
 use ruchei_collections::{
-    as_linked_slab::AsLinkedSlab,
+    as_linked_slab::{AsLinkedSlab, SlabKey},
     linked_slab_multi_trie::LinkedSlabMultiTrie,
     multi_trie::{MultiTrie, MultiTrieAddOwned, MultiTriePrefix},
 };
@@ -63,7 +63,7 @@ impl<S, E> Default for Multicast<S, E> {
 }
 
 impl<S, E> Multicast<S, E> {
-    fn remove(self: Pin<&mut Self>, key: usize, error: Option<E>) {
+    fn remove(self: Pin<&mut Self>, key: SlabKey, error: Option<E>) {
         let this = self.project();
         let connection = this.connections.remove(key);
         connection.next.waker.wake();
@@ -199,7 +199,7 @@ impl<K: Clone + AsRef<[u8]>, O: Clone, E, S: Unpin + Sink<(K, O), Error = E>> Si
             .mt_prefix_collect(msg.0.as_ref())
             .into_iter()
             .map(|item| *item.borrow())
-            .collect::<Vec<usize>>();
+            .collect::<Vec<_>>();
         for key in keys {
             if this.connections.link_pop_at::<OP_IS_READIED>(key)
                 && let Some(connection) = this.connections.get_mut(key)

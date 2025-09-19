@@ -7,7 +7,7 @@ use std::{
 use futures_channel::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
 use futures_util::{Stream, task::AtomicWaker};
 use pin_project::pin_project;
-use ruchei_collections::as_linked_slab::AsLinkedSlab;
+use ruchei_collections::as_linked_slab::{AsLinkedSlab, SlabKey};
 
 #[derive(Default)]
 struct SlabWaker {
@@ -27,8 +27,8 @@ impl Wake for SlabWaker {
 #[must_use]
 #[pin_project]
 pub(crate) struct Ready(
-    UnboundedSender<usize>,
-    #[pin] UnboundedReceiver<usize>,
+    UnboundedSender<SlabKey>,
+    #[pin] UnboundedReceiver<SlabKey>,
     Arc<SlabWaker>,
     Waker,
 );
@@ -44,7 +44,7 @@ impl Default for Ready {
 
 #[must_use]
 #[derive(Default)]
-pub(crate) struct ReadyWeak(Option<UnboundedSender<usize>>);
+pub(crate) struct ReadyWeak(Option<UnboundedSender<SlabKey>>);
 
 impl Ready {
     pub(crate) fn downgrade(&self) -> ReadyWeak {
@@ -68,7 +68,7 @@ impl Ready {
     pub(crate) fn next<const M: usize>(
         self: Pin<&mut Self>,
         slab: &mut impl AsLinkedSlab,
-    ) -> Option<usize> {
+    ) -> Option<SlabKey> {
         self.compact::<M>(slab);
         slab.link_pop_front::<M>()
     }
@@ -79,15 +79,15 @@ impl Ready {
 }
 
 impl ReadyWeak {
-    pub(crate) fn insert(&self, key: usize) {
+    pub(crate) fn insert(&self, key: SlabKey) {
         if let Some(sender) = self.0.as_ref() {
             let _ = sender.unbounded_send(key);
         }
     }
 }
 
-impl Extend<usize> for ReadyWeak {
-    fn extend<T: IntoIterator<Item = usize>>(&mut self, iter: T) {
+impl Extend<SlabKey> for ReadyWeak {
+    fn extend<T: IntoIterator<Item = SlabKey>>(&mut self, iter: T) {
         for key in iter {
             self.insert(key);
         }
@@ -98,12 +98,12 @@ impl Extend<usize> for ReadyWeak {
 pub(crate) struct ConnectionWaker {
     pub(crate) waker: AtomicWaker,
     ready: ReadyWeak,
-    key: usize,
+    key: SlabKey,
 }
 
 impl ConnectionWaker {
     #[must_use]
-    pub(crate) fn new(key: usize, ready: ReadyWeak) -> Arc<Self> {
+    pub(crate) fn new(key: SlabKey, ready: ReadyWeak) -> Arc<Self> {
         Arc::new(Self {
             waker: Default::default(),
             ready,

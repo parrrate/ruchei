@@ -9,6 +9,7 @@ use futures_util::{Sink, Stream, TryStream, ready, stream::FusedStream};
 use linked_hash_map::LinkedHashMap;
 use pin_project::pin_project;
 use route_sink::{FlushRoute, ReadyRoute};
+use ruchei_collections::as_linked_slab::SlabKey;
 
 use crate::{
     multi_item::MultiItem,
@@ -61,7 +62,7 @@ impl<Out, K, E, S: Sink<Out, Error = E>> Sink<Out> for One<K, S> {
 pub struct Router<K, S, E = <S as TryStream>::Error> {
     #[pin]
     router: super::slab::Router<One<K, S>, E>,
-    routes: LinkedHashMap<K, LinkedHashMap<usize, usize>>,
+    routes: LinkedHashMap<K, LinkedHashMap<usize, SlabKey>>,
     ctr: usize,
 }
 

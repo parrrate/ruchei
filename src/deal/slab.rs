@@ -9,7 +9,10 @@ use futures_util::{
     Sink, SinkExt, Stream, TryStream, TryStreamExt, ready, stream::FusedStream, task::AtomicWaker,
 };
 use pin_project::pin_project;
-use ruchei_collections::{as_linked_slab::AsLinkedSlab, linked_slab::LinkedSlab};
+use ruchei_collections::{
+    as_linked_slab::{AsLinkedSlab, SlabKey},
+    linked_slab::LinkedSlab,
+};
 
 use crate::{
     multi_item::MultiItem,
@@ -53,7 +56,7 @@ impl<S, E> Default for Dealer<S, E> {
 }
 
 impl<S, E> Dealer<S, E> {
-    fn remove(self: Pin<&mut Self>, key: usize, error: Option<E>) {
+    fn remove(self: Pin<&mut Self>, key: SlabKey, error: Option<E>) {
         let this = self.project();
         let connection = this.connections.remove(key);
         connection.next.waker.wake();
