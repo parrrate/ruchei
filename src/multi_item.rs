@@ -1,13 +1,13 @@
 use std::convert::Infallible;
 
 use futures_util::{
-    StreamExt,
+    StreamExt, TryStream,
     future::{Ready, ready},
     stream::{FilterMap, FusedStream},
 };
 
 #[derive(Debug)]
-pub enum MultiItem<S, T, E> {
+pub enum MultiItem<S, T = <S as TryStream>::Ok, E = <S as TryStream>::Error> {
     Item(T),
     Closed(S, Option<E>),
 }

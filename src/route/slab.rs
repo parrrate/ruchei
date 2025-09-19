@@ -74,7 +74,7 @@ impl<S, E> Router<S, E> {
 }
 
 impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Router<S, E> {
-    type Item = MultiItem<S, (usize, In), E>;
+    type Item = MultiItem<S, (usize, In)>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.as_mut().project();

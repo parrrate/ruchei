@@ -89,7 +89,7 @@ impl<S, E> Dealer<S, E> {
 }
 
 impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Dealer<S, E> {
-    type Item = MultiItem<S, In, E>;
+    type Item = MultiItem<S>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.as_mut().project();
