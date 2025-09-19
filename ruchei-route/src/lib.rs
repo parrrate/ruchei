@@ -239,6 +239,7 @@ impl<Route, Msg, E, T: ?Sized + Sink<(Route, Msg), Error = E>> RouteSink<Route, 
 }
 
 /// [`Sink`] for [`RouteSink`] and a specific route.
+#[derive(Debug)]
 pub struct WithRoute<'a, T: ?Sized, Route> {
     route_sink: Pin<&'a mut T>,
     route: Route,
