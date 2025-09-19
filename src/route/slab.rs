@@ -14,7 +14,7 @@ use ruchei_collections::{
 };
 
 use crate::{
-    multi_item::MultiItem,
+    multi_item::{MultiItem, MultiRouteItem},
     pinned_extend::{Extending, PinnedExtend},
     ready_slab::{Connection, ConnectionWaker, Ready},
 };
@@ -31,7 +31,7 @@ pub struct Router<S, E = <S as TryStream>::Error> {
     next: Ready,
     #[pin]
     close: Ready,
-    closed: VecDeque<(S, Option<E>)>,
+    closed: VecDeque<(SlabKey, S, Option<E>)>,
 }
 
 impl<S, E> Default for Router<S, E> {
@@ -53,7 +53,7 @@ impl<S, E> Router<S, E> {
         connection.ready.waker.wake();
         connection.flush.waker.wake();
         connection.close.waker.wake();
-        this.closed.push_back((connection.stream, error));
+        this.closed.push_back((key, connection.stream, error));
         this.next.wake();
     }
 
@@ -77,12 +77,12 @@ impl<S, E> Router<S, E> {
 }
 
 impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Router<S, E> {
-    type Item = MultiItem<S, (SlabKey, In)>;
+    type Item = MultiRouteItem<SlabKey, S>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.as_mut().project();
-        if let Some((stream, error)) = this.closed.pop_front() {
-            return Poll::Ready(Some(MultiItem::Closed(stream, error)));
+        if let Some((key, stream, error)) = this.closed.pop_front() {
+            return Poll::Ready(Some(MultiItem::Closed((key, stream), error)));
         }
         this.next.register(cx);
         while let Some(key) = this.next.as_mut().next::<OP_WAKE_NEXT>(this.connections) {

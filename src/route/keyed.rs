@@ -7,6 +7,7 @@ use std::{
 
 use futures_util::{Sink, Stream, TryStream, ready, stream::FusedStream};
 use linked_hash_map::LinkedHashMap;
+use linked_hash_set::LinkedHashSet;
 use pin_project::pin_project;
 use route_sink::{FlushRoute, ReadyRoute};
 use ruchei_collections::as_linked_slab::SlabKey;
@@ -20,20 +21,19 @@ use super::Key;
 
 #[pin_project]
 struct One<K, S> {
-    ctr: usize,
     key: K,
     #[pin]
     stream: S,
 }
 
 impl<In, K: Key, E, S: TryStream<Ok = In, Error = E>> Stream for One<K, S> {
-    type Item = Result<(usize, K, In), E>;
+    type Item = Result<(K, In), E>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.project();
         this.stream
             .try_poll_next(cx)
-            .map_ok(|v| (*this.ctr, this.key.clone(), v))
+            .map_ok(|v| (this.key.clone(), v))
     }
 }
 
@@ -62,8 +62,7 @@ impl<Out, K, E, S: Sink<Out, Error = E>> Sink<Out> for One<K, S> {
 pub struct Router<K, S, E = <S as TryStream>::Error> {
     #[pin]
     router: super::slab::Router<One<K, S>, E>,
-    routes: LinkedHashMap<K, LinkedHashMap<usize, SlabKey>>,
-    ctr: usize,
+    routes: LinkedHashMap<K, LinkedHashSet<SlabKey>>,
 }
 
 impl<K: Hash + Eq, S, E> Default for Router<K, S, E> {
@@ -71,7 +70,6 @@ impl<K: Hash + Eq, S, E> Default for Router<K, S, E> {
         Self {
             router: Default::default(),
             routes: Default::default(),
-            ctr: Default::default(),
         }
     }
 }
@@ -83,16 +81,16 @@ impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Router<
         let mut this = self.project();
         while let Some(item) = ready!(this.router.as_mut().poll_next(cx)) {
             return Poll::Ready(Some(match item {
-                MultiItem::Item((i, (ctr, k, v))) => {
-                    this.routes.entry(k.clone()).or_default().insert(ctr, i);
+                MultiItem::Item((i, (k, v))) => {
+                    this.routes.entry(k.clone()).or_default().insert(i);
                     MultiItem::Item((k, v))
                 }
-                MultiItem::Closed(One { ctr, key, stream }, e) => {
+                MultiItem::Closed((i, One { key, stream }), e) => {
                     let mut entry = match this.routes.entry(key.clone()) {
                         linked_hash_map::Entry::Occupied(entry) => entry,
                         linked_hash_map::Entry::Vacant(_) => continue,
                     };
-                    if entry.get_mut().remove(&ctr).is_none() {
+                    if !entry.get_mut().remove(&i) {
                         continue;
                     }
                     if entry.get().is_empty() {
@@ -123,7 +121,7 @@ impl<Out, K: Key, E, S: Unpin + Sink<Out, Error = E>> Sink<(K, Out)> for Router<
         let key = &key;
         let this = self.project();
         if let Some(routes) = this.routes.get(key) {
-            let route = *routes.back().expect("empty routes per key").1;
+            let route = *routes.back().expect("empty routes per key");
             this.router.start_send((route, msg))
         } else {
             Ok(())
@@ -147,7 +145,7 @@ impl<Out, K: Key, E, S: Unpin + Sink<Out, Error = E>> FlushRoute<K, Out> for Rou
     ) -> Poll<Result<(), Self::Error>> {
         let this = self.project();
         if let Some(routes) = this.routes.get(key) {
-            let route = routes.back().expect("empty routes per key").1;
+            let route = routes.back().expect("empty routes per key");
             this.router.poll_flush_route(route, cx)
         } else {
             Poll::Ready(Ok(()))
@@ -163,7 +161,7 @@ impl<Out, K: Key, E, S: Unpin + Sink<Out, Error = E>> ReadyRoute<K, Out> for Rou
     ) -> Poll<Result<(), Self::Error>> {
         let this = self.project();
         if let Some(routes) = this.routes.get(key) {
-            let route = routes.back().expect("empty routes per key").1;
+            let route = routes.back().expect("empty routes per key");
             this.router.poll_ready_route(route, cx)
         } else {
             Poll::Ready(Ok(()))
@@ -174,9 +172,7 @@ impl<Out, K: Key, E, S: Unpin + Sink<Out, Error = E>> ReadyRoute<K, Out> for Rou
 impl<K: Key, S, E> Router<K, S, E> {
     fn push(self: Pin<&mut Self>, key: K, stream: S) {
         let this = self.project();
-        let ctr = *this.ctr;
-        *this.ctr += 1;
-        this.router.extend_pinned([One { ctr, key, stream }]);
+        this.router.extend_pinned([One { key, stream }]);
     }
 }
 
