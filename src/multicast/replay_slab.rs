@@ -56,7 +56,7 @@ impl Wake for NextFlush {
 }
 
 #[pin_project]
-pub struct Multicast<S, T, E> {
+pub struct Multicast<S, T, E = <S as TryStream>::Error> {
     connections: LinkedSlab<Connection<S>, OP_COUNT>,
     #[pin]
     next: Ready,
@@ -366,8 +366,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> PinnedExtend<S> for Multicast<S
     }
 }
 
-pub type MulticastExtending<T, R> =
-    Extending<Multicast<<R as MulticastReplaySlab<T>>::S, T, <R as MulticastReplaySlab<T>>::E>, R>;
+pub type MulticastExtending<T, R> = Extending<Multicast<<R as MulticastReplaySlab<T>>::S, T>, R>;
 
 pub trait MulticastReplaySlab<T: Clone>: Sized + FusedStream<Item = Self::S> {
     /// Single [`Stream`]/[`Sink`].
@@ -376,7 +375,9 @@ pub trait MulticastReplaySlab<T: Clone>: Sized + FusedStream<Item = Self::S> {
     type E;
 
     #[must_use]
-    fn multicast_replay_slab(self) -> MulticastExtending<T, Self>;
+    fn multicast_replay_slab(self) -> MulticastExtending<T, Self> {
+        Extending::new(self, Default::default())
+    }
 }
 
 impl<S: Unpin + TryStream<Error = E> + Sink<T, Error = E>, T: Clone, E, R: FusedStream<Item = S>>
@@ -384,8 +385,4 @@ impl<S: Unpin + TryStream<Error = E> + Sink<T, Error = E>, T: Clone, E, R: Fused
 {
     type S = S;
     type E = E;
-
-    fn multicast_replay_slab(self) -> MulticastExtending<T, Self> {
-        Extending::new(self, Default::default())
-    }
 }
