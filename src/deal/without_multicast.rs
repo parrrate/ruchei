@@ -2,7 +2,8 @@ use std::{
     collections::VecDeque,
     convert::Infallible,
     pin::Pin,
-    task::{Context, Poll},
+    sync::Arc,
+    task::{Context, Poll, Wake},
 };
 
 use futures_util::{
@@ -28,6 +29,21 @@ const OP_IS_STARTED: usize = 4;
 const OP_IS_FLUSHING: usize = 5;
 const OP_COUNT: usize = 6;
 
+#[derive(Debug, Default)]
+struct Wakers {
+    next: AtomicWaker,
+    ready: AtomicWaker,
+    flush: AtomicWaker,
+}
+
+impl Wake for Wakers {
+    fn wake(self: Arc<Self>) {
+        self.next.wake();
+        self.ready.wake();
+        self.flush.wake();
+    }
+}
+
 /// [`Sink`]/[`Stream`] implemented over the stream of incoming [`Sink`]s/[`Stream`]s.
 #[pin_project]
 #[derive(Debug)]
@@ -40,6 +56,7 @@ pub struct Dealer<S, Out, E = <S as TryStream>::Error> {
     flush: Ready,
     #[pin]
     close: Ready,
+    wakers: Arc<Wakers>,
     buffer: Option<Out>,
     closed: VecDeque<(S, Option<E>)>,
 }
@@ -52,6 +69,7 @@ impl<S, Out, E> Default for Dealer<S, Out, E> {
             wready: Default::default(),
             flush: Default::default(),
             close: Default::default(),
+            wakers: Default::default(),
             buffer: Default::default(),
             closed: Default::default(),
         }
@@ -128,12 +146,31 @@ impl<E, Out, S: Unpin + Sink<Out, Error = E>> Dealer<S, Out, E> {
             }
         };
     }
+
+    fn poll(mut self: Pin<&mut Self>) -> Poll<()> {
+        let mut this = self.as_mut().project();
+        let waker = this.wakers.clone().into();
+        let cx = &mut Context::from_waker(&waker);
+        if this.buffer.is_some() {
+            ready!(self.as_mut().poll_ready_first(cx));
+            this = self.as_mut().project();
+        }
+        if let Some(msg) = this.buffer.take() {
+            self.as_mut().start_send_first(msg);
+            self.wakers.wake_by_ref();
+        }
+        Poll::Ready(())
+    }
 }
 
-impl<In, Out, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Dealer<S, Out, E> {
+impl<In, Out, E, S: Unpin + TryStream<Ok = In, Error = E> + Sink<Out, Error = E>> Stream
+    for Dealer<S, Out, E>
+{
     type Item = MultiItem<S>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        self.wakers.next.register(cx.waker());
+        let _ = self.as_mut().poll();
         let mut this = self.as_mut().project();
         if let Some((stream, error)) = this.closed.pop_front() {
             return Poll::Ready(Some(MultiItem::Closed(stream, error)));
@@ -168,7 +205,9 @@ impl<In, Out, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Dealer<S, 
     }
 }
 
-impl<In, Out, E, S: Unpin + TryStream<Ok = In, Error = E>> FusedStream for Dealer<S, Out, E> {
+impl<In, Out, E, S: Unpin + TryStream<Ok = In, Error = E> + Sink<Out, Error = E>> FusedStream
+    for Dealer<S, Out, E>
+{
     fn is_terminated(&self) -> bool {
         self.closed.is_empty() && self.connections.is_empty()
     }
@@ -177,16 +216,21 @@ impl<In, Out, E, S: Unpin + TryStream<Ok = In, Error = E>> FusedStream for Deale
 impl<Out, E, S: Unpin + Sink<Out, Error = E>> Sink<Out> for Dealer<S, Out, E> {
     type Error = Infallible;
 
-    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.wakers.ready.register(cx.waker());
+        ready!(self.as_mut().poll());
         self.poll_ready_first(cx).map(Ok)
     }
 
     fn start_send(self: Pin<&mut Self>, msg: Out) -> Result<(), Self::Error> {
-        self.start_send_first(msg);
+        assert!(self.buffer.is_none());
+        *self.project().buffer = Some(msg);
         Ok(())
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.wakers.flush.register(cx.waker());
+        let _ = self.as_mut().poll();
         let mut this = self.as_mut().project();
         this.flush.register(cx);
         this.flush.downgrade().extend(
@@ -216,6 +260,7 @@ impl<Out, E, S: Unpin + Sink<Out, Error = E>> Sink<Out> for Dealer<S, Out, E> {
             this = self.as_mut().project();
         }
         if this.connections.link_empty::<OP_IS_FLUSHING>() {
+            ready!(self.as_mut().poll());
             Poll::Ready(Ok(()))
         } else {
             Poll::Pending
