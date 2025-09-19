@@ -307,6 +307,7 @@ impl<T: ?Sized + Unpin, Route> RouteExt<Route> for &'_ mut T {
 /// Assert that [`RouteSink`] is derived from [`Sink`].
 #[cfg(feature = "unroute")]
 #[pin_project::pin_project]
+#[derive(Debug)]
 pub struct Unroute<S>(#[pin] pub S);
 
 impl<S> Unroute<S> {
