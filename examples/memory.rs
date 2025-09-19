@@ -17,7 +17,7 @@ use ruchei::{
     multi_item::MultiItemExt,
     multicast::{
         buffered_slab::MulticastBufferedSlab, bufferless_slab::MulticastBufferlessSlab,
-        replay_slab::MulticastReplaySlab,
+        replay::MulticastReplay,
     },
 };
 
@@ -143,7 +143,7 @@ async fn test_two<Fut: Future<Output = ()>>(f: impl Fn(UnboundedReceiver<Channel
 async fn main() {
     test_two(|streams| async move {
         streams
-            .multicast_replay_slab()
+            .multicast_replay()
             .multi_item_ignore()
             .echo_buffered()
             .await

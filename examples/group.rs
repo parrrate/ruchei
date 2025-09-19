@@ -13,7 +13,7 @@ use ruchei::{
         timeout_unused::TimeoutUnused,
     },
     multi_item::MultiItemExt,
-    multicast::replay_slab::MulticastReplaySlab,
+    multicast::replay::MulticastReplay,
     poll_on_wake::PollOnWakeExt,
 };
 
@@ -56,7 +56,7 @@ async fn main() {
             let _guard = guard;
             receiver
                 .timeout_unused(|| ready(()))
-                .multicast_replay_slab()
+                .multicast_replay()
                 .multi_item_ignore()
                 .echo_buffered()
                 .await

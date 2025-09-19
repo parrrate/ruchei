@@ -7,7 +7,7 @@ use futures_util::StreamExt;
 use ruchei::{
     concurrent::ConcurrentExt, echo::buffered::EchoBuffered,
     liveness::timeout_unused::TimeoutUnused, multi_item::MultiItemExt,
-    multicast::replay_slab::MulticastReplaySlab, poll_on_wake::PollOnWakeExt,
+    multicast::replay::MulticastReplay, poll_on_wake::PollOnWakeExt,
 };
 
 #[async_std::main]
@@ -26,7 +26,7 @@ async fn main() {
             task::sleep(Duration::from_secs(10)).await;
         })
         .map(|s| s.poll_on_wake())
-        .multicast_replay_slab()
+        .multicast_replay()
         .multi_item_ignore()
         .echo_buffered()
         .await
