@@ -32,7 +32,7 @@ impl<Item, Reply, Filtered, F: ?Sized + FnMut(Item) -> Option<(Option<Reply>, Op
     }
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct Wakers {
     next: AtomicWaker,
     ready: AtomicWaker,
@@ -48,6 +48,7 @@ impl Wake for Wakers {
 }
 
 #[pin_project]
+#[derive(Debug)]
 pub struct WithReply<S, T, F> {
     #[pin]
     stream: S,
