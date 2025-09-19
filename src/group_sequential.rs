@@ -7,7 +7,7 @@ use futures_util::{Stream, ready, stream::FusedStream};
 use pin_project::pin_project;
 
 #[pin_project]
-pub struct Grouped<S, K, T> {
+pub struct Grouped<S, T, K = <<S as Stream>::Item as GroupItem>::K> {
     #[pin]
     stream: S,
     current: Option<(K, T)>,
@@ -110,7 +110,7 @@ impl<K: PartialEq, V, E> GroupItem for Result<(K, V), E> {
 }
 
 impl<S: FusedStream<Item = I>, I: GroupItem, T: Default + Extend<I::V>> Stream
-    for Grouped<S, I::K, T>
+    for Grouped<S, T, I::K>
 {
     type Item = I::Grouped<T>;
 
@@ -121,17 +121,16 @@ impl<S: FusedStream<Item = I>, I: GroupItem, T: Default + Extend<I::V>> Stream
 }
 
 impl<S: FusedStream<Item = I>, I: GroupItem, T: Default + Extend<I::V>> FusedStream
-    for Grouped<S, I::K, T>
+    for Grouped<S, T, I::K>
 {
     fn is_terminated(&self) -> bool {
         self.current.is_none() && self.stream.is_terminated()
     }
 }
 
-pub trait GroupSequential: Sized + FusedStream<Item: GroupItem<K = Self::K, V = Self::V>> {
-    type K: PartialEq;
+pub trait GroupSequential: Sized + FusedStream<Item: GroupItem<V = Self::V>> {
     type V;
-    fn group_sequential<T: Default + Extend<Self::V>>(self) -> Grouped<Self, Self::K, T> {
+    fn group_sequential<T: Default + Extend<Self::V>>(self) -> Grouped<Self, T> {
         Grouped {
             stream: self,
             current: None,
@@ -140,6 +139,5 @@ pub trait GroupSequential: Sized + FusedStream<Item: GroupItem<K = Self::K, V = 
 }
 
 impl<S: FusedStream<Item = I>, I: GroupItem> GroupSequential for S {
-    type K = I::K;
     type V = I::V;
 }
