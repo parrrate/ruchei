@@ -52,7 +52,7 @@ impl Wake for Wakers {
 ///
 /// Closes when the incoming stream is done.
 #[pin_project]
-pub struct Switching<R, S, Out> {
+pub struct Switching<R, Out, S = <R as Stream>::Item> {
     #[pin]
     incoming: R,
     #[pin]
@@ -63,7 +63,7 @@ pub struct Switching<R, S, Out> {
 }
 
 impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: FusedStream<Item = S>>
-    Switching<R, S, Out>
+    Switching<R, Out, S>
 {
     fn poll_current(self: Pin<&mut Self>) -> Poll<Result<(), E>> {
         let mut this = self.project();
@@ -113,7 +113,7 @@ impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: Fus
 }
 
 impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: FusedStream<Item = S>>
-    Stream for Switching<R, S, Out>
+    Stream for Switching<R, Out, S>
 {
     type Item = Result<In, E>;
 
@@ -137,7 +137,7 @@ impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: Fus
 }
 
 impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: FusedStream<Item = S>>
-    FusedStream for Switching<R, S, Out>
+    FusedStream for Switching<R, Out, S>
 {
     fn is_terminated(&self) -> bool {
         self.current.is_none() && self.swap.is_none() && self.incoming.is_terminated()
@@ -145,7 +145,7 @@ impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: Fus
 }
 
 impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: FusedStream<Item = S>>
-    Sink<Out> for Switching<R, S, Out>
+    Sink<Out> for Switching<R, Out, S>
 {
     type Error = E;
 
@@ -190,23 +190,16 @@ impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: Fus
 }
 
 /// Extension trait for constructing [`Switching`].
-pub trait SwitchingExt<Out>: Sized {
-    /// [`Stream`]`+`[`Sink`] that this [`Stream`] yields.
-    type S;
+pub trait SwitchingExt<Out>:
+    Sized + FusedStream<Item: TryStream<Error = Self::E> + Sink<Out, Error = Self::E>>
+{
+    type E;
 
     /// Convert a [`Stream`] of [`Stream`]`+`[`Sink`]s into a single [`Stream`]`+`[`Sink`].
     ///
     /// See [`Switching`] for details.
     #[must_use]
-    fn switching(self) -> Switching<Self, Self::S, Out>;
-}
-
-impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: FusedStream<Item = S>>
-    SwitchingExt<Out> for R
-{
-    type S = S;
-
-    fn switching(self) -> Switching<Self, Self::S, Out> {
+    fn switching(self) -> Switching<Self, Out> {
         Switching {
             incoming: self,
             current: None,
@@ -215,4 +208,10 @@ impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: Fus
             buffer: None,
         }
     }
+}
+
+impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: FusedStream<Item = S>>
+    SwitchingExt<Out> for R
+{
+    type E = E;
 }
