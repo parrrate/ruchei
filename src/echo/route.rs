@@ -11,6 +11,7 @@ use route_sink::ReadyRoute;
 use ruchei_collections::{as_linked_slab::AsLinkedSlab, linked_slab::LinkedSlab};
 
 use crate::{
+    merge::pair_item::PairItem,
     ready_slab::{ConnectionWaker, Ready},
     route::Key,
 };
@@ -26,7 +27,11 @@ struct Connection<K, T> {
 
 #[pin_project]
 #[must_use = "futures must be awaited"]
-pub struct Echo<S, K, T> {
+pub struct Echo<
+    S,
+    K = <<S as TryStream>::Ok as PairItem>::K,
+    T = <<S as TryStream>::Ok as PairItem>::V,
+> {
     #[pin]
     router: S,
     connections: LinkedSlab<Connection<K, T>, OP_COUNT>,
@@ -114,13 +119,16 @@ impl<K: Key, T, E, S: TryStream<Ok = (K, T), Error = E> + ReadyRoute<K, T, Error
     }
 }
 
-pub trait EchoRoute: Sized {
-    /// Per-connection unique key.
-    type K;
-    /// Item yielded and accepted by `self` as [`Stream`]/[`RouteSink`].
+pub trait EchoRoute:
+    Sized
+    + TryStream<Ok = (Self::K, Self::T), Error = Self::E>
+    + ReadyRoute<Self::K, Self::T, Error = Self::E>
+{
+    type K: Key;
     type T;
+    type E;
 
-    fn echo_route(self) -> Echo<Self, Self::K, Self::T> {
+    fn echo_route(self) -> Echo<Self> {
         Echo {
             router: self,
             connections: Default::default(),
@@ -135,4 +143,5 @@ impl<K: Key, T, E, S: TryStream<Ok = (K, T), Error = E> + ReadyRoute<K, T, Error
 {
     type K = K;
     type T = T;
+    type E = E;
 }
