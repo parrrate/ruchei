@@ -1,5 +1,6 @@
 use std::{
     convert::Infallible,
+    fmt::Debug,
     hash::Hash,
     pin::Pin,
     task::{Context, Poll},
@@ -19,6 +20,7 @@ use crate::{
 use super::{Key, slab::RouteKey};
 
 #[pin_project]
+#[derive(Debug)]
 struct One<K, S> {
     key: K,
     #[pin]
@@ -58,7 +60,8 @@ impl<Out, K, E, S: Sink<Out, Error = E>> Sink<Out> for One<K, S> {
 
 /// [`ReadyRoute`]/[`Stream`] implemented over the stream of incoming [`Sink`]s/[`Stream`]s.
 #[pin_project]
-pub struct Router<K, S, E = <S as TryStream>::Error> {
+#[derive(Debug)]
+pub struct Router<K: Hash + Eq, S, E = <S as TryStream>::Error> {
     #[pin]
     router: super::slab::Router<One<K, S>, E>,
     routes: LinkedHashMap<K, LinkedHashSet<RouteKey>>,

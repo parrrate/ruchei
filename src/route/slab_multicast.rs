@@ -32,6 +32,7 @@ const OP_COUNT: usize = 7;
 pub struct RouteKey(SlabKey);
 
 #[pin_project]
+#[derive(Debug)]
 pub struct Router<S, E = <S as TryStream>::Error> {
     connections: LinkedSlab<Connection<S>, OP_COUNT>,
     #[pin]

@@ -28,6 +28,7 @@ pub struct RouteKey(SlabKey);
 
 /// [`ReadyRoute`]/[`Stream`] implemented over the stream of incoming [`Sink`]s/[`Stream`]s.
 #[pin_project]
+#[derive(Debug)]
 pub struct Router<S, E = <S as TryStream>::Error> {
     connections: LinkedSlab<Connection<S>, OP_COUNT>,
     #[pin]
