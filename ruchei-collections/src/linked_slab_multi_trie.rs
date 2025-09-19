@@ -13,6 +13,7 @@ use crate::{
     trie::Trie,
 };
 
+#[derive(Debug)]
 pub struct LinkedSlabMultiTrie<T, const N: usize> {
     keys: Trie<BTreeMap<SlabKey, usize>>,
     collections: LinkedSlab<(T, Slab<NodeId>), N>,
