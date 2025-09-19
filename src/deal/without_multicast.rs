@@ -92,6 +92,30 @@ impl<S, E> Dealer<S, E> {
     }
 }
 
+impl<E, S: Unpin> Dealer<S, E> {
+    fn poll_ready_first<Out>(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()>
+    where
+        S: Sink<Out, Error = E>,
+    {
+        let this = self.as_mut().project();
+        this.wready.register(cx.waker());
+        if let Some(key) = this.connections.front::<OP_DEAL>()
+            && let Some(connection) = this.connections.get_mut(key)
+        {
+            if let Err(e) = ready!(
+                connection
+                    .ready
+                    .poll(cx, |cx| connection.stream.poll_ready_unpin(cx))
+            ) {
+                self.remove(key, Some(e));
+            } else {
+                return Poll::Ready(());
+            }
+        }
+        Poll::Pending
+    }
+}
+
 impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Dealer<S, E> {
     type Item = MultiItem<S>;
 
@@ -139,23 +163,8 @@ impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>> FusedStream for Dealer<S, 
 impl<Out, E, S: Unpin + Sink<Out, Error = E>> Sink<Out> for Dealer<S, E> {
     type Error = Infallible;
 
-    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let this = self.as_mut().project();
-        this.wready.register(cx.waker());
-        if let Some(key) = this.connections.front::<OP_DEAL>()
-            && let Some(connection) = this.connections.get_mut(key)
-        {
-            if let Err(e) = ready!(
-                connection
-                    .ready
-                    .poll(cx, |cx| connection.stream.poll_ready_unpin(cx))
-            ) {
-                self.remove(key, Some(e));
-            } else {
-                return Poll::Ready(Ok(()));
-            }
-        }
-        Poll::Pending
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.poll_ready_first(cx).map(Ok)
     }
 
     fn start_send(mut self: Pin<&mut Self>, msg: Out) -> Result<(), Self::Error> {
