@@ -3,7 +3,7 @@
 //! [`Stream`]: futures_util::Stream
 //! [`Sink`]: futures_util::Sink
 
-pub mod buffered_slab;
+pub mod buffered;
 pub mod bufferless;
 pub mod replay;
 pub mod trie;

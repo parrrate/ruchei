@@ -27,7 +27,7 @@ use ruchei::{
     concurrent::ConcurrentExt,
     liveness::timeout_unused::{KeepAlive, TimeoutUnused, WithTimeout},
     multi_item::MultiItem,
-    multicast::buffered_slab::{Multicast, MulticastBufferedSlab},
+    multicast::buffered::{Multicast, MulticastBuffered},
     pinned_extend::Extending,
     poll_on_wake::PollOnWakeExt,
 };
@@ -268,7 +268,7 @@ impl<
                         let (sender, receiver) = unbounded();
                         let (sink, stream) = receiver
                             .timeout_unused(ReadyStart)
-                            .multicast_buffered_slab()
+                            .multicast_buffered()
                             .split();
                         this.finalizing.push(Finalize(stream, Some(k.clone())));
                         (sink, sender)
