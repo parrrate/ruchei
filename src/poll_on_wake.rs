@@ -184,11 +184,9 @@ impl<S> PollOnWake<S> {
 /// See [module-level docs](`crate::poll_on_wake`) for examples.
 pub trait PollOnWakeExt: Sized {
     #[must_use]
-    fn poll_on_wake(self) -> PollOnWake<Self>;
-}
-
-impl<S> PollOnWakeExt for S {
     fn poll_on_wake(self) -> PollOnWake<Self> {
         self.into()
     }
 }
+
+impl<S> PollOnWakeExt for S {}
