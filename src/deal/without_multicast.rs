@@ -31,7 +31,7 @@ const OP_COUNT: usize = 6;
 /// [`Sink`]/[`Stream`] implemented over the stream of incoming [`Sink`]s/[`Stream`]s.
 #[pin_project]
 #[derive(Debug)]
-pub struct Dealer<S, E = <S as TryStream>::Error> {
+pub struct Dealer<S, Out, E = <S as TryStream>::Error> {
     connections: LinkedSlab<Connection<S>, OP_COUNT>,
     #[pin]
     next: Ready,
@@ -40,10 +40,11 @@ pub struct Dealer<S, E = <S as TryStream>::Error> {
     flush: Ready,
     #[pin]
     close: Ready,
+    buffer: Option<Out>,
     closed: VecDeque<(S, Option<E>)>,
 }
 
-impl<S, E> Default for Dealer<S, E> {
+impl<S, Out, E> Default for Dealer<S, Out, E> {
     fn default() -> Self {
         Self {
             connections: Default::default(),
@@ -51,12 +52,13 @@ impl<S, E> Default for Dealer<S, E> {
             wready: Default::default(),
             flush: Default::default(),
             close: Default::default(),
+            buffer: Default::default(),
             closed: Default::default(),
         }
     }
 }
 
-impl<S, E> Dealer<S, E> {
+impl<S, Out, E> Dealer<S, Out, E> {
     fn remove(self: Pin<&mut Self>, key: SlabKey, error: Option<E>) {
         let this = self.project();
         let connection = this.connections.remove(key);
@@ -92,11 +94,8 @@ impl<S, E> Dealer<S, E> {
     }
 }
 
-impl<E, S: Unpin> Dealer<S, E> {
-    fn poll_ready_first<Out>(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()>
-    where
-        S: Sink<Out, Error = E>,
-    {
+impl<E, Out, S: Unpin + Sink<Out, Error = E>> Dealer<S, Out, E> {
+    fn poll_ready_first(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
         let this = self.as_mut().project();
         this.wready.register(cx.waker());
         if let Some(key) = this.connections.front::<OP_DEAL>()
@@ -115,10 +114,7 @@ impl<E, S: Unpin> Dealer<S, E> {
         Poll::Pending
     }
 
-    fn start_send_first<Out>(mut self: Pin<&mut Self>, msg: Out)
-    where
-        S: Sink<Out, Error = E>,
-    {
+    fn start_send_first(mut self: Pin<&mut Self>, msg: Out) {
         let this = self.as_mut().project();
         if let Some(key) = this.connections.front::<OP_DEAL>() {
             let connection = this
@@ -134,7 +130,7 @@ impl<E, S: Unpin> Dealer<S, E> {
     }
 }
 
-impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Dealer<S, E> {
+impl<In, Out, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Dealer<S, Out, E> {
     type Item = MultiItem<S>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -172,13 +168,13 @@ impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Dealer<S, E> {
     }
 }
 
-impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>> FusedStream for Dealer<S, E> {
+impl<In, Out, E, S: Unpin + TryStream<Ok = In, Error = E>> FusedStream for Dealer<S, Out, E> {
     fn is_terminated(&self) -> bool {
         self.closed.is_empty() && self.connections.is_empty()
     }
 }
 
-impl<Out, E, S: Unpin + Sink<Out, Error = E>> Sink<Out> for Dealer<S, E> {
+impl<Out, E, S: Unpin + Sink<Out, Error = E>> Sink<Out> for Dealer<S, Out, E> {
     type Error = Infallible;
 
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -254,7 +250,7 @@ impl<Out, E, S: Unpin + Sink<Out, Error = E>> Sink<Out> for Dealer<S, E> {
     }
 }
 
-impl<S, E> PinnedExtend<S> for Dealer<S, E> {
+impl<S, Out, E> PinnedExtend<S> for Dealer<S, Out, E> {
     fn extend_pinned<T: IntoIterator<Item = S>>(mut self: Pin<&mut Self>, iter: T) {
         for stream in iter {
             self.as_mut().push(stream)
@@ -263,18 +259,28 @@ impl<S, E> PinnedExtend<S> for Dealer<S, E> {
 }
 
 /// [`Sink`]/[`Stream`] Returned by [`DealWithoutMulticast::deal_without_multicast`].
-pub type DealerExtending<R> = Extending<Dealer<<R as Stream>::Item>, R>;
+pub type DealerExtending<R, Out> = Extending<Dealer<<R as Stream>::Item, Out>, R>;
 
 /// Extension trait to auto-extend a [`Dealer`] from a stream of connections.
-pub trait DealWithoutMulticast: Sized + FusedStream<Item: TryStream> {
+pub trait DealWithoutMulticast<Out>:
+    Sized + FusedStream<Item: TryStream<Error = Self::E> + Sink<Out, Error = Self::E>>
+{
+    type E;
+
     /// Extend the stream of connections (`self`) into a [`Dealer`].
     #[must_use]
-    fn deal_without_multicast(self) -> DealerExtending<Self> {
+    fn deal_without_multicast(self) -> DealerExtending<Self, Out> {
         Extending::new(self, Default::default())
     }
 }
 
-impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = S>> DealWithoutMulticast
-    for R
+impl<
+    In,
+    Out,
+    E,
+    S: Unpin + TryStream<Ok = In, Error = E> + Sink<Out, Error = E>,
+    R: FusedStream<Item = S>,
+> DealWithoutMulticast<Out> for R
 {
+    type E = E;
 }
