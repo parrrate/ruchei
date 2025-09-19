@@ -584,7 +584,9 @@ pub trait MulticastBufferedSlab<T: Clone>: Sized + FusedStream<Item = Self::S> {
     type E;
 
     #[must_use]
-    fn multicast_buffered_slab(self) -> MulticastExtending<T, Self>;
+    fn multicast_buffered_slab(self) -> MulticastExtending<T, Self> {
+        Extending::new(self, Default::default())
+    }
 }
 
 impl<S: Unpin + TryStream<Error = E> + Sink<T, Error = E>, T: Clone, E, R: FusedStream<Item = S>>
@@ -592,8 +594,4 @@ impl<S: Unpin + TryStream<Error = E> + Sink<T, Error = E>, T: Clone, E, R: Fused
 {
     type S = S;
     type E = E;
-
-    fn multicast_buffered_slab(self) -> MulticastExtending<T, Self> {
-        Extending::new(self, Default::default())
-    }
 }
