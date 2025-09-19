@@ -143,6 +143,10 @@ impl<E, Out, S: Unpin + Sink<Out, Error = E>> Dealer<S, Out, E> {
                 self.remove(key, Some(e));
             } else {
                 this.connections.link_push_back::<OP_IS_STARTED>(key);
+                if this.connections.link_contains::<OP_IS_FLUSHING>(key) {
+                    this.connections.link_pop_at::<OP_IS_FLUSHING>(key);
+                    this.flush.wake();
+                }
             }
         };
     }
@@ -230,7 +234,7 @@ impl<Out, E, S: Unpin + Sink<Out, Error = E>> Sink<Out> for Dealer<S, Out, E> {
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.wakers.flush.register(cx.waker());
-        let _ = self.as_mut().poll();
+        ready!(self.as_mut().poll());
         let mut this = self.as_mut().project();
         this.flush.register(cx);
         this.flush.downgrade().extend(
@@ -260,7 +264,6 @@ impl<Out, E, S: Unpin + Sink<Out, Error = E>> Sink<Out> for Dealer<S, Out, E> {
             this = self.as_mut().project();
         }
         if this.connections.link_empty::<OP_IS_FLUSHING>() {
-            ready!(self.as_mut().poll());
             Poll::Ready(Ok(()))
         } else {
             Poll::Pending
