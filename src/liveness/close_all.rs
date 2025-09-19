@@ -1,4 +1,5 @@
 use std::{
+    fmt::Debug,
     marker::PhantomData,
     pin::Pin,
     sync::Arc,
@@ -18,7 +19,6 @@ use pin_project::pin_project;
 struct Closed;
 
 /// Yielded by [`CloseAll`]. Gets closed when incoming stream terminates.
-#[derive(Debug)]
 #[pin_project]
 pub struct CloseOne<S, Out> {
     #[pin]
@@ -27,6 +27,17 @@ pub struct CloseOne<S, Out> {
     closing: OwnedMutexLockFuture<Closed>,
     terminated: bool,
     _out: PhantomData<Out>,
+}
+
+impl<S: Debug, Out> Debug for CloseOne<S, Out> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CloseOne")
+            .field("stream", &self.stream)
+            .field("closing", &self.closing)
+            .field("terminated", &self.terminated)
+            .field("_out", &self._out)
+            .finish()
+    }
 }
 
 impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>> Stream
@@ -113,13 +124,23 @@ impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>> Sink<O
 
 /// Closes all yielded streams ([`CloseOne`]s) on termination of incoming stream.
 #[pin_project]
-#[derive(Debug)]
 pub struct CloseAll<R, Out> {
     #[pin]
     stream: R,
     guard: Option<OwnedMutexGuard<Closed>>,
     lock: Arc<Mutex<Closed>>,
     _out: PhantomData<Out>,
+}
+
+impl<R: Debug, Out> Debug for CloseAll<R, Out> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CloseAll")
+            .field("stream", &self.stream)
+            .field("guard", &self.guard)
+            .field("lock", &self.lock)
+            .field("_out", &self._out)
+            .finish()
+    }
 }
 
 impl<Out, S, R: Stream<Item = S>> Stream for CloseAll<R, Out> {
