@@ -7,6 +7,7 @@ use futures_util::{Stream, ready, stream::FusedStream};
 use pin_project::pin_project;
 
 #[pin_project]
+#[derive(Debug)]
 pub struct Grouped<S, T, K = <<S as Stream>::Item as GroupItem>::K> {
     #[pin]
     stream: S,
