@@ -121,6 +121,7 @@ pub trait Group {
     fn send(&mut self, sender: &mut Self::Sender, item: Self::Item);
 
     /// [`Grouped`] calls this when a new group is created
+    #[must_use]
     fn pair(&mut self) -> (Self::Sender, Self::Receiver);
 }
 
