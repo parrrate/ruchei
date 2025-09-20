@@ -63,7 +63,7 @@ ruchei-callback = { workspace = true, optional = true }
 ruchei-collections = { workspace = true, optional = true }
 ruchei-connection = { workspace = true, optional = true }
 ruchei-extend = { workspace = true, optional = true }
-ruchei-extra.workspace = true
+ruchei-extra = { workspace = true, optional = true }
 
 futures-util.workspace = true
 linked_hash_set = { workspace = true, optional = true }
@@ -79,8 +79,9 @@ rand = "0.8.5"
 thiserror = "1"
 
 [features]
-default = ["by-key", "connection", "extend"]
+default = ["by-key", "connection", "extend", "extra"]
 by-key = ["dep:linked_hash_set"]
 connection = ["dep:ruchei-collections", "dep:ruchei-connection"]
 extend = ["dep:extend-pinned", "dep:ruchei-extend"]
-unstable = ["dep:ruchei-callback"]
+extra = ["dep:ruchei-extra"]
+unstable = ["extra", "dep:ruchei-callback"]
