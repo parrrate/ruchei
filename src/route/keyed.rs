@@ -13,8 +13,8 @@ use pin_project::pin_project;
 use route_sink::{FlushRoute, ReadyRoute};
 
 use crate::{
+    extend::{ExtendPinned, Extending},
     multi_item::{MultiItem, MultiRouteItem},
-    pinned_extend::{Extending, PinnedExtend},
 };
 
 use super::{Key, without_multicast::RouteKey};
@@ -178,7 +178,7 @@ impl<K: Key, S, E> Router<K, S, E> {
     }
 }
 
-impl<K: Key, S, E> PinnedExtend<(K, S)> for Router<K, S, E> {
+impl<K: Key, S, E> ExtendPinned<(K, S)> for Router<K, S, E> {
     fn extend_pinned<T: IntoIterator<Item = (K, S)>>(mut self: Pin<&mut Self>, iter: T) {
         for (key, stream) in iter {
             self.as_mut().push(key, stream)

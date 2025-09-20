@@ -1,7 +1,7 @@
 //! [`Extend`] for [`Pin`]ned values.
 //!
 //! Many of [`ruchei`] combinator traits return [`Extending`] wrapper around something that
-//! implements [`PinnedExtend`] extending from `self`.
+//! implements [`ExtendPinned`] extending from `self`.
 
 use std::{
     pin::Pin,
@@ -12,22 +12,22 @@ use futures_util::{Sink, Stream, stream::FusedStream};
 use pin_project::pin_project;
 use route_sink::{FlushRoute, ReadyRoute, ReadySome};
 
-/// Auto-derive [`PinnedExtend`] from [`Extend`].
+/// Auto-derive [`ExtendPinned`] from [`Extend`].
 pub trait AutoPinnedExtend: Unpin {}
 
 /// [`Extend`] equivalent for [`Pin<&mut I>`].
-pub trait PinnedExtend<A> {
+pub trait ExtendPinned<A> {
     /// [`Extend::extend`] equivalent for [`Pin<&mut I>`].
     fn extend_pinned<T: IntoIterator<Item = A>>(self: Pin<&mut Self>, iter: T);
 }
 
-impl<A, S: AutoPinnedExtend + Extend<A>> PinnedExtend<A> for S {
+impl<A, S: AutoPinnedExtend + Extend<A>> ExtendPinned<A> for S {
     fn extend_pinned<T: IntoIterator<Item = A>>(self: Pin<&mut Self>, iter: T) {
         self.get_mut().extend(iter)
     }
 }
 
-/// Type extending a [`PinnedExtend`] value from a fused stream.
+/// Type extending an [`ExtendPinned`] value from a fused stream.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[pin_project]
 pub struct Extending<S, R> {
@@ -104,7 +104,7 @@ impl<R: Stream> Iterator for PollIter<'_, '_, R> {
     }
 }
 
-impl<A, S: Stream + PinnedExtend<A>, R: FusedStream<Item = A>> Stream for Extending<S, R> {
+impl<A, S: Stream + ExtendPinned<A>, R: FusedStream<Item = A>> Stream for Extending<S, R> {
     type Item = S::Item;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -122,7 +122,7 @@ impl<A, S: Stream + PinnedExtend<A>, R: FusedStream<Item = A>> Stream for Extend
     }
 }
 
-impl<A, S: FusedStream + PinnedExtend<A>, R: FusedStream<Item = A>> FusedStream
+impl<A, S: FusedStream + ExtendPinned<A>, R: FusedStream<Item = A>> FusedStream
     for Extending<S, R>
 {
     fn is_terminated(&self) -> bool {
@@ -189,7 +189,7 @@ impl<Route, Msg, S: ReadySome<Route, Msg>, R> ReadySome<Route, Msg> for Extendin
 
 pub trait ExtendingExt: Sized + FusedStream {
     #[must_use]
-    fn extending<S: PinnedExtend<Self::Item>>(self, inner: S) -> Extending<S, Self> {
+    fn extending<S: ExtendPinned<Self::Item>>(self, inner: S) -> Extending<S, Self> {
         Extending::new(self, inner)
     }
 }

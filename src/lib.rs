@@ -13,6 +13,7 @@ pub mod compress;
 pub mod concurrent;
 pub mod deal;
 pub mod echo;
+pub mod extend;
 #[cfg(feature = "unstable")]
 pub mod group_sequential;
 #[cfg(feature = "unstable")]
@@ -21,7 +22,6 @@ pub mod merge;
 pub mod multi_item;
 pub mod multicast;
 mod owned_close;
-pub mod pinned_extend;
 pub mod poll_on_wake;
 pub mod route;
 pub mod switching;

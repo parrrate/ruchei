@@ -15,8 +15,8 @@ use ruchei_collections::{
 use ruchei_connection::{Connection, ConnectionWaker, Ready};
 
 use crate::{
+    extend::{ExtendPinned, Extending},
     multi_item::{MultiItem, MultiRouteItem},
-    pinned_extend::{Extending, PinnedExtend},
 };
 
 const OP_WAKE_NEXT: usize = 0;
@@ -376,7 +376,7 @@ impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>> ReadyRoute<RouteKey, Out> f
     }
 }
 
-impl<S, E> PinnedExtend<S> for Router<S, E> {
+impl<S, E> ExtendPinned<S> for Router<S, E> {
     fn extend_pinned<T: IntoIterator<Item = S>>(mut self: Pin<&mut Self>, iter: T) {
         for stream in iter {
             self.as_mut().push(stream);

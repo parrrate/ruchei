@@ -17,8 +17,8 @@ use ruchei_collections::{
 use ruchei_connection::{ConnectionWaker, Ready};
 
 use crate::{
+    extend::{ExtendPinned, Extending},
     multi_item::MultiItem,
-    pinned_extend::{Extending, PinnedExtend},
 };
 
 const OP_WAKE_NEXT: usize = 0;
@@ -363,7 +363,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Sink<T> for Multicast<S, T, E> 
     }
 }
 
-impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> PinnedExtend<S> for Multicast<S, T, E> {
+impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> ExtendPinned<S> for Multicast<S, T, E> {
     fn extend_pinned<I: IntoIterator<Item = S>>(mut self: Pin<&mut Self>, iter: I) {
         for stream in iter {
             self.as_mut().push(stream);
