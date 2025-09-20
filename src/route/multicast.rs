@@ -5,6 +5,7 @@ use std::{
     task::{Context, Poll},
 };
 
+use extend_pinned::ExtendPinned;
 use futures_util::{Sink, SinkExt, Stream, TryStream, TryStreamExt, ready, stream::FusedStream};
 use pin_project::pin_project;
 use route_sink::{FlushRoute, ReadyRoute};
@@ -15,7 +16,7 @@ use ruchei_collections::{
 use ruchei_connection::{Connection, ConnectionWaker, Ready};
 
 use crate::{
-    extend::{ExtendPinned, Extending},
+    extend::Extending,
     multi_item::{MultiItem, MultiRouteItem},
 };
 

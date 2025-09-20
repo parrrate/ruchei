@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "extend-pinned",
     "internal/ruchei-sample",
     "route-sink",
     "ruchei-callback",
@@ -25,7 +26,7 @@ version = "0.0.98"
 description = "Utilities for working with many streams"
 documentation = "https://docs.rs/ruchei"
 keywords = ["streams", "async", "stream"]
-categories = ["asynchronous"]
+categories = ["asynchronous", "concurrency"]
 readme = "README.md"
 edition.workspace = true
 publish.workspace = true
@@ -35,6 +36,7 @@ authors.workspace = true
 rust-version.workspace = true
 
 [workspace.dependencies]
+extend-pinned = { path = "extend-pinned", version = "0.1.0" }
 route-sink = { path = "route-sink", version = "0.1.1" }
 ruchei-callback = { path = "ruchei-callback", version = "0.1.1" }
 ruchei-collections = { path = "ruchei-collections", version = "=0.0.0-a.3" }
@@ -53,6 +55,7 @@ pin-project = "1"
 slab = "0.4.9"
 
 [dependencies]
+extend-pinned.workspace = true
 route-sink = { workspace = true, features = ["futures-util", "std"] }
 ruchei-callback = { workspace = true, optional = true }
 ruchei-collections.workspace = true

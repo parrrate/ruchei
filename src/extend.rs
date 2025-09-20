@@ -8,15 +8,10 @@ use std::{
     task::{Context, Poll},
 };
 
+pub use extend_pinned::ExtendPinned;
 use futures_util::{Sink, Stream, stream::FusedStream};
 use pin_project::pin_project;
 use route_sink::{FlushRoute, ReadyRoute, ReadySome};
-
-/// [`Extend`] equivalent for [`Pin<&mut I>`].
-pub trait ExtendPinned<A> {
-    /// [`Extend::extend`] equivalent for [`Pin<&mut I>`].
-    fn extend_pinned<T: IntoIterator<Item = A>>(self: Pin<&mut Self>, iter: T);
-}
 
 /// Type extending an [`ExtendPinned`] value from a fused stream.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]

@@ -6,6 +6,7 @@ use std::{
     task::{Context, Poll},
 };
 
+use extend_pinned::ExtendPinned;
 use futures_util::{Sink, SinkExt, Stream, TryStream, TryStreamExt, stream::FusedStream};
 use pin_project::pin_project;
 use ruchei_collections::{
@@ -15,10 +16,7 @@ use ruchei_collections::{
 };
 use ruchei_connection::{Connection, ConnectionWaker, Ready};
 
-use crate::{
-    extend::{ExtendPinned, Extending},
-    multi_item::MultiItem,
-};
+use crate::{extend::Extending, multi_item::MultiItem};
 
 const OP_WAKE_NEXT: usize = 0;
 const OP_WAKE_READY: usize = 1;

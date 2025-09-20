@@ -6,6 +6,7 @@ use std::{
     task::{Context, Poll},
 };
 
+use extend_pinned::ExtendPinned;
 use futures_util::{Sink, Stream, TryStream, ready, stream::FusedStream};
 use linked_hash_map::LinkedHashMap;
 use linked_hash_set::LinkedHashSet;
@@ -13,7 +14,7 @@ use pin_project::pin_project;
 use route_sink::{FlushRoute, ReadyRoute};
 
 use crate::{
-    extend::{ExtendPinned, Extending},
+    extend::Extending,
     multi_item::{MultiItem, MultiRouteItem},
 };
 

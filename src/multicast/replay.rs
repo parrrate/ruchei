@@ -6,6 +6,7 @@ use std::{
     task::{Context, Poll, Wake},
 };
 
+use extend_pinned::ExtendPinned;
 use futures_util::{
     Sink, SinkExt, Stream, TryStream, TryStreamExt, ready, stream::FusedStream, task::AtomicWaker,
 };
@@ -16,10 +17,7 @@ use ruchei_collections::{
 };
 use ruchei_connection::{ConnectionWaker, Ready};
 
-use crate::{
-    extend::{ExtendPinned, Extending},
-    multi_item::MultiItem,
-};
+use crate::{extend::Extending, multi_item::MultiItem};
 
 const OP_WAKE_NEXT: usize = 0;
 const OP_WAKE_READY: usize = 1;
