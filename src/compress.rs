@@ -8,12 +8,22 @@ use pin_project::pin_project;
 
 #[pin_project]
 #[derive(Debug)]
-pub struct Compress<S: Stream, C> {
+pub struct Compress<S, C, I = <S as Stream>::Item> {
     #[pin]
     stream: S,
     #[pin]
     credits: Option<C>,
-    item: Option<S::Item>,
+    item: Option<I>,
+}
+
+impl<S: Default, C, I> Default for Compress<S, C, I> {
+    fn default() -> Self {
+        Self {
+            stream: Default::default(),
+            credits: Default::default(),
+            item: Default::default(),
+        }
+    }
 }
 
 #[derive(Debug)]
