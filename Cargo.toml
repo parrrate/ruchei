@@ -23,7 +23,7 @@ rust-version = "1.88"
 
 [package]
 name = "ruchei"
-version = "0.0.100"
+version = "0.0.101"
 description = "Utilities for working with many streams"
 documentation = "https://docs.rs/ruchei"
 keywords = ["streams", "async", "stream"]
@@ -35,6 +35,16 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 rust-version.workspace = true
+exclude = [
+    "/.github",
+    "/.vscode",
+    "/bin",
+    "/.gitattribues",
+    "/.gitignore",
+    "/Cargo.lock",
+    "/check.sh",
+    "/doc.sh",
+]
 
 [workspace.dependencies]
 extend-pinned = { path = "extend-pinned", version = "0.1.0" }
