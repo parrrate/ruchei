@@ -98,6 +98,7 @@ impl<
     }
 }
 
+#[must_use]
 pub fn group_sorted<L: PairStream, R: PairStream>(l: L, r: R) -> GroupSorted<L, R>
 where
     GroupSorted<L, R>: Stream,
@@ -107,6 +108,7 @@ where
 }
 
 pub trait GroupSortedExt: Sized + PairStream<K: Ord, V: Clone> {
+    #[must_use]
     fn group_sorted<R: PairStream<C = Self::C, K = Self::K>>(
         self,
         right: R,
