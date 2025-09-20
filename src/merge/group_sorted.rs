@@ -25,6 +25,16 @@ pub struct GroupSorted<
     last: Option<(K, Either<Lv, Rv>)>,
 }
 
+impl<L: Default, R: Default, K, Lv, Rv> Default for GroupSorted<L, R, K, Lv, Rv> {
+    fn default() -> Self {
+        Self {
+            l: Default::default(),
+            r: Default::default(),
+            last: Default::default(),
+        }
+    }
+}
+
 impl<
     C: PairCategory,
     K: Ord,
