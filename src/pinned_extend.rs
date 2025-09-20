@@ -13,7 +13,7 @@ use pin_project::pin_project;
 use route_sink::{FlushRoute, ReadyRoute, ReadySome};
 
 /// Auto-derive [`PinnedExtend`] from [`Extend`].
-pub trait AutoPinnedExtend {}
+pub trait AutoPinnedExtend: Unpin {}
 
 /// [`Extend`] equivalent for [`Pin<&mut I>`].
 pub trait PinnedExtend<A> {
@@ -21,7 +21,7 @@ pub trait PinnedExtend<A> {
     fn extend_pinned<T: IntoIterator<Item = A>>(self: Pin<&mut Self>, iter: T);
 }
 
-impl<A, S: AutoPinnedExtend + Extend<A> + Unpin> PinnedExtend<A> for S {
+impl<A, S: AutoPinnedExtend + Extend<A>> PinnedExtend<A> for S {
     fn extend_pinned<T: IntoIterator<Item = A>>(self: Pin<&mut Self>, iter: T) {
         self.get_mut().extend(iter)
     }
