@@ -120,6 +120,7 @@ impl<S: Sink<T>, T, F> WithReply<S, T, F> {
         *this.needs_flush = true;
     }
 
+    #[must_use]
     fn new(stream: S, buffer: Option<T>, filter: F) -> Self {
         let needs_flush = buffer.is_some();
         Self {
@@ -134,6 +135,7 @@ impl<S: Sink<T>, T, F> WithReply<S, T, F> {
 }
 
 pub trait WithReplyExt<T>: Sized + Sink<T> + TryStream {
+    #[must_use]
     fn with_reply<F: ReplyBufferFilter<Self::Ok, Reply = T>>(
         self,
         buffer: Option<T>,
