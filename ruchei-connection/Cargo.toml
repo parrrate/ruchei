@@ -7,6 +7,7 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 rust-version.workspace = true
+description = "Readiness queues used in the implementation of ruchei for managing multiple connections"
 
 [dependencies]
 futures-channel.workspace = true
