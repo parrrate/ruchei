@@ -13,6 +13,7 @@ impl<T> Nodes<T> {
         assert!(self.pop_at(id).value.is_none());
     }
 
+    #[must_use]
     fn push_value(&mut self, value: T) -> NodeId {
         self.push(Node::new_value(value))
     }
@@ -24,6 +25,7 @@ impl<T> Nodes<T> {
         self.decrement_roots();
     }
 
+    #[must_use]
     fn push_child(&mut self, first: u8, rest: Vec<u8>, child: NodeId) -> NodeId {
         let parent = self.push(Node::new_child(first, rest, child));
         self.adopt(parent, first, child);
@@ -37,12 +39,14 @@ impl<T> Nodes<T> {
         self.adopt(parent, first, child);
     }
 
+    #[must_use]
     fn add_value(&mut self, parent: NodeId, first: u8, rest: Vec<u8>, value: T) -> NodeId {
         let child = self.push_value(value);
         self.add_child(parent, first, rest, child);
         child
     }
 
+    #[must_use]
     fn add_grandchild(
         &mut self,
         parent: NodeId,
@@ -57,6 +61,7 @@ impl<T> Nodes<T> {
         child
     }
 
+    #[must_use]
     fn remove_child(&mut self, parent: NodeId, first: u8) -> (Vec<u8>, NodeId) {
         let (prefix, child) = self[parent].children.remove(&first).expect("unknown child");
         self.increment_roots();
@@ -64,6 +69,7 @@ impl<T> Nodes<T> {
         (prefix, child)
     }
 
+    #[must_use]
     fn disown(&mut self, child: NodeId) -> (NodeId, u8, Vec<u8>) {
         let (first, parent) = self[child].parent.expect("disowning without a parent");
         let (prefix, c) = self.remove_child(parent, first);
@@ -71,6 +77,7 @@ impl<T> Nodes<T> {
         (parent, first, prefix)
     }
 
+    #[must_use]
     fn locate(&self, mut id: NodeId, mut key: &[u8]) -> Option<NodeId> {
         while let Some((first, rest)) = key.split_first() {
             let (prefix, sub_id) = self[id].children.get(first)?;
@@ -83,6 +90,7 @@ impl<T> Nodes<T> {
         Some(id)
     }
 
+    #[must_use]
     fn insert(&mut self, mut id: NodeId, mut key: &[u8], value: T) -> (NodeId, Option<T>) {
         let value = loop {
             let Some((first, rest)) = key.split_first() else {
@@ -160,18 +168,21 @@ impl<T> Nodes<T> {
         }
     }
 
+    #[must_use]
     fn remove_at(&mut self, id: NodeId) -> Option<T> {
         let value = self[id].value.take()?;
         self.collapse(id);
         Some(value)
     }
 
+    #[must_use]
     fn remove(&mut self, mut id: NodeId, key: &[u8]) -> Option<(NodeId, T)> {
         id = self.locate(id, key)?;
         let value = self.remove_at(id)?;
         Some((id, value))
     }
 
+    #[must_use]
     fn collect_key(&self, mut id: NodeId) -> Vec<u8> {
         let mut parts = Vec::new();
         while let Some((first, parent)) = &self[id].parent {
@@ -188,6 +199,7 @@ impl<T> Nodes<T> {
 
 /// Has `value` and/or one of its descendants has `value`
 #[derive(Debug)]
+#[must_use]
 struct Node<T> {
     parent: Option<(u8, NodeId)>,
     value: Option<T>,
@@ -222,10 +234,12 @@ impl<T> Node<T> {
         Self::new_children([(first, (rest, child))].into())
     }
 
+    #[must_use]
     fn is_collapsible(&self) -> bool {
         self.parent.is_some() && self.value.is_none() && self.children.len() < 2
     }
 
+    #[must_use]
     fn only_child(&self) -> Option<NodeId> {
         assert!(self.is_collapsible());
         let l = self.children.first_key_value()?;
@@ -254,24 +268,29 @@ impl<T> Default for Trie<T> {
 }
 
 impl<T> Trie<T> {
+    #[must_use]
     pub fn try_index(&self, id: NodeId) -> Option<&T> {
         self.nodes.get(id)?.value.as_ref()
     }
 
+    #[must_use]
     pub fn try_index_mut(&mut self, id: NodeId) -> Option<&mut T> {
         self.nodes.get_mut(id)?.value.as_mut()
     }
 
+    #[must_use]
     pub fn contains_key(&self, key: &[u8]) -> bool {
         self.get(key).is_some()
     }
 
+    #[must_use]
     pub fn get<'a>(&'a self, key: &[u8]) -> Option<(NodeId, &'a T)> {
         let id = self.nodes.locate(self.root, key)?;
         let value = self.nodes[id].value.as_ref()?;
         Some((id, value))
     }
 
+    #[must_use]
     pub fn get_mut<'a>(&'a mut self, key: &[u8]) -> Option<(NodeId, &'a mut T)> {
         let id = self.nodes.locate(self.root, key)?;
         let value = self.nodes[id].value.as_mut()?;
@@ -306,6 +325,7 @@ impl<T> Trie<T> {
         }
     }
 
+    #[must_use]
     pub fn collect_key(&self, id: NodeId) -> Option<Vec<u8>> {
         if self.nodes.contains(id) {
             Some(self.nodes.collect_key(id))
@@ -325,6 +345,7 @@ impl<T: ?Sized> Trie<Box<T>> {
     }
 }
 
+#[must_use]
 pub struct PrefixOf<'a, 'b, T> {
     nodes: &'a Nodes<T>,
     id: Option<NodeId>,
@@ -352,6 +373,7 @@ impl<'a, 'b, T> Iterator for PrefixOf<'a, 'b, T> {
     }
 }
 
+#[must_use]
 pub struct PrefixOfMut<'a, 'b, T: ?Sized> {
     nodes: &'a mut Nodes<Box<T>>,
     id: Option<NodeId>,
