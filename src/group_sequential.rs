@@ -146,6 +146,7 @@ impl<S, T, K> From<S> for Grouped<S, T, K> {
 
 pub trait GroupSequential: Sized + FusedStream<Item: GroupItem<V = Self::V>> {
     type V;
+    #[must_use]
     fn group_sequential<T: Default + Extend<Self::V>>(self) -> Grouped<Self, T> {
         self.into()
     }
