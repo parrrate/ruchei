@@ -5,6 +5,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] — 2025-09-20
+
+first stable release
+
+### Changed
+
+- since this version, we start doing backwards-compatibility for non-`unstable` functionality
+
 ## [0.0.100] — 2025-09-20
 
 ### Added
@@ -229,7 +237,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 (baseline)
 
-[unreleased]: https://github.com/parrrate/ruchei/compare/0.0.100...HEAD
+[unreleased]: https://github.com/parrrate/ruchei/compare/0.1.0...HEAD
+[0.1.0]: https://github.com/parrrate/ruchei/compare/0.0.100...0.1.0
 [0.0.100]: https://github.com/parrrate/ruchei/compare/0.0.99...0.0.100
 [0.0.99]: https://github.com/parrrate/ruchei/compare/0.0.98...0.0.99
 [0.0.98]: https://github.com/parrrate/ruchei/compare/0.0.97...0.0.98
