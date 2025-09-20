@@ -38,8 +38,10 @@ mod private {
     pub trait FromPin<C> {
         type Item<T>;
 
+        #[must_use]
         fn from_pin(pinned: Pin<&mut Option<C>>) -> Self;
 
+        #[must_use]
         fn item<T>(self, item: T) -> Self::Item<T>;
     }
 
