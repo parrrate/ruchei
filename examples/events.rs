@@ -25,8 +25,8 @@ use pin_project::pin_project;
 use ruchei::{
     callback::Start,
     concurrent::ConcurrentExt,
+    connection_item::ConnectionItem,
     liveness::timeout_unused::{KeepAlive, TimeoutUnused, WithTimeout},
-    multi_item::MultiItem,
     multicast::buffered::{Multicast, MulticastBuffered},
     poll_on_wake::PollOnWakeExt,
 };
@@ -200,7 +200,7 @@ impl<
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let mut this = self.project();
         while let Some(item) = ready!(this.0.as_mut().poll_next(cx)) {
-            let MultiItem::Closed(_, _) = item;
+            let ConnectionItem::Closed(_, _) = item;
         }
         Poll::Ready(this.1.take().unwrap())
     }

@@ -13,8 +13,8 @@ use futures_util::{
 };
 use pin_project::pin_project;
 use ruchei::{
+    connection_item::ConnectionItemExt,
     echo::buffered::EchoBuffered,
-    multi_item::MultiItemExt,
     multicast::{
         buffered::MulticastBuffered, bufferless::MulticastBufferless, replay::MulticastReplay,
     },
@@ -143,7 +143,7 @@ async fn main() {
     test_two(|streams| async move {
         streams
             .multicast_replay()
-            .multi_item_ignore()
+            .connection_item_ignore()
             .echo_buffered()
             .await
             .unwrap()
@@ -152,7 +152,7 @@ async fn main() {
     test_two(|streams| async move {
         streams
             .multicast_buffered()
-            .multi_item_ignore()
+            .connection_item_ignore()
             .echo_buffered()
             .await
             .unwrap()
@@ -161,7 +161,7 @@ async fn main() {
     test_two(|streams| async move {
         streams
             .multicast_bufferless()
-            .multi_item_ignore()
+            .connection_item_ignore()
             .echo_buffered()
             .await
             .unwrap()
@@ -170,7 +170,7 @@ async fn main() {
     test_two(|streams| async move {
         streams
             .multicast_bufferless()
-            .multi_item_ignore()
+            .connection_item_ignore()
             .echo_buffered()
             .await
             .unwrap()

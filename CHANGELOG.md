@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Router`s now have opaque `RouteKey`s instead of `usize`
 - `ExtendPinned` (rename)
 - gated less stable stuff behind `unstable` feature
+- `ConnectionItem` (rename)
 
 ### Fixed
 

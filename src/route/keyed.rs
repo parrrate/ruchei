@@ -14,7 +14,7 @@ use pin_project::pin_project;
 use route_sink::{FlushRoute, ReadyRoute};
 use ruchei_extend::{Extending, ExtendingExt};
 
-use crate::multi_item::{MultiItem, MultiRouteItem};
+use crate::connection_item::{ConnectionItem, MultiRouteItem};
 
 use super::{Key, without_multicast::RouteKey};
 
@@ -82,11 +82,11 @@ impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Router<
         let mut this = self.project();
         while let Some(item) = ready!(this.router.as_mut().poll_next(cx)) {
             return Poll::Ready(Some(match item {
-                MultiItem::Item((i, (k, v))) => {
+                ConnectionItem::Item((i, (k, v))) => {
                     this.routes.entry(k.clone()).or_default().insert(i);
-                    MultiItem::Item((k, v))
+                    ConnectionItem::Item((k, v))
                 }
-                MultiItem::Closed((i, One { key, stream }), e) => {
+                ConnectionItem::Closed((i, One { key, stream }), e) => {
                     let mut entry = match this.routes.entry(key.clone()) {
                         linked_hash_map::Entry::Occupied(entry) => entry,
                         linked_hash_map::Entry::Vacant(_) => continue,
@@ -97,7 +97,7 @@ impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Router<
                     if entry.get().is_empty() {
                         entry.remove();
                     }
-                    MultiItem::Closed((key, stream), e)
+                    ConnectionItem::Closed((key, stream), e)
                 }
             }));
         }

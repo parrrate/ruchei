@@ -7,12 +7,12 @@ use futures_channel::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
 use futures_util::{StreamExt, future::ready};
 use ruchei::{
     concurrent::ConcurrentExt,
+    connection_item::ConnectionItemExt,
     echo::buffered::EchoBuffered,
     liveness::{
         group_concurrent::{Group, GroupConcurrent},
         timeout_unused::TimeoutUnused,
     },
-    multi_item::MultiItemExt,
     multicast::replay::MulticastReplay,
     poll_on_wake::PollOnWakeExt,
 };
@@ -57,7 +57,7 @@ async fn main() {
             receiver
                 .timeout_unused(|| ready(()))
                 .multicast_replay()
-                .multi_item_ignore()
+                .connection_item_ignore()
                 .echo_buffered()
                 .await
                 .unwrap();

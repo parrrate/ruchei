@@ -3,8 +3,8 @@
 use async_net::TcpListener;
 use futures_util::StreamExt;
 use ruchei::{
-    concurrent::ConcurrentExt, deal::without_multicast::DealWithoutMulticast,
-    multi_item::MultiItem, poll_on_wake::PollOnWakeExt,
+    concurrent::ConcurrentExt, connection_item::ConnectionItem,
+    deal::without_multicast::DealWithoutMulticast, poll_on_wake::PollOnWakeExt,
 };
 
 #[async_std::main]
@@ -22,10 +22,10 @@ async fn main() {
         .deal_without_multicast()
         .for_each(|item| {
             match item {
-                MultiItem::Item(item) => {
+                ConnectionItem::Item(item) => {
                     eprintln!("{item:?}");
                 }
-                MultiItem::Closed(_, _) => {
+                ConnectionItem::Closed(_, _) => {
                     eprintln!("closed");
                 }
             }

@@ -12,6 +12,7 @@ pub use ruchei_extra as with_extra;
 #[cfg(feature = "unstable")]
 pub mod compress;
 pub mod concurrent;
+pub mod connection_item;
 pub mod deal;
 pub mod echo;
 #[cfg(feature = "unstable")]
@@ -19,7 +20,6 @@ pub mod group_sequential;
 #[cfg(feature = "unstable")]
 pub mod liveness;
 pub mod merge;
-pub mod multi_item;
 pub mod multicast;
 mod owned_close;
 pub mod poll_on_wake;

@@ -19,7 +19,7 @@ use ruchei_collections::{
 use ruchei_connection::{ConnectionWaker, Ready};
 use ruchei_extend::{Extending, ExtendingExt};
 
-use crate::multi_item::MultiItem;
+use crate::connection_item::ConnectionItem;
 
 const OP_WAKE_NEXT: usize = 0;
 const OP_WAKE_READY: usize = 1;
@@ -470,14 +470,14 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
 impl<S: Unpin + TryStream<Error = E> + Sink<T, Error = E>, T: Clone, E> Stream
     for Multicast<S, T, E>
 {
-    type Item = MultiItem<S>;
+    type Item = ConnectionItem<S>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.next_flush.next.register(cx.waker());
         let _ = self.as_mut().poll_send_flush();
         let mut this = self.as_mut().project();
         if let Some((stream, error)) = this.closed.pop_front() {
-            return Poll::Ready(Some(MultiItem::Closed(stream, error)));
+            return Poll::Ready(Some(ConnectionItem::Closed(stream, error)));
         }
         while let Some(key) = this.next.as_mut().next::<OP_WAKE_NEXT>(this.connections) {
             if let Some(connection) = this.connections.get_mut(key)
@@ -488,7 +488,7 @@ impl<S: Unpin + TryStream<Error = E> + Sink<T, Error = E>, T: Clone, E> Stream
                 match o {
                     Some(Ok(item)) => {
                         this.next.downgrade().insert(key);
-                        return Poll::Ready(Some(MultiItem::Item(item)));
+                        return Poll::Ready(Some(ConnectionItem::Item(item)));
                     }
                     Some(Err(e)) => {
                         self.as_mut().remove(key, Some(e));
