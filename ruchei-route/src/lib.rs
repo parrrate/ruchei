@@ -38,6 +38,8 @@
 //!
 //! ***Coming Soon...***
 
+#![no_std]
+
 use core::{
     pin::Pin,
     task::{Context, Poll},
