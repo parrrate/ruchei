@@ -41,7 +41,6 @@ exclude = [
     "/bin",
     "/.gitattribues",
     "/.gitignore",
-    "/Cargo.lock",
     "/check.sh",
     "/doc.sh",
 ]
