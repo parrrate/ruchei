@@ -10,7 +10,7 @@ impl<T> Nodes<T> {
         assert!(node.parent.is_none());
         assert!(node.value.is_none());
         assert!(node.children.is_empty());
-        self.pop_at(id);
+        assert!(self.pop_at(id).value.is_none());
     }
 
     fn push_value(&mut self, value: T) -> NodeId {
