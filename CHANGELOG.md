@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - regular implementations become `*_without_multicast`
 - `Router`s now have opaque `RouteKey`s instead of `usize`
 - `ExtendPinned` (rename)
+- gated less stable stuff behind `unstable` feature
 
 ### Fixed
 
@@ -26,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - `AutoPinnedExtend`
+- `pair_item` is no longer publicly accessible
 
 ## [0.0.98] — 2025-09-18
 
