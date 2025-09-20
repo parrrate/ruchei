@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `From<S>` for `group_concurrent::Grouped<S, G: Default>`
 - `group_concurrent::Grouped::new`
 
+### Changed
+
+- relax `Default` and `From` requirements for `WithTimeout`
+
 ## [0.0.99] — 2025-09-20
 
 ### Added

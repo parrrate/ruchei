@@ -145,17 +145,13 @@ pub trait TimeoutUnused: Sized + Stream {
 
 impl<S: Stream> TimeoutUnused for S {}
 
-impl<S, Fut: Future<Output = ()>, F: Default + Start<Fut = Fut>> From<S>
-    for WithTimeout<S, F, Fut>
-{
+impl<S, Fut, F: Default> From<S> for WithTimeout<S, F, Fut> {
     fn from(stream: S) -> Self {
         Self::new(stream, Default::default())
     }
 }
 
-impl<S: Default, Fut: Future<Output = ()>, F: Default + Start<Fut = Fut>> Default
-    for WithTimeout<S, F, Fut>
-{
+impl<S: Default, Fut, F: Default> Default for WithTimeout<S, F, Fut> {
     fn default() -> Self {
         S::default().into()
     }
