@@ -17,6 +17,7 @@ pub trait PairItem: Sized {
     type V;
 
     fn into_kv<V0>(self) -> PairResult<Self, V0>;
+    #[must_use]
     fn from_kv(k: Self::K, v: Self::V) -> Self;
 }
 
