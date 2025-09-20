@@ -14,6 +14,7 @@
 /// [`multicast`]: https://docs.rs/ruchei/0.0.81/ruchei/multicast/index.html
 /// [`MultiItem`]: https://docs.rs/ruchei/0.0.97/ruchei/multi_item/enum.MultiItem.html
 #[deprecated]
+#[must_use = "callbacks must be called"]
 pub trait OnClose<E>: Clone {
     /// Get notified about something getting closed (optionally with an error).
     fn on_close(&self, error: Option<E>);
@@ -33,6 +34,7 @@ impl<E, F: Clone + Fn(Option<E>)> OnClose<E> for F {
 ///
 /// [`ReadCallback`]: https://docs.rs/ruchei/0.0.81/ruchei/read_callback/index.html
 #[deprecated]
+#[must_use = "callbacks must be called"]
 pub trait OnItem<T> {
     /// Receive an item.
     fn on_item(&self, message: T);
@@ -50,6 +52,7 @@ impl<T, F: Fn(T)> OnItem<T> for F {
 ///
 /// [`Future`]: core::future::Future
 /// [`TimeoutUnused`]: https://docs.rs/ruchei/0.0.81/ruchei/timeout_unused/index.html
+#[must_use = "callbacks must be called"]
 pub trait Start {
     /// Future created by this factory.
     type Fut;

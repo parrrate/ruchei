@@ -39,7 +39,7 @@ rust-version.workspace = true
 [workspace.dependencies]
 extend-pinned = { path = "extend-pinned", version = "0.1.0" }
 route-sink = { path = "route-sink", version = "0.1.3" }
-ruchei-callback = { path = "ruchei-callback", version = "0.1.1" }
+ruchei-callback = { path = "ruchei-callback", version = "0.1.2" }
 ruchei-collections = { path = "ruchei-collections", version = "=0.0.0-a.3" }
 ruchei-connection = { path = "ruchei-connection", version = "=0.0.0-a.0" }
 ruchei-extend = { path = "ruchei-extend", version = "0.1.0" }
