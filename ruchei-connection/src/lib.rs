@@ -1,4 +1,5 @@
 use std::{
+    marker::PhantomPinned,
     pin::Pin,
     sync::Arc,
     task::{Context, Poll, Wake, Waker},
@@ -33,6 +34,7 @@ pub struct Ready {
     recv: UnboundedReceiver<SlabKey>,
     inner: Arc<SlabWaker>,
     waker: Waker,
+    _pinned: PhantomPinned,
 }
 
 impl Default for Ready {
@@ -45,6 +47,7 @@ impl Default for Ready {
             recv,
             inner,
             waker,
+            _pinned: PhantomPinned,
         }
     }
 }
