@@ -34,6 +34,18 @@ pub struct ProductSorted<
     rv: Vec<Rv>,
 }
 
+impl<L: Default, R: Default, K, Lv, Rv> Default for ProductSorted<L, R, K, Lv, Rv> {
+    fn default() -> Self {
+        Self {
+            l: Default::default(),
+            r: Default::default(),
+            last: Default::default(),
+            lv: Default::default(),
+            rv: Default::default(),
+        }
+    }
+}
+
 impl<
     C: PairCategory,
     K: Ord + Clone,

@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `group_concurrent::Grouped::new`
 - `Default` for `FlattenSorted`
 - `Default` for `GroupSorted`
+- `Default` for `ProductSorted`
 
 ### Changed
 
