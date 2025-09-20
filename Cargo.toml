@@ -57,12 +57,12 @@ pin-project = "1"
 slab = "0.4.9"
 
 [dependencies]
-extend-pinned.workspace = true
+extend-pinned = { workspace = true, optional = true }
 route-sink = { workspace = true, features = ["futures-util", "std"] }
 ruchei-callback = { workspace = true, optional = true }
-ruchei-collections.workspace = true
-ruchei-connection.workspace = true
-ruchei-extend.workspace = true
+ruchei-collections = { workspace = true, optional = true }
+ruchei-connection = { workspace = true, optional = true }
+ruchei-extend = { workspace = true, optional = true }
 ruchei-extra.workspace = true
 
 futures-util.workspace = true
@@ -79,6 +79,8 @@ rand = "0.8.5"
 thiserror = "1"
 
 [features]
-default = ["by-key"]
+default = ["by-key", "connection", "extend"]
 by-key = ["dep:linked_hash_set"]
+connection = ["dep:ruchei-collections", "dep:ruchei-connection"]
+extend = ["dep:extend-pinned", "dep:ruchei-extend"]
 unstable = ["dep:ruchei-callback"]
