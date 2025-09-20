@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - everything is now `Debug`
+- `by-key` feature (enabled by default)
 
 ### Changed
 
