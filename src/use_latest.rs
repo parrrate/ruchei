@@ -63,6 +63,12 @@ pub struct UseLatest<R, Out, S = <R as Stream>::Item> {
     buffer: Option<Out>,
 }
 
+impl<R: Default, Out, S> Default for UseLatest<R, Out, S> {
+    fn default() -> Self {
+        R::default().into()
+    }
+}
+
 impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: FusedStream<Item = S>>
     UseLatest<R, Out, S>
 {
