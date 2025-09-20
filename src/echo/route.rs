@@ -44,12 +44,7 @@ pub struct Echo<
 
 impl<S: Default, K, T> Default for Echo<S, K, T> {
     fn default() -> Self {
-        Self {
-            router: Default::default(),
-            connections: Default::default(),
-            map: Default::default(),
-            send: Default::default(),
-        }
+        S::default().into()
     }
 }
 
@@ -132,6 +127,17 @@ impl<K: Key, T, E, S: TryStream<Ok = (K, T), Error = E> + ReadyRoute<K, T, Error
     }
 }
 
+impl<S, K, T> From<S> for Echo<S, K, T> {
+    fn from(router: S) -> Self {
+        Echo {
+            router,
+            connections: Default::default(),
+            map: Default::default(),
+            send: Default::default(),
+        }
+    }
+}
+
 pub trait EchoRoute:
     Sized
     + TryStream<Ok = (Self::K, Self::T), Error = Self::E>
@@ -142,12 +148,7 @@ pub trait EchoRoute:
     type E;
 
     fn echo_route(self) -> Echo<Self> {
-        Echo {
-            router: self,
-            connections: Default::default(),
-            map: Default::default(),
-            send: Default::default(),
-        }
+        self.into()
     }
 }
 

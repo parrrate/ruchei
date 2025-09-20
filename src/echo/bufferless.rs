@@ -18,11 +18,7 @@ pub struct Echo<S, T = <S as TryStream>::Ok> {
 
 impl<S: Default, T> Default for Echo<S, T> {
     fn default() -> Self {
-        Self {
-            stream: Default::default(),
-            item: Default::default(),
-            started: Default::default(),
-        }
+        S::default().into()
     }
 }
 
@@ -67,7 +63,7 @@ impl<T, E, S: FusedStream + TryStream<Ok = T, Error = E> + Sink<T, Error = E>> F
     }
 }
 
-impl<T, E, S: TryStream<Ok = T, Error = E>> From<S> for Echo<S, T> {
+impl<T, S> From<S> for Echo<S, T> {
     fn from(stream: S) -> Self {
         Self {
             stream,
