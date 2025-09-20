@@ -2,6 +2,8 @@
 //!
 //! Commonly used for storing types with [`Drop`] logic.
 
+#![no_std]
+
 use core::{
     pin::Pin,
     task::{Context, Poll},
