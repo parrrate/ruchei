@@ -26,25 +26,30 @@ pub struct NodeId {
 }
 
 impl<Node> Nodes<Node> {
+    #[must_use]
     pub(crate) fn get(&self, id: NodeId) -> Option<&Node> {
         let (ctr, node) = self.slab.get(id.location)?;
         (*ctr == id.ctr).then_some(node)
     }
 
+    #[must_use]
     pub(crate) fn get_mut(&mut self, id: NodeId) -> Option<&mut Node> {
         let (ctr, node) = self.slab.get_mut(id.location)?;
         (*ctr == id.ctr).then_some(node)
     }
 
+    #[must_use]
     pub(crate) fn contains(&self, id: NodeId) -> bool {
         self.get(id).is_some()
     }
 
+    #[must_use]
     fn next_ctr(&mut self) -> usize {
         let next_ctr = self.ctr.wrapping_add(1);
         std::mem::replace(&mut self.ctr, next_ctr)
     }
 
+    #[must_use]
     pub(crate) fn push(&mut self, node: Node) -> NodeId {
         self.increment_roots();
         let ctr = self.next_ctr();
@@ -54,6 +59,7 @@ impl<Node> Nodes<Node> {
         }
     }
 
+    #[must_use]
     pub(crate) fn pop_at(&mut self, id: NodeId) -> Node {
         let (ctr, node) = self.slab.remove(id.location);
         assert_eq!(ctr, id.ctr);
@@ -69,11 +75,13 @@ impl<Node> Nodes<Node> {
         self.roots = self.roots.checked_sub(1).expect("root count underflow");
     }
 
+    #[must_use]
     pub(crate) fn roots(&self) -> usize {
         self.roots
     }
 
     #[cfg(test)]
+    #[must_use]
     pub(crate) fn len(&self) -> usize {
         self.slab.len()
     }
