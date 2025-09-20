@@ -226,6 +226,7 @@ impl<
     }
 }
 
+#[must_use]
 pub fn product_sorted<L: PairStream, R: PairStream>(l: L, r: R) -> ProductSorted<L, R>
 where
     ProductSorted<L, R>: Stream,
@@ -241,6 +242,7 @@ where
 }
 
 pub trait ProductSortedExt: Sized + PairStream<K: Ord + Clone, V: Clone> {
+    #[must_use]
     fn product_sorted<R: PairStream<C = Self::C, K = Self::K, V: Clone>>(
         self,
         right: R,
