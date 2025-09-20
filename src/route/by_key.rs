@@ -1,4 +1,5 @@
 use std::{
+    collections::{HashMap, hash_map},
     convert::Infallible,
     fmt::Debug,
     hash::Hash,
@@ -8,7 +9,6 @@ use std::{
 
 use extend_pinned::ExtendPinned;
 use futures_util::{Sink, Stream, TryStream, ready, stream::FusedStream};
-use linked_hash_map::LinkedHashMap;
 use linked_hash_set::LinkedHashSet;
 use pin_project::pin_project;
 use route_sink::{FlushRoute, ReadyRoute};
@@ -63,7 +63,7 @@ impl<Out, K, E, S: Sink<Out, Error = E>> Sink<Out> for One<K, S> {
 pub struct Router<K: Hash + Eq, S, E = <S as TryStream>::Error> {
     #[pin]
     router: super::without_multicast::Router<One<K, S>, E>,
-    routes: LinkedHashMap<K, LinkedHashSet<RouteKey>>,
+    routes: HashMap<K, LinkedHashSet<RouteKey>>,
 }
 
 impl<K: Hash + Eq, S, E> Default for Router<K, S, E> {
@@ -88,8 +88,8 @@ impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Router<
                 }
                 ConnectionItem::Closed((i, One { key, stream }), e) => {
                     let mut entry = match this.routes.entry(key.clone()) {
-                        linked_hash_map::Entry::Occupied(entry) => entry,
-                        linked_hash_map::Entry::Vacant(_) => continue,
+                        hash_map::Entry::Occupied(entry) => entry,
+                        hash_map::Entry::Vacant(_) => continue,
                     };
                     if !entry.get_mut().remove(&i) {
                         continue;

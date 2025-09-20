@@ -66,7 +66,6 @@ ruchei-extend.workspace = true
 ruchei-extra.workspace = true
 
 futures-util.workspace = true
-linked-hash-map = { workspace = true, optional = true }
 linked_hash_set = { workspace = true, optional = true }
 pin-project.workspace = true
 
@@ -81,5 +80,5 @@ thiserror = "1"
 
 [features]
 default = ["by-key"]
-by-key = ["dep:linked-hash-map", "dep:linked_hash_set"]
+by-key = ["dep:linked_hash_set"]
 unstable = ["dep:ruchei-callback"]
