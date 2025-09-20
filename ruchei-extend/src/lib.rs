@@ -5,7 +5,9 @@
 //!
 //! [`ruchei`]: https://docs.rs/ruchei
 
-use std::{
+#![no_std]
+
+use core::{
     pin::Pin,
     task::{Context, Poll},
 };
