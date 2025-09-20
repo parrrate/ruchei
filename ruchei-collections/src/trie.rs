@@ -88,8 +88,9 @@ impl<T> Nodes<T> {
             let Some((first, rest)) = key.split_first() else {
                 break self[id].value.replace(value);
             };
-            let Some((prefix, sub_id)) = self[id].children.get_mut(first) else {
-                id = self.add_value(id, *first, rest.into(), value);
+            let first = *first;
+            let Some((prefix, sub_id)) = self[id].children.get_mut(&first) else {
+                id = self.add_value(id, first, rest.into(), value);
                 break None;
             };
             let sub_id = *sub_id;
@@ -104,8 +105,15 @@ impl<T> Nodes<T> {
                 let (old_first, old_rest) = old_sub.split_first().expect("not an empty string");
                 let old_first = *old_first;
                 let old_rest = old_rest.into();
-                self.disown(sub_id);
-                let middle = self.add_value(id, *first, rest.into(), value);
+                {
+                    let (p, f, r) = self.disown(sub_id);
+                    assert_eq!(p, id);
+                    assert_eq!(f, first);
+                    assert_eq!(r[..rest.len()], *rest);
+                    assert_eq!(r[rest.len()], old_first);
+                    assert_eq!(r[rest.len() + 1..], old_rest);
+                }
+                let middle = self.add_value(id, first, rest.into(), value);
                 self.add_child(middle, old_first, old_rest, sub_id);
                 middle
             } else {
@@ -116,9 +124,16 @@ impl<T> Nodes<T> {
                 let (old_first, old_rest) = old.split_first().expect("not an empty string");
                 let old_first = *old_first;
                 let old_rest = old_rest.into();
-                self.disown(sub_id);
+                {
+                    let (p, f, r) = self.disown(sub_id);
+                    assert_eq!(p, id);
+                    assert_eq!(f, first);
+                    assert_eq!(r[..common.len()], *common);
+                    assert_eq!(r[common.len()], old_first);
+                    assert_eq!(r[common.len() + 1..], old_rest);
+                }
                 let common =
-                    self.add_grandchild(id, *first, common.into(), old_first, old_rest, sub_id);
+                    self.add_grandchild(id, first, common.into(), old_first, old_rest, sub_id);
                 self.add_value(common, *new_first, new_rest.into(), value)
             };
             break None;
