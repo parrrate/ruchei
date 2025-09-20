@@ -1,6 +1,6 @@
 [package]
 name = "ruchei-extend"
-version = "0.1.0"
+version = "0.1.1"
 edition.workspace = true
 publish.workspace = true
 license.workspace = true
@@ -22,3 +22,7 @@ pin-project.workspace = true
 default = ["route-sink"]
 route-sink = ["sink", "dep:route-sink"]
 sink = ["dep:futures-sink"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

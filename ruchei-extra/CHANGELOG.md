@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.1.4] — 2025-09-20
+
+### Added
+
+- feature docs
+
 ## [0.1.3] — 2025-09-20
 
 ### Added
@@ -18,7 +24,8 @@
 
 (baseline)
 
-[unreleased]: https://github.com/parrrate/ruchei/compare/ruchei-extra/0.1.3...HEAD
+[unreleased]: https://github.com/parrrate/ruchei/compare/ruchei-extra/0.1.4...HEAD
+[0.1.4]: https://github.com/parrrate/ruchei/compare/ruchei-extra/0.1.3...ruchei-extra/0.1.4
 [0.1.3]: https://github.com/parrrate/ruchei/compare/ruchei-extra/0.1.2...ruchei-extra/0.1.3
 [0.1.2]: https://github.com/parrrate/ruchei/compare/ruchei-extra/0.1.1...ruchei-extra/0.1.2
 [0.1.1]: https://github.com/parrrate/ruchei/releases/tag/ruchei-extra/0.1.1

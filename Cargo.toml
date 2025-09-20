@@ -43,7 +43,7 @@ ruchei-callback = { path = "ruchei-callback", version = "0.1.1" }
 ruchei-collections = { path = "ruchei-collections", version = "=0.0.0-a.3" }
 ruchei-connection = { path = "ruchei-connection", version = "=0.0.0-a.0" }
 ruchei-extend = { path = "ruchei-extend", version = "0.1.0" }
-ruchei-extra = { path = "ruchei-extra", version = "0.1.4-a.0" }
+ruchei-extra = { path = "ruchei-extra", version = "0.1.4" }
 ruchei-route = { path = "ruchei-route", version = "0.1.9", default-features = false }
 ruchei-sample.path = "internal/ruchei-sample"
 
