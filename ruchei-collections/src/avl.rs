@@ -57,6 +57,7 @@ impl BitXor<Side> for Option<Side> {
 }
 
 impl<T> Nodes<T> {
+    #[must_use]
     fn pop(&mut self, id: NodeId) -> T {
         let node = &self[id];
         assert!(node.parent.is_none());
@@ -66,6 +67,7 @@ impl<T> Nodes<T> {
         self.pop_at(id).value
     }
 
+    #[must_use]
     fn push_value(&mut self, value: T) -> NodeId {
         self.push(Node::new(value))
     }
@@ -84,12 +86,14 @@ impl<T> Nodes<T> {
         self.adopt(parent, side, child);
     }
 
+    #[must_use]
     fn add_value(&mut self, parent: NodeId, side: Side, value: T) -> NodeId {
         let child = self.push_value(value);
         self.add_child(parent, side, child);
         child
     }
 
+    #[must_use]
     fn remove_child(&mut self, parent: NodeId, side: Side) -> NodeId {
         let child = self[parent].side_mut(side).take().expect("unknown child");
         self.increment_roots();
@@ -97,6 +101,7 @@ impl<T> Nodes<T> {
         child
     }
 
+    #[must_use]
     fn disown(&mut self, child: NodeId) -> (Side, NodeId) {
         let (side, parent) = self[child].parent.expect("disowning without a parent");
         let c = self.remove_child(parent, side);
@@ -104,10 +109,12 @@ impl<T> Nodes<T> {
         (side, parent)
     }
 
+    #[must_use]
     fn replace(&mut self, id: NodeId, value: T) -> T {
         self[id].replace(value)
     }
 
+    #[must_use]
     fn up(&self, mut node: NodeId, towards: Side) -> Option<NodeId> {
         while let Some((side, parent)) = self[node].parent {
             if !side == towards {
@@ -118,6 +125,7 @@ impl<T> Nodes<T> {
         None
     }
 
+    #[must_use]
     fn down(&self, mut node: NodeId, towards: Side) -> NodeId {
         while let Some(next) = self[node].side(towards) {
             node = next;
@@ -136,6 +144,7 @@ struct Node<T> {
 }
 
 impl<T> Node<T> {
+    #[must_use]
     fn new(value: T) -> Self {
         Self {
             parent: None,
@@ -146,6 +155,7 @@ impl<T> Node<T> {
         }
     }
 
+    #[must_use]
     fn side(&self, side: Side) -> Option<NodeId> {
         match side {
             Side::L => self.l,
@@ -153,6 +163,7 @@ impl<T> Node<T> {
         }
     }
 
+    #[must_use]
     fn side_mut(&mut self, side: Side) -> &mut Option<NodeId> {
         match side {
             Side::L => &mut self.l,
@@ -160,6 +171,7 @@ impl<T> Node<T> {
         }
     }
 
+    #[must_use]
     fn replace(&mut self, value: T) -> T {
         std::mem::replace(&mut self.value, value)
     }
@@ -192,6 +204,7 @@ enum Mode {
 }
 
 impl<T> Avl<T> {
+    #[must_use]
     fn pop(&mut self, id: NodeId) -> T {
         let node = &self.nodes[id];
         if node.parent.is_none() {
@@ -232,12 +245,14 @@ impl<T> Avl<T> {
         }
     }
 
+    #[must_use]
     fn remove_root(&mut self) -> NodeId {
         let child = self.root.take().expect("no root");
         self.nodes.increment_roots();
         child
     }
 
+    #[must_use]
     fn remove_child(&mut self, parent: Option<(Side, NodeId)>) -> NodeId {
         match parent {
             Some((side, parent)) => self.nodes.remove_child(parent, side),
@@ -245,6 +260,7 @@ impl<T> Avl<T> {
         }
     }
 
+    #[must_use]
     fn disown(&mut self, child: NodeId) -> Option<(Side, NodeId)> {
         if self.nodes[child].parent.is_some() {
             Some(self.nodes.disown(child))
@@ -255,6 +271,7 @@ impl<T> Avl<T> {
         }
     }
 
+    #[must_use]
     fn take_child(&mut self, parent: NodeId, side: Side) -> Option<NodeId> {
         self.nodes[parent].side(side)?;
         Some(self.nodes.remove_child(parent, side))
@@ -306,6 +323,7 @@ impl<T> Avl<T> {
     }
 
     /// Assumes `parent[side].height == parent[!side].height + 2`
+    #[must_use]
     fn balance(&mut self, parent: NodeId, side: Side) -> (NodeId, bool) {
         let node = self.nodes[parent].side(side).expect("unknown child");
         let mut mode = Mode::Unbalanced;
@@ -339,6 +357,7 @@ impl<T> Avl<T> {
         self.height = self.height.checked_add(1).expect("height overflow");
     }
 
+    #[must_use]
     fn insert_child(&mut self, parent: NodeId, side: Side, value: T) -> NodeId {
         assert!(self.nodes[parent].side(side).is_none());
         let child = self.nodes.add_value(parent, side, value);
@@ -353,6 +372,7 @@ impl<T> Avl<T> {
         child
     }
 
+    #[must_use]
     fn create_root(&mut self, value: T) -> NodeId {
         let node = self.nodes.push_value(value);
         self.set_root(node);
@@ -360,6 +380,7 @@ impl<T> Avl<T> {
         node
     }
 
+    #[must_use]
     fn insert_at(&mut self, parent: Option<(Side, NodeId)>, value: T) -> NodeId {
         if let Some((side, parent)) = parent {
             self.insert_child(parent, side, value)
@@ -388,6 +409,7 @@ impl<T> Avl<T> {
         self.nodes[b].bias = bb;
     }
 
+    #[must_use]
     fn skip(&mut self, parent: NodeId, child: NodeId, side: Side) -> T {
         assert_eq!(self.nodes[parent].side(side), Some(child));
         assert!(self.nodes[parent].side(!side).is_none());
@@ -425,6 +447,7 @@ impl<T> Avl<T> {
         self.height = self.height.checked_sub(1).expect("height underflow");
     }
 
+    #[must_use]
     fn remove_leaf(&mut self, id: NodeId) -> T {
         if let Some((side, parent)) = self.nodes[id].parent {
             let c = self.nodes.remove_child(parent, side);
@@ -458,6 +481,7 @@ impl<T> Avl<T> {
         self.pop(id)
     }
 
+    #[must_use]
     fn remove_without_left(&mut self, id: NodeId) -> T {
         let node = &self.nodes[id];
         assert!(node.l.is_none());
@@ -467,6 +491,7 @@ impl<T> Avl<T> {
         }
     }
 
+    #[must_use]
     fn remove_node(&mut self, id: NodeId) -> T {
         let node = &self.nodes[id];
         match node.l {
@@ -495,11 +520,17 @@ pub trait Kv: Sized + private::Sealed {
     where
         Self: 'a;
 
+    #[must_use]
     fn as_k(&self) -> &Self::K;
+    #[must_use]
     fn into_v(self) -> Self::V;
+    #[must_use]
     fn as_v(&self) -> &Self::V;
+    #[must_use]
     fn into_kv(self) -> Self::Kv;
+    #[must_use]
     fn from_kv(kv: Self::Kv) -> Self;
+    #[must_use]
     fn as_item(&self) -> Self::RefItem<'_>;
 }
 
@@ -624,6 +655,7 @@ impl<T: Kv> Avl<T> {
         Some((id, kv.into_v()))
     }
 
+    #[must_use]
     pub fn get<'a>(&'a self, key: &T::K) -> Option<(NodeId, &'a T::V)> {
         let id = self.locate(key).ok()?;
         let kv = &self.nodes[id].value;
@@ -645,6 +677,7 @@ impl<T: Kv> Avl<T> {
         }
     }
 
+    #[must_use]
     pub fn try_index(&self, id: NodeId) -> Option<T::RefItem<'_>> {
         Some(self.nodes.get(id)?.value.as_item())
     }
@@ -655,6 +688,7 @@ impl<T: Ord> Avl<(T,)> {
         self.insert_kv(value)
     }
 
+    #[must_use]
     pub fn contains(&self, value: &T) -> bool {
         self.locate(value).is_ok()
     }
@@ -665,22 +699,26 @@ impl<K: Ord, V> Avl<(K, V)> {
         self.insert_kv((key, value))
     }
 
+    #[must_use]
     pub fn get_mut<'a>(&'a mut self, key: &K) -> Option<(NodeId, &'a mut V)> {
         let id = self.locate(key).ok()?;
         let value = &mut self.nodes[id].value.1;
         Some((id, value))
     }
 
+    #[must_use]
     pub fn contains_key(&self, key: &K) -> bool {
         self.locate(key).is_ok()
     }
 
+    #[must_use]
     pub fn try_index_mut(&mut self, id: NodeId) -> Option<(&K, &mut V)> {
         let (k, v) = &mut self.nodes.get_mut(id)?.value;
         Some((k, v))
     }
 }
 
+#[must_use]
 pub struct Iter<'a, T> {
     avl: &'a Avl<T>,
     id: Option<NodeId>,
