@@ -6,4 +6,5 @@
 pub mod buffered;
 pub mod bufferless;
 pub mod replay;
+#[cfg(feature = "unstable")]
 pub mod trie;
