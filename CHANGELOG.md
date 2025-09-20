@@ -5,26 +5,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.100] — 2025-09-20
+
 ### Added
 
 - `Default` for `Echo`
+
 - `Default` for `group_concurrent::Grouped`
+
 - `From<S>` for `group_concurrent::Grouped<S, G: Default>`
+
 - `group_concurrent::Grouped::new`
+
 - `Default` for `FlattenSorted`
+
 - `Default` for `GroupSorted`
+
 - `Default` for `ProductSorted`
+
 - `Default` for `ZipSorted`
+
 - `Default` for `Compress`
+
 - `Default` for `Concurrent`
+
 - `Default` for `group_sequential::Grouped`
+
 - `From<S>` for `group_sequential::Grouped<S>`
+
 - `Default` for `UseLatest`
+
 - `From<R>` for `UseLatest<R>`
 
 ### Changed
 
 - relax `Default` and `From` requirements for `WithTimeout`
+
+- `must_use` everywhere
 
 ## [0.0.99] — 2025-09-20
 
@@ -212,7 +229,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 (baseline)
 
-[unreleased]: https://github.com/parrrate/ruchei/compare/0.0.99...HEAD
+[unreleased]: https://github.com/parrrate/ruchei/compare/0.0.100...HEAD
+[0.0.100]: https://github.com/parrrate/ruchei/compare/0.0.99...0.0.100
 [0.0.99]: https://github.com/parrrate/ruchei/compare/0.0.98...0.0.99
 [0.0.98]: https://github.com/parrrate/ruchei/compare/0.0.97...0.0.98
 [0.0.97]: https://github.com/parrrate/ruchei/compare/0.0.96...0.0.97
