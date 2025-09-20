@@ -21,7 +21,6 @@ pub mod group_sequential;
 pub mod liveness;
 pub mod merge;
 pub mod multicast;
-mod owned_close;
 pub mod poll_on_wake;
 pub mod route;
 pub mod use_latest;
