@@ -1,0 +1,16 @@
+[package]
+name = "ruchei-extend"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+extend-pinned.workspace = true
+route-sink.workspace = true
+
+futures-util.workspace = true
+pin-project.workspace = true

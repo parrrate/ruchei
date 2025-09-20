@@ -12,11 +12,9 @@ use linked_hash_map::LinkedHashMap;
 use linked_hash_set::LinkedHashSet;
 use pin_project::pin_project;
 use route_sink::{FlushRoute, ReadyRoute};
+use ruchei_extend::{Extending, ExtendingExt};
 
-use crate::{
-    extend::{Extending, ExtendingExt},
-    multi_item::{MultiItem, MultiRouteItem},
-};
+use crate::multi_item::{MultiItem, MultiRouteItem};
 
 use super::{Key, without_multicast::RouteKey};
 

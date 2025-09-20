@@ -15,11 +15,9 @@ use ruchei_collections::{
     multi_trie::{MultiTrie, MultiTrieAddOwned, MultiTriePrefix},
 };
 use ruchei_connection::{Connection, ConnectionWaker, Ready};
+use ruchei_extend::{Extending, ExtendingExt};
 
-use crate::{
-    extend::{Extending, ExtendingExt},
-    multi_item::MultiItem,
-};
+use crate::multi_item::MultiItem;
 
 const OP_WAKE_NEXT: usize = 0;
 const OP_WAKE_READY: usize = 1;

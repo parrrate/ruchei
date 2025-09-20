@@ -6,6 +6,7 @@ extern crate self as ruchei;
 
 #[cfg(feature = "unstable")]
 pub use ruchei_callback as callback;
+pub use ruchei_extend as extend;
 pub use ruchei_extra as with_extra;
 
 #[cfg(feature = "unstable")]
@@ -13,7 +14,6 @@ pub mod compress;
 pub mod concurrent;
 pub mod deal;
 pub mod echo;
-pub mod extend;
 #[cfg(feature = "unstable")]
 pub mod group_sequential;
 #[cfg(feature = "unstable")]

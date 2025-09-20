@@ -2,6 +2,8 @@
 //!
 //! Many of [`ruchei`] combinator traits return [`Extending`] wrapper around something that
 //! implements [`ExtendPinned`] extending from `self`.
+//!
+//! [`ruchei`]: https://docs.rs/ruchei
 
 use std::{
     pin::Pin,

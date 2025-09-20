@@ -14,11 +14,9 @@ use ruchei_collections::{
     linked_slab::LinkedSlab,
 };
 use ruchei_connection::{Connection, ConnectionWaker, Ready};
+use ruchei_extend::{Extending, ExtendingExt};
 
-use crate::{
-    extend::{Extending, ExtendingExt},
-    multi_item::{MultiItem, MultiRouteItem},
-};
+use crate::multi_item::{MultiItem, MultiRouteItem};
 
 const OP_WAKE_NEXT: usize = 0;
 const OP_WAKE_CLOSE: usize = 1;

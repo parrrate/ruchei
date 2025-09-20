@@ -25,12 +25,12 @@ use pin_project::pin_project;
 use ruchei::{
     callback::Start,
     concurrent::ConcurrentExt,
-    extend::Extending,
     liveness::timeout_unused::{KeepAlive, TimeoutUnused, WithTimeout},
     multi_item::MultiItem,
     multicast::buffered::{Multicast, MulticastBuffered},
     poll_on_wake::PollOnWakeExt,
 };
+use ruchei_extend::Extending;
 use ruchei_extra::WithExtra;
 
 enum Command<K, T> {
@@ -183,7 +183,7 @@ impl Start for ReadyStart {
 type ActiveReceiver<S> = WithTimeout<Receiver<Active<S>>, ReadyStart, Ready<()>>;
 
 type ActiveMulticast<S, K, T> =
-    Extending<Multicast<WithExtra<Active<S>, KeepAlive>, (K, T), Error>, ActiveReceiver<S>>;
+    Extending<Multicast<WithExtra<Active<S>, KeepAlive>, (K, T)>, ActiveReceiver<S>>;
 
 #[pin_project]
 struct Finalize<S, K, T>(#[pin] SplitStream<ActiveMulticast<S, K, T>>, Option<K>);
