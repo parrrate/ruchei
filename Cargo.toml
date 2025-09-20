@@ -54,7 +54,7 @@ futures-util = { version = "0.3.31", features = ["sink"] }
 linked-hash-map = "0.5.6"
 linked_hash_set = "0.1.5"
 pin-project = "1"
-slab = "0.4.9"
+slab = "0.4.11"
 
 [dependencies]
 extend-pinned = { workspace = true, optional = true }
