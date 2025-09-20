@@ -175,6 +175,7 @@ impl<
 }
 
 impl<S, G, Sender, K> Grouped<S, G, Sender, K> {
+    #[must_use]
     pub fn new(stream: S, group: G) -> Self {
         Self {
             stream,
