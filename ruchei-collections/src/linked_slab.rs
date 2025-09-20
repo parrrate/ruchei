@@ -5,6 +5,7 @@ use slab::Slab;
 use crate::as_linked_slab::{AsLinkedSlab, SlabKey};
 
 #[derive(Debug, PartialEq, Eq)]
+#[must_use]
 struct Link {
     prev: usize,
     next: usize,
@@ -30,6 +31,7 @@ impl Link {
 }
 
 #[derive(Debug)]
+#[must_use]
 struct Value<T, const N: usize> {
     ctr: usize,
     value: T,
@@ -72,6 +74,7 @@ impl<T, const N: usize> LinkedSlab<T, N> {
         }
     }
 
+    #[must_use]
     fn prev_next(&mut self, n: usize, prev: usize, next: usize) -> (&mut usize, &mut usize) {
         assert!(n < N);
         assert_ne!(self.lens[n], 0);
@@ -119,6 +122,7 @@ impl<T, const N: usize> LinkedSlab<T, N> {
         *next_prev = link.prev;
     }
 
+    #[must_use]
     fn linkable<const M: usize>(&self, SlabKey { key, ctr }: SlabKey) -> bool {
         assert!(M < N);
         if let Some(value) = self.slab.get(key)
@@ -130,6 +134,7 @@ impl<T, const N: usize> LinkedSlab<T, N> {
         }
     }
 
+    #[must_use]
     fn link<const M: usize>(&self) -> Option<(usize, usize)> {
         assert!(M < N);
         match self.links[M] {
@@ -140,6 +145,7 @@ impl<T, const N: usize> LinkedSlab<T, N> {
         }
     }
 
+    #[must_use]
     fn item_link<const M: usize>(&self, key: usize) -> (Option<usize>, Option<usize>) {
         assert!(M < N);
         let Link { prev, next } = *self.slab[key].links[M].as_ref().expect("not linked");
@@ -148,6 +154,7 @@ impl<T, const N: usize> LinkedSlab<T, N> {
         (prev, next)
     }
 
+    #[must_use]
     fn slab_key(&self, key: usize) -> SlabKey {
         SlabKey {
             key,
@@ -155,6 +162,7 @@ impl<T, const N: usize> LinkedSlab<T, N> {
         }
     }
 
+    #[must_use]
     fn key(&self, key: SlabKey) -> usize {
         assert_eq!(self.slab[key.key].ctr, key.ctr);
         key.key
