@@ -5,33 +5,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.99] — 2025-09-20
+
 ### Added
 
 - everything is now `Debug`
+
 - `by-key`, `connection`, `extend`, `extra` features (enabled by default)
 
 ### Changed
 
 - added default type args where possible, some got reordered
+
 - dropped `_slab` prefixes from module/method names
+
   - regular implementations become `*_without_multicast`
+
 - `Router`s now have opaque `RouteKey`s instead of `usize`
+
 - `ExtendPinned` (rename)
+
 - gated less stable stuff behind `unstable` feature
+
 - `ConnectionItem` (rename)
+
 - `use_latest` (rename)
+
 - `route_by_key` (rename)
-
-### Fixed
-
-- broken doc links
-- `flush` not happening
-- `Dealer` sometimes potentially dropping messages
 
 ### Removed
 
 - `AutoPinnedExtend`
+
 - `pair_item` is no longer publicly accessible
+
+### Fixed
+
+- broken doc links
+
+- `flush` not happening
+
+- `Dealer` sometimes potentially dropping messages
 
 ## [0.0.98] — 2025-09-18
 
@@ -177,7 +191,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 (baseline)
 
-[unreleased]: https://github.com/parrrate/ruchei/compare/0.0.98...HEAD
+[unreleased]: https://github.com/parrrate/ruchei/compare/0.0.99...HEAD
+[0.0.99]: https://github.com/parrrate/ruchei/compare/0.0.98...0.0.99
 [0.0.98]: https://github.com/parrrate/ruchei/compare/0.0.97...0.0.98
 [0.0.97]: https://github.com/parrrate/ruchei/compare/0.0.96...0.0.97
 [0.0.96]: https://github.com/parrrate/ruchei/compare/0.0.95...0.0.96

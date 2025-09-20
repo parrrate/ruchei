@@ -23,7 +23,7 @@ rust-version = "1.88"
 
 [package]
 name = "ruchei"
-version = "0.0.98"
+version = "0.0.99"
 description = "Utilities for working with many streams"
 documentation = "https://docs.rs/ruchei"
 keywords = ["streams", "async", "stream"]
@@ -88,3 +88,7 @@ connection = ["dep:ruchei-collections", "dep:ruchei-connection"]
 extend = ["dep:extend-pinned", "dep:ruchei-extend"]
 extra = ["dep:ruchei-extra"]
 unstable = ["extra", "dep:ruchei-callback"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
