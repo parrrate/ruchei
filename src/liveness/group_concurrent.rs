@@ -172,14 +172,20 @@ impl<
     }
 }
 
-impl<S, G: Default, Sender, K> From<S> for Grouped<S, G, Sender, K> {
-    fn from(stream: S) -> Self {
+impl<S, G, Sender, K> Grouped<S, G, Sender, K> {
+    pub fn new(stream: S, group: G) -> Self {
         Self {
             stream,
             select: Default::default(),
             senders: Default::default(),
-            group: Default::default(),
+            group,
         }
+    }
+}
+
+impl<S, G: Default, Sender, K> From<S> for Grouped<S, G, Sender, K> {
+    fn from(stream: S) -> Self {
+        Grouped::new(stream, Default::default())
     }
 }
 
@@ -189,12 +195,7 @@ pub trait GroupConcurrent: Sized + Stream<Item = (Self::Key, Self::GroupItem)> {
 
     #[must_use]
     fn group_concurrent<G: Group<Item = Self::GroupItem>>(self, group: G) -> Grouped<Self, G> {
-        Grouped {
-            stream: self,
-            select: Default::default(),
-            senders: Default::default(),
-            group,
-        }
+        Grouped::new(self, group)
     }
 }
 
