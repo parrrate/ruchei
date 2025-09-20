@@ -134,6 +134,17 @@ pub struct Grouped<S, G, Sender = <G as Group>::Sender, K = <S as PairStream>::K
     group: G,
 }
 
+impl<S: Default, G: Default, Sender, K> Default for Grouped<S, G, Sender, K> {
+    fn default() -> Self {
+        Self {
+            stream: Default::default(),
+            select: Default::default(),
+            senders: Default::default(),
+            group: Default::default(),
+        }
+    }
+}
+
 impl<
     Item,
     Sender,
