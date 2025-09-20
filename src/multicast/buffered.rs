@@ -83,6 +83,7 @@ impl<T> Default for Items<T> {
 }
 
 impl<T> Items<T> {
+    #[must_use]
     fn len(&self) -> usize {
         self.items.len() + self.offset
     }
@@ -137,6 +138,7 @@ impl<S, T, E> Default for Multicast<S, T, E> {
 }
 
 impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
+    #[must_use]
     fn first_for(self: Pin<&mut Self>, sent: usize) -> &mut Option<SlabKey> {
         let this = self.project();
         if sent == this.items.len() {
@@ -146,6 +148,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
         }
     }
 
+    #[must_use]
     fn uncount_first(
         mut self: Pin<&mut Self>,
         key: SlabKey,
@@ -173,6 +176,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
         }
     }
 
+    #[must_use]
     fn uncount_non_first(
         mut self: Pin<&mut Self>,
         key: SlabKey,
@@ -194,6 +198,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
         (first, long_next)
     }
 
+    #[must_use]
     fn uncount(
         mut self: Pin<&mut Self>,
         key: SlabKey,
@@ -296,7 +301,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
         let mut this = self.as_mut().project();
         if this.connections.link_contains::<OP_SENT_FIRST>(key) {
             let sent = this.connections[key].sent;
-            self.as_mut().uncount_first(key, sent);
+            let _ = self.as_mut().uncount_first(key, sent);
             this = self.project();
         }
         let connection = this.connections.remove(key);
