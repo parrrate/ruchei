@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `flush` not happening
 - `Dealer` sometimes potentially dropping messages
 
+### Removed
+
+- `AutoPinnedExtend`
+
 ## [0.0.98] — 2025-09-18
 
 ### Added
