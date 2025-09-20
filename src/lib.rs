@@ -19,7 +19,6 @@ pub mod multicast;
 mod owned_close;
 pub mod pinned_extend;
 pub mod poll_on_wake;
-mod ready_slab;
 pub mod route;
 pub mod switching;
 pub mod with_reply;

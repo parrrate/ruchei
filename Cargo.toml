@@ -4,6 +4,7 @@ members = [
     "route-sink",
     "ruchei-callback",
     "ruchei-collections",
+    "ruchei-connection",
     "ruchei-extra",
     "ruchei-route",
     "ruchei-test",
@@ -37,6 +38,7 @@ rust-version.workspace = true
 route-sink = { path = "route-sink", version = "0.1.1" }
 ruchei-callback = { path = "ruchei-callback", version = "0.1.1" }
 ruchei-collections = { path = "ruchei-collections", version = "=0.0.0-a.3" }
+ruchei-connection = { path = "ruchei-connection", version = "=0.0.0-a.0" }
 ruchei-extra = { path = "ruchei-extra", version = "0.1.1" }
 ruchei-route = { path = "ruchei-route", version = "0.1.8", default-features = false }
 ruchei-sample.path = "internal/ruchei-sample"
@@ -54,9 +56,9 @@ slab = "0.4.9"
 route-sink = { workspace = true, features = ["futures-util", "std"] }
 ruchei-callback.workspace = true
 ruchei-collections.workspace = true
+ruchei-connection.workspace = true
 ruchei-extra.workspace = true
 
-futures-channel.workspace = true
 futures-util.workspace = true
 linked-hash-map.workspace = true
 linked_hash_set.workspace = true
@@ -67,5 +69,6 @@ async-io = "2.3.2"
 async-net = "2.0.0"
 async-std = { version = "1.12.0", features = ["attributes"] }
 async-tungstenite = { version = "0.28" }
+futures-channel.workspace = true
 rand = "0.8.5"
 thiserror = "1"

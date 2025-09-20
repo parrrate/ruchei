@@ -27,7 +27,7 @@ impl Wake for SlabWaker {
 #[must_use]
 #[pin_project]
 #[derive(Debug)]
-pub(crate) struct Ready {
+pub struct Ready {
     send: UnboundedSender<SlabKey>,
     #[pin]
     recv: UnboundedReceiver<SlabKey>,
@@ -51,18 +51,18 @@ impl Default for Ready {
 
 #[must_use]
 #[derive(Debug, Default)]
-pub(crate) struct ReadyWeak(Option<UnboundedSender<SlabKey>>);
+pub struct ReadyWeak(Option<UnboundedSender<SlabKey>>);
 
 impl Ready {
-    pub(crate) fn downgrade(&self) -> ReadyWeak {
+    pub fn downgrade(&self) -> ReadyWeak {
         ReadyWeak(Some(self.send.clone()))
     }
 
-    pub(crate) fn wake(&self) {
+    pub fn wake(&self) {
         self.inner.wake_by_ref();
     }
 
-    pub(crate) fn compact<const M: usize>(self: Pin<&mut Self>, slab: &mut impl AsLinkedSlab) {
+    pub fn compact<const M: usize>(self: Pin<&mut Self>, slab: &mut impl AsLinkedSlab) {
         let mut this = self.project();
         while let Poll::Ready(Some(key)) = this
             .recv
@@ -74,7 +74,7 @@ impl Ready {
     }
 
     #[must_use]
-    pub(crate) fn next<const M: usize>(
+    pub fn next<const M: usize>(
         self: Pin<&mut Self>,
         slab: &mut impl AsLinkedSlab,
     ) -> Option<SlabKey> {
@@ -82,13 +82,13 @@ impl Ready {
         slab.link_pop_front::<M>()
     }
 
-    pub(crate) fn register(&self, cx: &mut Context<'_>) {
+    pub fn register(&self, cx: &mut Context<'_>) {
         self.inner.waker.register(cx.waker());
     }
 }
 
 impl ReadyWeak {
-    pub(crate) fn insert(&self, key: SlabKey) {
+    pub fn insert(&self, key: SlabKey) {
         if let Some(sender) = self.0.as_ref() {
             let _ = sender.unbounded_send(key);
         }
@@ -105,7 +105,7 @@ impl Extend<SlabKey> for ReadyWeak {
 
 #[must_use]
 #[derive(Debug)]
-pub(crate) struct ConnectionWaker {
+pub struct ConnectionWaker {
     waker: AtomicWaker,
     ready: ReadyWeak,
     key: SlabKey,
@@ -113,7 +113,7 @@ pub(crate) struct ConnectionWaker {
 
 impl ConnectionWaker {
     #[must_use]
-    pub(crate) fn new(key: SlabKey, ready: ReadyWeak) -> Arc<Self> {
+    pub fn new(key: SlabKey, ready: ReadyWeak) -> Arc<Self> {
         Arc::new(Self {
             waker: Default::default(),
             ready,
@@ -121,7 +121,7 @@ impl ConnectionWaker {
         })
     }
 
-    pub(crate) fn wake(&self) {
+    pub fn wake(&self) {
         self.ready.insert(self.key);
         self.waker.wake();
     }
@@ -138,7 +138,7 @@ impl Wake for ConnectionWaker {
 }
 
 impl ConnectionWaker {
-    pub(crate) fn poll<T>(
+    pub fn poll<T>(
         self: &Arc<Self>,
         cx: &mut Context<'_>,
         f: impl FnOnce(&mut Context<'_>) -> T,
@@ -147,17 +147,17 @@ impl ConnectionWaker {
         self.poll_detached(f)
     }
 
-    pub(crate) fn poll_detached<T>(self: &Arc<Self>, f: impl FnOnce(&mut Context<'_>) -> T) -> T {
+    pub fn poll_detached<T>(self: &Arc<Self>, f: impl FnOnce(&mut Context<'_>) -> T) -> T {
         f(&mut Context::from_waker(&Waker::from(self.clone())))
     }
 }
 
 #[must_use]
 #[derive(Debug)]
-pub(crate) struct Connection<S> {
-    pub(crate) stream: S,
-    pub(crate) next: Arc<ConnectionWaker>,
-    pub(crate) ready: Arc<ConnectionWaker>,
-    pub(crate) flush: Arc<ConnectionWaker>,
-    pub(crate) close: Arc<ConnectionWaker>,
+pub struct Connection<S> {
+    pub stream: S,
+    pub next: Arc<ConnectionWaker>,
+    pub ready: Arc<ConnectionWaker>,
+    pub flush: Arc<ConnectionWaker>,
+    pub close: Arc<ConnectionWaker>,
 }

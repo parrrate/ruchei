@@ -12,12 +12,9 @@ use ruchei_collections::{
     as_linked_slab::{AsLinkedSlab, SlabKey},
     linked_slab::LinkedSlab,
 };
+use ruchei_connection::{ConnectionWaker, Ready};
 
-use crate::{
-    merge::pair_item::PairItem,
-    ready_slab::{ConnectionWaker, Ready},
-    route::Key,
-};
+use crate::{merge::pair_item::PairItem, route::Key};
 
 const OP_WAKE_SEND: usize = 0;
 const OP_COUNT: usize = 1;

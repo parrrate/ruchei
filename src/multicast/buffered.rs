@@ -15,11 +15,11 @@ use ruchei_collections::{
     as_linked_slab::{AsLinkedSlab, SlabKey},
     linked_slab::LinkedSlab,
 };
+use ruchei_connection::{ConnectionWaker, Ready};
 
 use crate::{
     multi_item::MultiItem,
     pinned_extend::{Extending, PinnedExtend},
-    ready_slab::{ConnectionWaker, Ready},
 };
 
 const OP_WAKE_NEXT: usize = 0;

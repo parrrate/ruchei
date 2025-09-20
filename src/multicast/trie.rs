@@ -13,11 +13,11 @@ use ruchei_collections::{
     linked_slab_multi_trie::LinkedSlabMultiTrie,
     multi_trie::{MultiTrie, MultiTrieAddOwned, MultiTriePrefix},
 };
+use ruchei_connection::{Connection, ConnectionWaker, Ready};
 
 use crate::{
     multi_item::MultiItem,
     pinned_extend::{Extending, PinnedExtend},
-    ready_slab::{Connection, ConnectionWaker, Ready},
 };
 
 const OP_WAKE_NEXT: usize = 0;
