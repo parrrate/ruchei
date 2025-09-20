@@ -10,6 +10,7 @@ use core::{
 use futures_core::{FusedFuture, FusedStream, Future, Stream};
 use futures_sink::Sink;
 use pin_project::pin_project;
+use route_sink::{FlushRoute, ReadyRoute, ReadySome};
 
 /// [`Future`]/[`Stream`]/[`Sink`] with extra data attached.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -115,5 +116,42 @@ impl<Item, T: Sink<Item>, Ex> Sink<Item> for WithExtra<T, Ex> {
 
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.project().inner.poll_close(cx)
+    }
+}
+
+impl<Route, Msg, T: FlushRoute<Route, Msg>, Ex> FlushRoute<Route, Msg> for WithExtra<T, Ex> {
+    fn poll_flush_route(
+        self: Pin<&mut Self>,
+        route: &Route,
+        cx: &mut Context<'_>,
+    ) -> Poll<Result<(), Self::Error>> {
+        self.project().inner.poll_flush_route(route, cx)
+    }
+
+    fn poll_close_route(
+        self: Pin<&mut Self>,
+        route: &Route,
+        cx: &mut Context<'_>,
+    ) -> Poll<Result<(), Self::Error>> {
+        self.project().inner.poll_close_route(route, cx)
+    }
+}
+
+impl<Route, Msg, T: ReadyRoute<Route, Msg>, Ex> ReadyRoute<Route, Msg> for WithExtra<T, Ex> {
+    fn poll_ready_route(
+        self: Pin<&mut Self>,
+        route: &Route,
+        cx: &mut Context<'_>,
+    ) -> Poll<Result<(), Self::Error>> {
+        self.project().inner.poll_ready_route(route, cx)
+    }
+}
+
+impl<Route, Msg, T: ReadySome<Route, Msg>, Ex> ReadySome<Route, Msg> for WithExtra<T, Ex> {
+    fn poll_ready_some(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Result<Route, Self::Error>> {
+        self.project().inner.poll_ready_some(cx)
     }
 }
