@@ -14,6 +14,15 @@ pub struct Grouped<S, T, K = <<S as Stream>::Item as GroupItem>::K> {
     current: Option<(K, T)>,
 }
 
+impl<S: Default, T, K> Default for Grouped<S, T, K> {
+    fn default() -> Self {
+        Self {
+            stream: Default::default(),
+            current: Default::default(),
+        }
+    }
+}
+
 pub trait GroupItem: Sized {
     type K: PartialEq;
     type V;
