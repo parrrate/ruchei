@@ -16,10 +16,7 @@ pub struct Grouped<S, T, K = <<S as Stream>::Item as GroupItem>::K> {
 
 impl<S: Default, T, K> Default for Grouped<S, T, K> {
     fn default() -> Self {
-        Self {
-            stream: Default::default(),
-            current: Default::default(),
-        }
+        S::default().into()
     }
 }
 
@@ -138,13 +135,19 @@ impl<S: FusedStream<Item = I>, I: GroupItem, T: Default + Extend<I::V>> FusedStr
     }
 }
 
+impl<S, T, K> From<S> for Grouped<S, T, K> {
+    fn from(stream: S) -> Self {
+        Self {
+            stream,
+            current: None,
+        }
+    }
+}
+
 pub trait GroupSequential: Sized + FusedStream<Item: GroupItem<V = Self::V>> {
     type V;
     fn group_sequential<T: Default + Extend<Self::V>>(self) -> Grouped<Self, T> {
-        Grouped {
-            stream: self,
-            current: None,
-        }
+        self.into()
     }
 }
 
