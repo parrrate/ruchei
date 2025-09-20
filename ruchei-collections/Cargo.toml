@@ -8,6 +8,7 @@ repository.workspace = true
 authors.workspace = true
 rust-version.workspace = true
 description = "Collections to support the implementation of ruchei"
+categories = ["data-structures"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
