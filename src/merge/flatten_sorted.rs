@@ -66,7 +66,7 @@ impl<S: Stream + Unpin> Future for OneThenSelf<S> {
 }
 
 #[pin_project]
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct FlattenOptions<S> {
     #[pin]
     stream: S,
@@ -116,6 +116,16 @@ pub struct FlattenSorted<S, K = KOf<S>, V = VOf<S>> {
     active: FlattenOptions<FuturesUnordered<OneThenSelf<S>>>,
     waiting: BinaryHeap<HeapEntry<S, K, V>>,
     floor: Vec<(K, V, S)>,
+}
+
+impl<S, K: Ord, V> Default for FlattenSorted<S, K, V> {
+    fn default() -> Self {
+        Self {
+            active: Default::default(),
+            waiting: Default::default(),
+            floor: Default::default(),
+        }
+    }
 }
 
 impl<S, K, V> Unpin for FlattenSorted<S, K, V> {}
