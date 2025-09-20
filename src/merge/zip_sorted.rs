@@ -95,6 +95,7 @@ impl<
     }
 }
 
+#[must_use]
 pub fn zip_sorted<L: PairStream, R: PairStream>(l: L, r: R) -> ZipSorted<L, R>
 where
     ZipSorted<L, R>: Stream,
@@ -104,6 +105,7 @@ where
 }
 
 pub trait ZipSortedExt: Sized + PairStream<K: Ord> {
+    #[must_use]
     fn zip_sorted<R: PairStream<C = Self::C, K = Self::K>>(self, right: R) -> ZipSorted<Self, R> {
         zip_sorted(self, right)
     }
