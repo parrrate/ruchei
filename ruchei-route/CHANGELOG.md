@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.1.11] — 2025-09-20
+
+### Changed
+
+- `must_use` on sinks
+
 ## [0.1.10] — 2025-09-20
 
 ### Added
@@ -18,7 +24,8 @@
 
 (baseline)
 
-[unreleased]: https://github.com/parrrate/ruchei/compare/ruchei-route/0.1.10...HEAD
+[unreleased]: https://github.com/parrrate/ruchei/compare/ruchei-route/0.1.11...HEAD
+[0.1.11]: https://github.com/parrrate/ruchei/compare/ruchei-route/0.1.10...ruchei-route/0.1.11
 [0.1.10]: https://github.com/parrrate/ruchei/compare/ruchei-route/0.1.9...ruchei-route/0.1.10
 [0.1.9]: https://github.com/parrrate/ruchei/compare/ruchei-route/0.1.8...ruchei-route/0.1.9
 [0.1.8]: https://github.com/parrrate/ruchei/releases/tag/ruchei-route/0.1.8
