@@ -62,7 +62,7 @@ route-sink = { workspace = true, features = ["futures-util", "std"] }
 ruchei-callback = { workspace = true, optional = true }
 ruchei-collections = { workspace = true, optional = true }
 ruchei-connection = { workspace = true, optional = true }
-ruchei-extend = { workspace = true, optional = true }
+ruchei-extend = { workspace = true, optional = true, features = ["route-sink"]}
 ruchei-extra = { workspace = true, optional = true }
 
 futures-util.workspace = true

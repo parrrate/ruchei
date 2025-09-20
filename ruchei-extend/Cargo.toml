@@ -12,8 +12,13 @@ categories = ["asynchronous"]
 
 [dependencies]
 extend-pinned.workspace = true
-route-sink.workspace = true
+route-sink = { workspace = true, optional = true }
 
 futures-core.workspace = true
-futures-sink.workspace = true
+futures-sink = { workspace = true, optional = true }
 pin-project.workspace = true
+
+[features]
+default = ["route-sink"]
+route-sink = ["sink", "dep:route-sink"]
+sink = ["dep:futures-sink"]

@@ -12,8 +12,10 @@ use std::{
 
 pub use extend_pinned::ExtendPinned;
 use futures_core::{FusedStream, Stream};
+#[cfg(feature = "sink")]
 use futures_sink::Sink;
 use pin_project::pin_project;
+#[cfg(feature = "route-sink")]
 use route_sink::{FlushRoute, ReadyRoute, ReadySome};
 
 /// Type extending an [`ExtendPinned`] value from a fused stream.
@@ -119,6 +121,7 @@ impl<A, S: FusedStream + ExtendPinned<A>, R: FusedStream<Item = A>> FusedStream
     }
 }
 
+#[cfg(feature = "sink")]
 impl<Item, S: Sink<Item>, R> Sink<Item> for Extending<S, R> {
     type Error = S::Error;
 
@@ -139,6 +142,7 @@ impl<Item, S: Sink<Item>, R> Sink<Item> for Extending<S, R> {
     }
 }
 
+#[cfg(feature = "route-sink")]
 impl<Route, Msg, S: FlushRoute<Route, Msg>, R> FlushRoute<Route, Msg> for Extending<S, R> {
     fn poll_flush_route(
         self: Pin<&mut Self>,
@@ -157,6 +161,7 @@ impl<Route, Msg, S: FlushRoute<Route, Msg>, R> FlushRoute<Route, Msg> for Extend
     }
 }
 
+#[cfg(feature = "route-sink")]
 impl<Route, Msg, S: ReadyRoute<Route, Msg>, R> ReadyRoute<Route, Msg> for Extending<S, R> {
     fn poll_ready_route(
         self: Pin<&mut Self>,
@@ -167,6 +172,7 @@ impl<Route, Msg, S: ReadyRoute<Route, Msg>, R> ReadyRoute<Route, Msg> for Extend
     }
 }
 
+#[cfg(feature = "route-sink")]
 impl<Route, Msg, S: ReadySome<Route, Msg>, R> ReadySome<Route, Msg> for Extending<S, R> {
     fn poll_ready_some(
         self: Pin<&mut Self>,
