@@ -16,6 +16,16 @@ pub struct Echo<S, T = <S as TryStream>::Ok> {
     started: bool,
 }
 
+impl<S: Default, T> Default for Echo<S, T> {
+    fn default() -> Self {
+        Self {
+            stream: Default::default(),
+            item: Default::default(),
+            started: Default::default(),
+        }
+    }
+}
+
 impl<T, E, S: FusedStream + TryStream<Ok = T, Error = E> + Sink<T, Error = E>> Future
     for Echo<S, T>
 {

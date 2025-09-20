@@ -42,6 +42,17 @@ pub struct Echo<
     send: Ready,
 }
 
+impl<S: Default, K, T> Default for Echo<S, K, T> {
+    fn default() -> Self {
+        Self {
+            router: Default::default(),
+            connections: Default::default(),
+            map: Default::default(),
+            send: Default::default(),
+        }
+    }
+}
+
 impl<K: Key, T, S> Echo<S, K, T> {
     fn remove(self: Pin<&mut Self>, ix: SlabKey) {
         let this = self.project();
