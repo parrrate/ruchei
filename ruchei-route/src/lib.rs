@@ -76,6 +76,7 @@ use futures_sink::Sink;
 ///
 /// [`is_routing`]: RouteSink::is_routing
 /// [`Sink<(Route, Msg)>`]: Sink
+#[must_use = "sinks do nothing unless polled"]
 pub trait RouteSink<Route, Msg> {
     /// The type of value produced by the sink when an error occurs.
     ///
@@ -196,6 +197,7 @@ pub trait RouteSink<Route, Msg> {
     /// [`poll_ready_any`]: RouteSink::poll_ready_any
     /// [`poll_flush`]: RouteSink::poll_flush
     /// [`poll_flush_all`]: RouteSink::poll_flush_all
+    #[must_use]
     fn is_routing(&self) -> bool {
         true
     }
@@ -245,6 +247,7 @@ impl<Route, Msg, E, T: ?Sized + Sink<(Route, Msg), Error = E>> RouteSink<Route, 
 
 /// [`Sink`] for [`RouteSink`] and a specific route.
 #[derive(Debug)]
+#[must_use = "sinks do nothing unless polled"]
 pub struct WithRoute<'a, T: ?Sized, Route> {
     route_sink: Pin<&'a mut T>,
     route: Route,
@@ -283,7 +286,6 @@ pub trait RouteExt<Route> {
     type T: ?Sized;
 
     /// Create a route-specific [`Sink`].
-    #[must_use]
     fn route(&mut self, route: Route) -> WithRoute<'_, Self::T, Route>;
 }
 
@@ -322,6 +324,7 @@ impl<S> Unroute<S> {
     /// # Panics
     ///
     /// Panics if [`RouteSink::is_routing`] is `true`.
+    #[must_use]
     pub fn new_checked<Route, Msg>(sink: S) -> Self
     where
         S: RouteSink<Route, Msg>,
