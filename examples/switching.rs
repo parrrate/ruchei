@@ -1,10 +1,10 @@
-//! [`ruchei::switching`]
+//! [`ruchei::use_latest`]
 
 use async_net::TcpListener;
 use futures_util::StreamExt;
 use ruchei::{
     concurrent::ConcurrentExt, echo::buffered::EchoBuffered, poll_on_wake::PollOnWakeExt,
-    switching::SwitchingExt,
+    use_latest::UseLatestExt,
 };
 
 #[async_std::main]
@@ -20,7 +20,7 @@ async fn main() {
         .concurrent()
         .filter_map(|r| async { r.ok() })
         .map(|s| s.poll_on_wake())
-        .switching()
+        .use_latest()
         .echo_buffered()
         .await
         .unwrap();

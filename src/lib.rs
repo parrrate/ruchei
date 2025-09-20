@@ -24,5 +24,5 @@ pub mod multicast;
 mod owned_close;
 pub mod poll_on_wake;
 pub mod route;
-pub mod switching;
+pub mod use_latest;
 pub mod with_reply;

@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ExtendPinned` (rename)
 - gated less stable stuff behind `unstable` feature
 - `ConnectionItem` (rename)
+- `use_latest` (rename)
 
 ### Fixed
 

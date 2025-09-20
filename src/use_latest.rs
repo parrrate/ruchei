@@ -6,7 +6,7 @@
 //! # use futures_util::StreamExt;
 //! # use ruchei::concurrent::ConcurrentExt;
 //! # use ruchei::poll_on_wake::PollOnWakeExt;
-//! use ruchei::switching::SwitchingExt;
+//! use ruchei::use_latest::UseLatestExt;
 //!
 //! # async fn __() {
 //! TcpListener::bind("127.0.0.1:8080")
@@ -19,7 +19,7 @@
 //!     .fuse()
 //!     .concurrent()
 //!     .filter_map(|r| async { r.ok() })
-//!     .switching();
+//!     .use_latest();
 //! # }
 //! ```
 
@@ -53,7 +53,7 @@ impl Wake for Wakers {
 /// Closes when the incoming stream is done.
 #[pin_project]
 #[derive(Debug)]
-pub struct Switching<R, Out, S = <R as Stream>::Item> {
+pub struct UseLatest<R, Out, S = <R as Stream>::Item> {
     #[pin]
     incoming: R,
     #[pin]
@@ -64,7 +64,7 @@ pub struct Switching<R, Out, S = <R as Stream>::Item> {
 }
 
 impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: FusedStream<Item = S>>
-    Switching<R, Out, S>
+    UseLatest<R, Out, S>
 {
     fn poll_current(self: Pin<&mut Self>) -> Poll<Result<(), E>> {
         let mut this = self.project();
@@ -114,7 +114,7 @@ impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: Fus
 }
 
 impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: FusedStream<Item = S>>
-    Stream for Switching<R, Out, S>
+    Stream for UseLatest<R, Out, S>
 {
     type Item = Result<In, E>;
 
@@ -138,7 +138,7 @@ impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: Fus
 }
 
 impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: FusedStream<Item = S>>
-    FusedStream for Switching<R, Out, S>
+    FusedStream for UseLatest<R, Out, S>
 {
     fn is_terminated(&self) -> bool {
         self.current.is_none() && self.swap.is_none() && self.incoming.is_terminated()
@@ -146,7 +146,7 @@ impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: Fus
 }
 
 impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: FusedStream<Item = S>>
-    Sink<Out> for Switching<R, Out, S>
+    Sink<Out> for UseLatest<R, Out, S>
 {
     type Error = E;
 
@@ -190,18 +190,18 @@ impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: Fus
     }
 }
 
-/// Extension trait for constructing [`Switching`].
-pub trait SwitchingExt<Out>:
+/// Extension trait for constructing [`UseLatest`].
+pub trait UseLatestExt<Out>:
     Sized + FusedStream<Item: TryStream<Error = Self::E> + Sink<Out, Error = Self::E>>
 {
     type E;
 
     /// Convert a [`Stream`] of [`Stream`]`+`[`Sink`]s into a single [`Stream`]`+`[`Sink`].
     ///
-    /// See [`Switching`] for details.
+    /// See [`UseLatest`] for details.
     #[must_use]
-    fn switching(self) -> Switching<Self, Out> {
-        Switching {
+    fn use_latest(self) -> UseLatest<Self, Out> {
+        UseLatest {
             incoming: self,
             current: None,
             swap: None,
@@ -212,7 +212,7 @@ pub trait SwitchingExt<Out>:
 }
 
 impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: FusedStream<Item = S>>
-    SwitchingExt<Out> for R
+    UseLatestExt<Out> for R
 {
     type E = E;
 }
