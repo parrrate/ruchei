@@ -54,7 +54,7 @@ slab = "0.4.9"
 
 [dependencies]
 route-sink = { workspace = true, features = ["futures-util", "std"] }
-ruchei-callback.workspace = true
+ruchei-callback = { workspace = true, optional = true }
 ruchei-collections.workspace = true
 ruchei-connection.workspace = true
 ruchei-extra.workspace = true
@@ -72,3 +72,6 @@ async-tungstenite = { version = "0.28" }
 futures-channel.workspace = true
 rand = "0.8.5"
 thiserror = "1"
+
+[features]
+unstable = ["dep:ruchei-callback"]
