@@ -4,9 +4,9 @@
 
 ## [0.1.9] — 2025-09-20
 
-### Fixed
+### Added
 
-- missing `unroute` feature caused compilation errors
+- `Unroute::new_checked`
 
 ## [0.1.8] — 2025-09-15
 
