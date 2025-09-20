@@ -11,7 +11,8 @@ use std::{
 };
 
 pub use extend_pinned::ExtendPinned;
-use futures_util::{Sink, Stream, stream::FusedStream};
+use futures_core::{FusedStream, Stream};
+use futures_sink::Sink;
 use pin_project::pin_project;
 use route_sink::{FlushRoute, ReadyRoute, ReadySome};
 

@@ -14,5 +14,6 @@ categories = ["asynchronous"]
 extend-pinned.workspace = true
 route-sink.workspace = true
 
-futures-util.workspace = true
+futures-core.workspace = true
+futures-sink.workspace = true
 pin-project.workspace = true
