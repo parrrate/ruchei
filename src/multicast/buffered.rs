@@ -325,7 +325,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
             sent,
             flushed: sent,
         };
-        assert_eq!(this.connections.insert(connection), key);
+        this.connections.insert_at(key, connection);
         assert!(this.connections.link_push_back::<OP_WAKE_NEXT>(key));
         assert!(this.connections.link_push_back::<OP_WAKE_READY>(key));
         assert!(this.connections.link_push_back::<OP_WAKE_CLOSE>(key));

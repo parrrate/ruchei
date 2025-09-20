@@ -67,7 +67,7 @@ impl<K: Key, T, S> Echo<S, K, T> {
                 send: ConnectionWaker::new(ix, send),
                 msgs: [msg].into(),
             };
-            assert_eq!(this.connections.insert(connection), ix);
+            this.connections.insert_at(ix, connection);
             this.map.insert(key, ix);
             this.send.downgrade().insert(ix);
         }

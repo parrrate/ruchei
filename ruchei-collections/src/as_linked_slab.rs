@@ -28,6 +28,10 @@ pub trait AsLinkedSlab: Index<SlabKey> + IndexMut<SlabKey> {
     fn is_empty(&self) -> bool;
     fn len(&self) -> usize;
 
+    fn insert_at(&mut self, key: SlabKey, value: Self::T) {
+        assert_eq!(self.insert(value), key);
+    }
+
     fn link_pop_front<const M: usize>(&mut self) -> Option<SlabKey> {
         let key = self.front::<M>()?;
         let popped = self.link_pop_at::<M>(key);

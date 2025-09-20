@@ -120,7 +120,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
             sent: 0,
             flushed: 0,
         };
-        assert_eq!(this.connections.insert(connection), key);
+        this.connections.insert_at(key, connection);
         this.connections.link_push_back::<OP_WAKE_NEXT>(key);
         this.connections.link_push_back::<OP_WAKE_READY>(key);
         this.connections.link_push_back::<OP_WAKE_CLOSE>(key);

@@ -76,7 +76,7 @@ impl<S, E> Router<S, E> {
             flush: ConnectionWaker::new(key, Default::default()),
             close: ConnectionWaker::new(key, close),
         };
-        this.connections.insert(connection);
+        this.connections.insert_at(key, connection);
     }
 }
 
