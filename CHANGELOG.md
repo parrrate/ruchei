@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Default` for `FlattenSorted`
 - `Default` for `GroupSorted`
 - `Default` for `ProductSorted`
+- `Default` for `ZipSorted`
 
 ### Changed
 
