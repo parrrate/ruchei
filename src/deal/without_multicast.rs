@@ -102,7 +102,7 @@ impl<S, Out, E> Dealer<S, Out, E> {
             flush: ConnectionWaker::new(key, flush),
             close: ConnectionWaker::new(key, close),
         };
-        this.connections.insert_at(key,connection);
+        this.connections.insert_at(key, connection);
         this.connections.link_push_back::<OP_WAKE_NEXT>(key);
         this.connections.link_push_back::<OP_DEAL>(key);
         this.connections.link_push_back::<OP_WAKE_CLOSE>(key);
