@@ -4,14 +4,16 @@
 
 #![no_std]
 
-use core::{
-    pin::Pin,
-    task::{Context, Poll},
-};
+use core::pin::Pin;
+#[cfg(any(feature = "futures-core", feature = "futures-sink"))]
+use core::task::{Context, Poll};
 
+#[cfg(feature = "futures-core")]
 use futures_core::{FusedFuture, FusedStream, Future, Stream};
+#[cfg(feature = "futures-sink")]
 use futures_sink::Sink;
 use pin_project::pin_project;
+#[cfg(feature = "route-sink")]
 use route_sink::{FlushRoute, ReadyRoute, ReadySome};
 
 /// [`Future`]/[`Stream`]/[`Sink`] with extra data attached.
@@ -73,6 +75,7 @@ impl<T, Ex> AsMut<T> for WithExtra<T, Ex> {
     }
 }
 
+#[cfg(feature = "futures-core")]
 impl<T: Future, Ex> Future for WithExtra<T, Ex> {
     type Output = T::Output;
 
@@ -81,12 +84,14 @@ impl<T: Future, Ex> Future for WithExtra<T, Ex> {
     }
 }
 
+#[cfg(feature = "futures-core")]
 impl<T: FusedFuture, Ex> FusedFuture for WithExtra<T, Ex> {
     fn is_terminated(&self) -> bool {
         self.inner.is_terminated()
     }
 }
 
+#[cfg(feature = "futures-core")]
 impl<T: Stream, Ex> Stream for WithExtra<T, Ex> {
     type Item = T::Item;
 
@@ -95,12 +100,14 @@ impl<T: Stream, Ex> Stream for WithExtra<T, Ex> {
     }
 }
 
+#[cfg(feature = "futures-core")]
 impl<T: FusedStream, Ex> FusedStream for WithExtra<T, Ex> {
     fn is_terminated(&self) -> bool {
         self.inner.is_terminated()
     }
 }
 
+#[cfg(feature = "futures-sink")]
 impl<Item, T: Sink<Item>, Ex> Sink<Item> for WithExtra<T, Ex> {
     type Error = T::Error;
 
@@ -121,6 +128,7 @@ impl<Item, T: Sink<Item>, Ex> Sink<Item> for WithExtra<T, Ex> {
     }
 }
 
+#[cfg(feature = "route-sink")]
 impl<Route, Msg, T: FlushRoute<Route, Msg>, Ex> FlushRoute<Route, Msg> for WithExtra<T, Ex> {
     fn poll_flush_route(
         self: Pin<&mut Self>,
@@ -139,6 +147,7 @@ impl<Route, Msg, T: FlushRoute<Route, Msg>, Ex> FlushRoute<Route, Msg> for WithE
     }
 }
 
+#[cfg(feature = "route-sink")]
 impl<Route, Msg, T: ReadyRoute<Route, Msg>, Ex> ReadyRoute<Route, Msg> for WithExtra<T, Ex> {
     fn poll_ready_route(
         self: Pin<&mut Self>,
@@ -149,6 +158,7 @@ impl<Route, Msg, T: ReadyRoute<Route, Msg>, Ex> ReadyRoute<Route, Msg> for WithE
     }
 }
 
+#[cfg(feature = "route-sink")]
 impl<Route, Msg, T: ReadySome<Route, Msg>, Ex> ReadySome<Route, Msg> for WithExtra<T, Ex> {
     fn poll_ready_some(
         self: Pin<&mut Self>,

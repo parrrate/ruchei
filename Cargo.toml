@@ -63,7 +63,10 @@ ruchei-callback = { workspace = true, optional = true }
 ruchei-collections = { workspace = true, optional = true }
 ruchei-connection = { workspace = true, optional = true }
 ruchei-extend = { workspace = true, optional = true, features = ["route-sink"] }
-ruchei-extra = { workspace = true, optional = true }
+ruchei-extra = { workspace = true, optional = true, features = [
+    "futures-core",
+    "route-sink",
+] }
 
 futures-util.workspace = true
 linked_hash_set = { workspace = true, optional = true }
