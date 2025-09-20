@@ -7,6 +7,8 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 rust-version.workspace = true
+description = "ExtendPinned utilities for ruchei"
+categories = ["asynchronous"]
 
 [dependencies]
 extend-pinned.workspace = true
