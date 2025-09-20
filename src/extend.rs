@@ -178,6 +178,11 @@ pub trait ExtendingExt: Sized + FusedStream {
     fn extending<S: ExtendPinned<Self::Item>>(self, inner: S) -> Extending<S, Self> {
         Extending::new(self, inner)
     }
+
+    #[must_use]
+    fn extending_default<S: Default + ExtendPinned<Self::Item>>(self) -> Extending<S, Self> {
+        self.extending(Default::default())
+    }
 }
 
 impl<R: FusedStream> ExtendingExt for R {}

@@ -14,7 +14,10 @@ use ruchei_collections::{
 };
 use ruchei_connection::{Connection, ConnectionWaker, Ready};
 
-use crate::{extend::Extending, multi_item::MultiItem};
+use crate::{
+    extend::{Extending, ExtendingExt},
+    multi_item::MultiItem,
+};
 
 const OP_WAKE_NEXT: usize = 0;
 const OP_WAKE_READY: usize = 1;
@@ -256,7 +259,7 @@ pub type MulticastExtending<R> = Extending<Multicast<<R as Stream>::Item>, R>;
 pub trait MulticastBufferless: Sized + FusedStream<Item: Unpin + TryStream> {
     #[must_use]
     fn multicast_bufferless(self) -> MulticastExtending<Self> {
-        Extending::new(self, Default::default())
+        self.extending_default()
     }
 }
 

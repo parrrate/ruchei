@@ -14,7 +14,7 @@ use pin_project::pin_project;
 use route_sink::{FlushRoute, ReadyRoute};
 
 use crate::{
-    extend::Extending,
+    extend::{Extending, ExtendingExt},
     multi_item::{MultiItem, MultiRouteItem},
 };
 
@@ -201,7 +201,7 @@ pub trait RouterKeyedExt: Sized + FusedStream<Item = (Self::K, Self::S)> {
     /// Extend the stream of connections (`self`) into a [`Router`].
     #[must_use]
     fn route_keyed(self) -> RouterExtending<Self> {
-        Extending::new(self, Default::default())
+        self.extending_default()
     }
 }
 

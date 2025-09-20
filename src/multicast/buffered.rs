@@ -18,7 +18,10 @@ use ruchei_collections::{
 };
 use ruchei_connection::{ConnectionWaker, Ready};
 
-use crate::{extend::Extending, multi_item::MultiItem};
+use crate::{
+    extend::{Extending, ExtendingExt},
+    multi_item::MultiItem,
+};
 
 const OP_WAKE_NEXT: usize = 0;
 const OP_WAKE_READY: usize = 1;
@@ -590,7 +593,7 @@ pub trait MulticastBuffered<T: Clone>: Sized + FusedStream<Item = Self::S> {
 
     #[must_use]
     fn multicast_buffered(self) -> MulticastExtending<T, Self> {
-        Extending::new(self, Default::default())
+        self.extending_default()
     }
 }
 

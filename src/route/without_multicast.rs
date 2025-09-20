@@ -16,7 +16,7 @@ use ruchei_collections::{
 use ruchei_connection::{Connection, ConnectionWaker, Ready};
 
 use crate::{
-    extend::Extending,
+    extend::{Extending, ExtendingExt},
     multi_item::{MultiItem, MultiRouteItem},
 };
 
@@ -234,7 +234,7 @@ pub trait RouteWithoutMulticast: Sized + FusedStream<Item: TryStream> {
     /// Extend the stream of connections (`self`) into a [`Router`].
     #[must_use]
     fn route_without_multicast(self) -> RouterExtending<Self> {
-        Extending::new(self, Default::default())
+        self.extending_default()
     }
 }
 

@@ -16,7 +16,7 @@ use ruchei_collections::{
 use ruchei_connection::{Connection, ConnectionWaker, Ready};
 
 use crate::{
-    extend::Extending,
+    extend::{Extending, ExtendingExt},
     multi_item::{MultiItem, MultiRouteItem},
 };
 
@@ -390,7 +390,7 @@ pub type RouterExtending<R> = Extending<Router<<R as Stream>::Item>, R>;
 pub trait RouteMulticast: Sized + FusedStream<Item: Unpin + TryStream> {
     #[must_use]
     fn route_multicast(self) -> RouterExtending<Self> {
-        Extending::new(self, Router::default())
+        self.extending_default()
     }
 }
 

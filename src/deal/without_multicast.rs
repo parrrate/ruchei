@@ -17,7 +17,10 @@ use ruchei_collections::{
 };
 use ruchei_connection::{Connection, ConnectionWaker, Ready};
 
-use crate::{extend::Extending, multi_item::MultiItem};
+use crate::{
+    extend::{Extending, ExtendingExt},
+    multi_item::MultiItem,
+};
 
 const OP_WAKE_NEXT: usize = 0;
 const OP_DEAL: usize = 1;
@@ -316,7 +319,7 @@ pub trait DealWithoutMulticast<Out>:
     /// Extend the stream of connections (`self`) into a [`Dealer`].
     #[must_use]
     fn deal_without_multicast(self) -> DealerExtending<Self, Out> {
-        Extending::new(self, Default::default())
+        self.extending_default()
     }
 }
 
