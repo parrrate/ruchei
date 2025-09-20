@@ -11,6 +11,7 @@ use pin_project::pin_project;
 use ruchei_collections::as_linked_slab::{AsLinkedSlab, SlabKey};
 
 #[derive(Debug, Default)]
+#[must_use]
 struct SlabWaker {
     waker: AtomicWaker,
 }
