@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - dropped `_slab` prefixes from module/method names
   - regular implementations become `*_without_multicast`
 - `Router`s now have opaque `RouteKey`s instead of `usize`
+- `ExtendPinned` (rename)
 
 ### Fixed
 
