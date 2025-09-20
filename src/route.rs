@@ -1,6 +1,6 @@
 use std::hash::Hash;
 
-pub mod keyed;
+pub mod by_key;
 pub mod multicast;
 pub mod without_multicast;
 

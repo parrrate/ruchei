@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - gated less stable stuff behind `unstable` feature
 - `ConnectionItem` (rename)
 - `use_latest` (rename)
+- `route_by_key` (rename)
 
 ### Fixed
 

@@ -185,12 +185,11 @@ impl<K: Key, S, E> ExtendPinned<(K, S)> for Router<K, S, E> {
     }
 }
 
-/// [`ReadyRoute`]/[`Stream`] Returned by [`RouterKeyedExt::route_keyed`].
-pub type RouterExtending<R> =
-    Extending<Router<<R as RouterKeyedExt>::K, <R as RouterKeyedExt>::S>, R>;
+/// [`ReadyRoute`]/[`Stream`] Returned by [`RouteByKey::route_by_key`].
+pub type RouterExtending<R> = Extending<Router<<R as RouteByKey>::K, <R as RouteByKey>::S>, R>;
 
 /// Extension trait to auto-extend a [`Router`] from a stream of connections.
-pub trait RouterKeyedExt: Sized + FusedStream<Item = (Self::K, Self::S)> {
+pub trait RouteByKey: Sized + FusedStream<Item = (Self::K, Self::S)> {
     /// Key.
     type K: Key;
     /// Single [`Stream`]/[`Sink`].
@@ -198,12 +197,12 @@ pub trait RouterKeyedExt: Sized + FusedStream<Item = (Self::K, Self::S)> {
 
     /// Extend the stream of connections (`self`) into a [`Router`].
     #[must_use]
-    fn route_keyed(self) -> RouterExtending<Self> {
+    fn route_by_key(self) -> RouterExtending<Self> {
         self.extending_default()
     }
 }
 
-impl<K: Key, S: Unpin + TryStream, R: FusedStream<Item = (K, S)>> RouterKeyedExt for R {
+impl<K: Key, S: Unpin + TryStream, R: FusedStream<Item = (K, S)>> RouteByKey for R {
     type K = K;
     type S = S;
 }
