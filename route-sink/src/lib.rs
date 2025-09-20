@@ -16,6 +16,8 @@ mod futures_util_impls;
 #[cfg(feature = "std")]
 mod std_impls;
 
+// https://docs.rs/futures-sink/0.3.31/src/futures_sink/lib.rs.html#51
+#[must_use = "sinks do nothing unless polled"]
 pub trait FlushRoute<Route, Msg>: Sink<(Route, Msg)> {
     fn poll_flush_route(
         self: Pin<&mut Self>,
@@ -35,6 +37,8 @@ pub trait FlushRoute<Route, Msg>: Sink<(Route, Msg)> {
     }
 }
 
+// https://docs.rs/futures-sink/0.3.31/src/futures_sink/lib.rs.html#51
+#[must_use = "sinks do nothing unless polled"]
 pub trait ReadyRoute<Route, Msg>: FlushRoute<Route, Msg> {
     fn poll_ready_route(
         self: Pin<&mut Self>,
@@ -46,6 +50,8 @@ pub trait ReadyRoute<Route, Msg>: FlushRoute<Route, Msg> {
     }
 }
 
+// https://docs.rs/futures-sink/0.3.31/src/futures_sink/lib.rs.html#51
+#[must_use = "sinks do nothing unless polled"]
 pub trait ReadySome<Route, Msg>: FlushRoute<Route, Msg> {
     fn poll_ready_some(
         self: Pin<&mut Self>,
