@@ -98,6 +98,7 @@ use crate::merge::pair_item::PairStream;
 
 /// Closes the [`Group`] when [`Drop`]ped.
 #[derive(Debug)]
+#[must_use = "GroupGuard must be dropped explicitly"]
 pub struct GroupGuard<K>(OwnedMutexGuard<K>);
 
 impl<K> AsRef<K> for GroupGuard<K> {
