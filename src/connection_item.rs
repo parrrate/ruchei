@@ -7,6 +7,7 @@ use futures_util::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[must_use]
 pub enum ConnectionItem<S, T = <S as TryStream>::Ok, E = <S as TryStream>::Error> {
     Item(T),
     Closed(S, Option<E>),
