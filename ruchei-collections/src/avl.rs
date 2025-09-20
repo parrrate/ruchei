@@ -322,7 +322,8 @@ impl<T> Avl<T> {
         while let Some((side, parent)) = self.nodes[node].parent {
             match self.nodes[parent].bias ^ side {
                 Some(Diff::Eq) => {
-                    self.balance(parent, side);
+                    let (_, height_unchanged) = self.balance(parent, side);
+                    assert!(!height_unchanged);
                     return;
                 }
                 Some(Diff::Ne) => {
