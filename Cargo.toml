@@ -48,7 +48,7 @@ ruchei-route = { path = "ruchei-route", version = "0.1.8", default-features = fa
 ruchei-sample.path = "internal/ruchei-sample"
 
 futures-channel = "0.3.31"
-futures-core = "0.3.31"
+futures-core = { version = "0.3.31", default-features = false }
 futures-sink = "0.3.31"
 futures-util = { version = "0.3.31", features = ["sink"] }
 linked-hash-map = "0.5.6"
@@ -62,7 +62,7 @@ route-sink = { workspace = true, features = ["futures-util", "std"] }
 ruchei-callback = { workspace = true, optional = true }
 ruchei-collections = { workspace = true, optional = true }
 ruchei-connection = { workspace = true, optional = true }
-ruchei-extend = { workspace = true, optional = true, features = ["route-sink"]}
+ruchei-extend = { workspace = true, optional = true, features = ["route-sink"] }
 ruchei-extra = { workspace = true, optional = true }
 
 futures-util.workspace = true
