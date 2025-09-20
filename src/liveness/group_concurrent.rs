@@ -136,12 +136,7 @@ pub struct Grouped<S, G, Sender = <G as Group>::Sender, K = <S as PairStream>::K
 
 impl<S: Default, G: Default, Sender, K> Default for Grouped<S, G, Sender, K> {
     fn default() -> Self {
-        Self {
-            stream: Default::default(),
-            select: Default::default(),
-            senders: Default::default(),
-            group: Default::default(),
-        }
+        S::default().into()
     }
 }
 
@@ -174,6 +169,17 @@ impl<
             }
         }
         Poll::Ready(None)
+    }
+}
+
+impl<S, G: Default, Sender, K> From<S> for Grouped<S, G, Sender, K> {
+    fn from(stream: S) -> Self {
+        Self {
+            stream,
+            select: Default::default(),
+            senders: Default::default(),
+            group: Default::default(),
+        }
     }
 }
 
