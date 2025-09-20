@@ -4,7 +4,7 @@ description = "Stream/Sink wrapper with extra data, as used by ruchei"
 documentation = "https://docs.rs/ruchei-extra"
 keywords = ["streams", "async", "stream"]
 categories = ["asynchronous"]
-version = "0.1.3"
+version = "0.1.4-a.0"
 edition.workspace = true
 publish.workspace = true
 license.workspace = true
@@ -22,3 +22,7 @@ route-sink = { workspace = true, optional = true }
 futures-core = ["dep:futures-core"]
 futures-sink = ["dep:futures-sink"]
 route-sink = ["futures-sink", "dep:route-sink"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

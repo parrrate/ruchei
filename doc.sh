@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -xe
-cargo doc --no-deps --workspace
+cargo doc --no-deps --workspace --all-features
 mkdir -p ./target/doc_copy
 cp -rT ./target/doc ./target/doc_copy
 exec echo ok

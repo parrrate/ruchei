@@ -3,6 +3,9 @@
 //! Commonly used for storing types with [`Drop`] logic.
 
 #![no_std]
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg_hide))]
+#![cfg_attr(docsrs, doc(cfg_hide(doc)))]
 
 use core::pin::Pin;
 #[cfg(any(feature = "futures-core", feature = "futures-sink"))]
