@@ -2,9 +2,12 @@ use std::borrow::Borrow;
 
 pub trait MultiTrie<Collection: ?Sized> {
     fn mt_remove(&mut self, collection: &Collection, key: &[u8]);
+    #[must_use]
     fn mt_contains(&self, collection: &Collection, key: &[u8]) -> bool;
     fn mt_clear(&mut self, collection: &Collection);
+    #[must_use]
     fn mt_is_empty(&self, collection: &Collection) -> bool;
+    #[must_use]
     fn mt_len(&self, collection: &Collection) -> usize;
 }
 
