@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Default` for `Concurrent`
 - `Default` for `group_sequential::Grouped`
 - `From<S>` for `group_sequential::Grouped<S>`
+- `From<R>` for `UseLatest<R>`
 
 ### Changed
 

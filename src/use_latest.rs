@@ -190,6 +190,18 @@ impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: Fus
     }
 }
 
+impl<R, Out, S> From<R> for UseLatest<R, Out, S> {
+    fn from(incoming: R) -> Self {
+        UseLatest {
+            incoming,
+            current: None,
+            swap: None,
+            w: Default::default(),
+            buffer: None,
+        }
+    }
+}
+
 /// Extension trait for constructing [`UseLatest`].
 pub trait UseLatestExt<Out>:
     Sized + FusedStream<Item: TryStream<Error = Self::E> + Sink<Out, Error = Self::E>>
@@ -201,13 +213,7 @@ pub trait UseLatestExt<Out>:
     /// See [`UseLatest`] for details.
     #[must_use]
     fn use_latest(self) -> UseLatest<Self, Out> {
-        UseLatest {
-            incoming: self,
-            current: None,
-            swap: None,
-            w: Default::default(),
-            buffer: None,
-        }
+        self.into()
     }
 }
 
