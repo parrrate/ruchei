@@ -42,6 +42,15 @@ pub struct Concurrent<R, Fut = <R as Stream>::Item> {
     futures: FuturesUnordered<Fut>,
 }
 
+impl<R: Default, Fut> Default for Concurrent<R, Fut> {
+    fn default() -> Self {
+        Self {
+            stream: Default::default(),
+            futures: Default::default(),
+        }
+    }
+}
+
 impl<Fut: Future, R: FusedStream<Item = Fut>> Stream for Concurrent<R, Fut> {
     type Item = Fut::Output;
 

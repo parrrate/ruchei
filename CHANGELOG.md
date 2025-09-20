@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Default` for `ProductSorted`
 - `Default` for `ZipSorted`
 - `Default` for `Compress`
+- `Default` for `Concurrent`
 
 ### Changed
 
