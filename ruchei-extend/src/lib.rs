@@ -23,6 +23,9 @@ use pin_project::pin_project;
 #[cfg(feature = "route-sink")]
 use route_sink::{FlushRoute, ReadyRoute, ReadySome};
 
+#[cfg(any(feature = "std", feature = "unstable"))]
+pub mod keyed;
+
 /// Type extending an [`ExtendPinned`] value from a fused stream.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[pin_project]
