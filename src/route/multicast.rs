@@ -13,7 +13,7 @@ use ruchei_collections::{
     as_linked_slab::{AsLinkedSlab, SlabKey},
     linked_slab::LinkedSlab,
 };
-use ruchei_connection::{Connection, ConnectionWaker, Ready};
+use ruchei_connection::{Connection2, ConnectionWaker, ConnectionWaker2, Ready};
 use ruchei_extend::{Extending, ExtendingExt};
 
 use crate::connection_item::{ConnectionItem, MultiRouteItem};
@@ -33,7 +33,7 @@ pub struct RouteKey(SlabKey);
 #[pin_project]
 #[derive(Debug)]
 pub struct Router<S, E = <S as TryStream>::Error> {
-    connections: LinkedSlab<Connection<S>, OP_COUNT>,
+    connections: LinkedSlab<Connection2<S>, OP_COUNT>,
     #[pin]
     next: Ready,
     #[pin]
@@ -78,11 +78,11 @@ impl<S, E> Router<S, E> {
         let ready = this.ready.downgrade();
         let flush = this.flush.downgrade();
         let close = this.close.downgrade();
-        let connection = Connection {
+        let connection = Connection2 {
             stream,
             next: ConnectionWaker::new(key, next),
-            ready: ConnectionWaker::new(key, ready),
-            flush: ConnectionWaker::new(key, flush),
+            ready: ConnectionWaker2::new(key, ready),
+            flush: ConnectionWaker2::new(key, flush),
             close: ConnectionWaker::new(key, close),
         };
         this.connections.insert_at(key, connection);
@@ -105,7 +105,7 @@ impl<S, E> Router<S, E> {
                 && let Some(connection) = this.connections.get_mut(key)
                 && let Poll::Ready(r) = connection
                     .ready
-                    .poll(cx, |cx| connection.stream.poll_ready_unpin(cx))
+                    .poll0(cx, |cx| connection.stream.poll_ready_unpin(cx))
             {
                 if let Err(e) = r {
                     self.as_mut().remove(key, Some(e));
@@ -137,7 +137,7 @@ impl<S, E> Router<S, E> {
                 this.ready.downgrade().insert(key);
                 match connection
                     .flush
-                    .poll(cx, |cx| connection.stream.poll_flush_unpin(cx))
+                    .poll0(cx, |cx| connection.stream.poll_flush_unpin(cx))
                 {
                     Poll::Ready(Ok(())) => {
                         this.connections.link_pop_at::<OP_IS_FLUSHING>(key);
@@ -329,7 +329,7 @@ impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>> FlushRoute<RouteKey, Out> f
         {
             match connection
                 .flush
-                .poll(cx, |cx| connection.stream.poll_flush_unpin(cx))
+                .poll1(cx, |cx| connection.stream.poll_flush_unpin(cx))
             {
                 Poll::Ready(Ok(())) => {
                     this.connections.link_pop_at::<OP_IS_FLUSHING>(key);
@@ -363,7 +363,7 @@ impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>> ReadyRoute<RouteKey, Out> f
             if let Err(e) = ready!(
                 connection
                     .ready
-                    .poll(cx, |cx| connection.stream.poll_ready_unpin(cx))
+                    .poll1(cx, |cx| connection.stream.poll_ready_unpin(cx))
             ) {
                 self.remove(key, Some(e));
             } else {
