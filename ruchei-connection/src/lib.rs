@@ -158,6 +158,67 @@ impl ConnectionWaker {
 
 #[must_use]
 #[derive(Debug)]
+pub struct ConnectionWaker2 {
+    waker0: AtomicWaker,
+    waker1: AtomicWaker,
+    ready: ReadyWeak,
+    key: SlabKey,
+}
+
+impl ConnectionWaker2 {
+    #[must_use]
+    pub fn new(key: SlabKey, ready: ReadyWeak) -> Arc<Self> {
+        Arc::new(Self {
+            waker0: Default::default(),
+            waker1: Default::default(),
+            ready,
+            key,
+        })
+    }
+
+    pub fn wake(&self) {
+        self.ready.insert(self.key);
+        self.waker0.wake();
+        self.waker1.wake();
+    }
+}
+
+impl Wake for ConnectionWaker2 {
+    fn wake(self: Arc<Self>) {
+        (*self).wake();
+    }
+
+    fn wake_by_ref(self: &Arc<Self>) {
+        (**self).wake();
+    }
+}
+
+impl ConnectionWaker2 {
+    pub fn poll0<T>(
+        self: &Arc<Self>,
+        cx: &mut Context<'_>,
+        f: impl FnOnce(&mut Context<'_>) -> T,
+    ) -> T {
+        self.waker0.register(cx.waker());
+        self.poll_detached(f)
+    }
+
+    pub fn poll1<T>(
+        self: &Arc<Self>,
+        cx: &mut Context<'_>,
+        f: impl FnOnce(&mut Context<'_>) -> T,
+    ) -> T {
+        self.waker1.register(cx.waker());
+        self.poll_detached(f)
+    }
+
+    pub fn poll_detached<T>(self: &Arc<Self>, f: impl FnOnce(&mut Context<'_>) -> T) -> T {
+        f(&mut Context::from_waker(&Waker::from(self.clone())))
+    }
+}
+
+#[must_use]
+#[derive(Debug)]
 pub struct Connection<S> {
     pub stream: S,
     pub next: Arc<ConnectionWaker>,
