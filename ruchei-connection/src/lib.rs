@@ -226,3 +226,13 @@ pub struct Connection<S> {
     pub flush: Arc<ConnectionWaker>,
     pub close: Arc<ConnectionWaker>,
 }
+
+#[must_use]
+#[derive(Debug)]
+pub struct Connection2<S> {
+    pub stream: S,
+    pub next: Arc<ConnectionWaker>,
+    pub ready: Arc<ConnectionWaker2>,
+    pub flush: Arc<ConnectionWaker2>,
+    pub close: Arc<ConnectionWaker>,
+}
