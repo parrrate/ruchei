@@ -249,10 +249,9 @@ impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>> Sink<(RouteKey, Out)> for R
         (RouteKey(key), msg): (RouteKey, Out),
     ) -> Result<(), Self::Error> {
         let this = self.as_mut().project();
-        if this.connections.contains(key)
-            && this.connections.link_pop_at::<OP_IS_READIED>(key)
-            && let Some(connection) = this.connections.get_mut(key)
-        {
+        if this.connections.contains(key) {
+            assert!(this.connections.link_pop_at::<OP_IS_READIED>(key));
+            let connection = &mut this.connections[key];
             if let Err(e) = connection.stream.start_send_unpin(msg.clone()) {
                 self.remove(key, Some(e));
             } else {
