@@ -333,6 +333,15 @@ impl<T> Trie<T> {
             None
         }
     }
+
+    pub fn clear(&mut self) {
+        let mut node = self.nodes.pop_at(self.root);
+        node.children.clear();
+        node.value = None;
+        assert!(node.parent.is_none());
+        self.nodes.clear();
+        self.root = self.nodes.push(node);
+    }
 }
 
 impl<T: ?Sized> Trie<Box<T>> {
