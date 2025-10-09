@@ -17,7 +17,9 @@ use ruchei_connection::{ConnectionWaker, Ready};
 use crate::{merge::pair_item::PairItem, route::Key};
 
 const OP_WAKE_SEND: usize = 0;
-const OP_COUNT: usize = 1;
+const OP_IS_READYING: usize = 1;
+const OP_IS_FLUSHING: usize = 2;
+const OP_COUNT: usize = 3;
 
 #[derive(Debug)]
 struct Connection<K, T> {
@@ -59,6 +61,10 @@ impl<K: Key, T, S> Echo<S, K, T> {
         let this = self.project();
         if let Some(&ix) = this.map.get(&key) {
             this.connections[ix].msgs.push_back(msg);
+            if this.connections.link_pop_at::<OP_IS_FLUSHING>(ix) {
+                assert!(this.connections.link_push_back::<OP_IS_READYING>(ix));
+                this.send.downgrade().insert(ix);
+            }
         } else {
             let ix = this.connections.vacant_key();
             let send = this.send.downgrade();
@@ -69,6 +75,7 @@ impl<K: Key, T, S> Echo<S, K, T> {
             };
             this.connections.insert_at(ix, connection);
             this.map.insert(key, ix);
+            assert!(this.connections.link_push_back::<OP_IS_READYING>(ix));
             this.send.downgrade().insert(ix);
         }
     }
@@ -87,6 +94,7 @@ impl<K: Key, T, S> Echo<S, K, T> {
                 ready!(connection.send.poll(cx, |cx| {
                     this.router.as_mut().poll_flush_route(&connection.key, cx)
                 }))?;
+                assert!(this.connections.link_pop_at::<OP_IS_FLUSHING>(ix));
                 self.as_mut().remove(ix);
                 this = self.as_mut().project();
             } else {
@@ -100,6 +108,13 @@ impl<K: Key, T, S> Echo<S, K, T> {
                         .pop_front()
                         .expect("no first item but not empty?"),
                 ))?;
+                let empty = connection.msgs.is_empty();
+                assert!(this.connections.link_pop_at::<OP_IS_READYING>(ix));
+                if empty {
+                    assert!(this.connections.link_push_back::<OP_IS_FLUSHING>(ix));
+                } else {
+                    assert!(this.connections.link_push_back::<OP_IS_READYING>(ix));
+                }
             }
         }
         Poll::Ready(Ok(()))
