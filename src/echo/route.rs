@@ -152,6 +152,34 @@ impl<K: Key, T, E, S: TryStream<Ok = (K, T), Error = E> + ReadyRoute<K, T, Error
             this = self.as_mut().project();
         }
         check!();
+        while !this.connections.link_empty::<OP_IS_READYING>() {
+            ready!(this.router.as_mut().poll_ready(cx))?;
+            let ix = this
+                .connections
+                .link_pop_front::<OP_IS_READYING>()
+                .expect("must be non-empty");
+            let connection = &mut this.connections[ix];
+            this.router.as_mut().start_send((
+                connection.key.clone(),
+                connection
+                    .msgs
+                    .pop_front()
+                    .expect("no first item but not empty?"),
+            ))?;
+            let empty = connection.msgs.is_empty();
+            if empty {
+                assert!(this.connections.link_push_back::<OP_IS_FLUSHING>(ix));
+            } else {
+                assert!(this.connections.link_push_back::<OP_IS_READYING>(ix));
+            }
+        }
+        check!();
+        if !this.connections.is_empty() {
+            assert!(this.connections.link_empty::<OP_IS_READYING>());
+            ready!(this.router.poll_flush(cx))?;
+            this.connections.clear();
+        }
+        check!();
         Poll::Pending
     }
 }
