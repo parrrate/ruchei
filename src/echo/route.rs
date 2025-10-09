@@ -128,11 +128,16 @@ impl<K: Key, T, E, S: TryStream<Ok = (K, T), Error = E> + ReadyRoute<K, T, Error
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let mut this = self.as_mut().project();
-        assert_eq!(
-            this.connections.link_len::<OP_IS_FLUSHING>()
-                + this.connections.link_len::<OP_IS_READYING>(),
-            this.connections.len(),
-        );
+        macro_rules! check {
+            () => {
+                assert_eq!(
+                    this.connections.link_len::<OP_IS_FLUSHING>()
+                        + this.connections.link_len::<OP_IS_READYING>(),
+                    this.connections.len(),
+                );
+            };
+        }
+        check!();
         while let Poll::Ready(o) = this.router.as_mut().try_poll_next(cx)? {
             if let Some((key, msg)) = o {
                 self.as_mut().push(key, msg);
@@ -141,20 +146,12 @@ impl<K: Key, T, E, S: TryStream<Ok = (K, T), Error = E> + ReadyRoute<K, T, Error
                 return Poll::Ready(Ok(()));
             }
         }
-        assert_eq!(
-            this.connections.link_len::<OP_IS_FLUSHING>()
-                + this.connections.link_len::<OP_IS_READYING>(),
-            this.connections.len(),
-        );
+        check!();
         while let Some(ix) = this.send.as_mut().next::<OP_WAKE_SEND>(this.connections) {
             let _: Poll<()> = self.as_mut().poll_connection(ix, cx)?;
             this = self.as_mut().project();
         }
-        assert_eq!(
-            this.connections.link_len::<OP_IS_FLUSHING>()
-                + this.connections.link_len::<OP_IS_READYING>(),
-            this.connections.len(),
-        );
+        check!();
         Poll::Pending
     }
 }
