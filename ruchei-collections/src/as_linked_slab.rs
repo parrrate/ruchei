@@ -39,6 +39,7 @@ pub trait AsLinkedSlab: Index<SlabKey> + IndexMut<SlabKey> {
     fn is_empty(&self) -> bool;
     #[must_use]
     fn len(&self) -> usize;
+    fn clear(&mut self);
 
     fn insert_at(&mut self, key: SlabKey, value: Self::T) {
         assert_eq!(self.insert(value), key);

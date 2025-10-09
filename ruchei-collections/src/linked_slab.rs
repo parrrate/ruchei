@@ -365,6 +365,12 @@ impl<T, const N: usize> AsLinkedSlab for LinkedSlab<T, N> {
     fn len(&self) -> usize {
         self.slab.len()
     }
+
+    fn clear(&mut self) {
+        self.slab.clear();
+        self.links = [Link::EMPTY; _];
+        self.lens = [0; _];
+    }
 }
 
 impl<T, const N: usize> Index<SlabKey> for LinkedSlab<T, N> {

@@ -198,6 +198,11 @@ impl<T, const N: usize> AsLinkedSlab for LinkedSlabMultiTrie<T, N> {
     fn len(&self) -> usize {
         self.collections.len()
     }
+
+    fn clear(&mut self) {
+        self.keys.clear();
+        self.collections.clear();
+    }
 }
 
 impl<T, const N: usize> Index<SlabKey> for LinkedSlabMultiTrie<T, N> {
