@@ -85,6 +85,11 @@ impl<Node> Nodes<Node> {
     pub(crate) fn len(&self) -> usize {
         self.slab.len()
     }
+
+    pub(crate) fn clear(&mut self) {
+        self.slab.clear();
+        self.roots = 0;
+    }
 }
 
 impl<Node> Index<NodeId> for Nodes<Node> {
