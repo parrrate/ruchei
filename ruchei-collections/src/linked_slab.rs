@@ -30,17 +30,60 @@ impl Link {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+struct LinkOption {
+    link: Link,
+}
+
+impl LinkOption {
+    fn as_mut(&mut self) -> Option<&mut Link> {
+        self.is_some().then_some(&mut self.link)
+    }
+
+    fn as_ref(&self) -> Option<&Link> {
+        self.is_some().then_some(&self.link)
+    }
+
+    fn is_none(&self) -> bool {
+        *self == NO_LINK
+    }
+
+    fn is_some(&self) -> bool {
+        !self.is_none()
+    }
+
+    fn insert(&mut self, link: Link) -> &mut Link {
+        self.link = link;
+        assert!(!self.is_none());
+        &mut self.link
+    }
+
+    fn take(&mut self) -> Option<Link> {
+        std::mem::replace(self, NO_LINK).into_link()
+    }
+
+    fn into_link(self) -> Option<Link> {
+        self.is_some().then_some(self.link)
+    }
+}
+
+const NO_LINK: LinkOption = LinkOption {
+    link: Link {
+        prev: usize::MAX - 1,
+        next: usize::MAX - 1,
+    },
+};
+
 #[derive(Debug)]
 #[must_use]
 struct Value<T, const N: usize> {
     ctr: usize,
     value: T,
-    links: [Option<Link>; N],
+    links: [LinkOption; N],
 }
 
 impl<T, const N: usize> Value<T, N> {
     fn new(ctr: usize, value: T) -> Self {
-        const NO_LINK: Option<Link> = None;
         Self {
             ctr,
             value,
@@ -226,7 +269,7 @@ impl<T, const N: usize> AsLinkedSlab for LinkedSlab<T, N> {
         };
         let link_ref = &mut self.slab.get_mut(key).expect("key not found").links[M];
         assert!(link_ref.is_none());
-        *link_ref = Some(link);
+        link_ref.insert(link);
         self.lens[M] += 1;
         true
     }
@@ -256,7 +299,7 @@ impl<T, const N: usize> AsLinkedSlab for LinkedSlab<T, N> {
         };
         let link_ref = &mut self.slab.get_mut(key).expect("key not found").links[M];
         assert!(link_ref.is_none());
-        *link_ref = Some(link);
+        link_ref.insert(link);
         self.lens[M] += 1;
         true
     }
@@ -300,7 +343,7 @@ impl<T, const N: usize> AsLinkedSlab for LinkedSlab<T, N> {
         let (prev_next, next_prev) = self.prev_next(M, prev, next);
         *prev_next = key;
         *next_prev = key;
-        self.slab[key].links[M] = Some(Link { prev, next });
+        self.slab[key].links[M].insert(Link { prev, next });
         self.lens[M] += 1;
     }
 
@@ -327,7 +370,7 @@ impl<T, const N: usize> AsLinkedSlab for LinkedSlab<T, N> {
         }
         let value = self.slab.try_remove(key.key)?;
         for (n, link) in value.links.into_iter().enumerate() {
-            if let Some(link) = link {
+            if let Some(link) = link.into_link() {
                 self.unlink(link, n, key.key);
             }
         }
