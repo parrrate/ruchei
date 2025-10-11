@@ -89,7 +89,7 @@ impl<K: Key, T, S> Echo<S, K, T> {
         S: ReadyRoute<K, T, Error = E>,
     {
         let mut this = self.as_mut().project();
-        while let Some(connection) = this.connections.get_mut(ix) {
+        if let Some(connection) = this.connections.get_mut(ix) {
             if connection.msgs.is_empty() {
                 ready!(connection.send.poll(cx, |cx| {
                     this.router.as_mut().poll_flush_route(&connection.key, cx)
@@ -117,7 +117,12 @@ impl<K: Key, T, S> Echo<S, K, T> {
                 }
             }
         }
-        Poll::Ready(Ok(()))
+        if this.connections.contains(ix) {
+            this.connections.link_push_back::<OP_WAKE_SEND>(ix);
+            Poll::Pending
+        } else {
+            Poll::Ready(Ok(()))
+        }
     }
 }
 
