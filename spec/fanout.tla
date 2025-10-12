@@ -63,9 +63,11 @@ BFlushesLater == /\ AFlushed  = TRUE
                  /\ Flushed'  = TRUE
                  /\ UNCHANGED << AReady, BReady, AFlushed, Ready >>
 
-StartSend == /\ Asink!StartSend
-             /\ Bsink!StartSend
-             /\  sink!StartSend
+StartSend == /\ sink!StartSend
+             /\ AReady'   = FALSE
+             /\ BReady'   = FALSE
+             /\ AFlushed' = FALSE
+             /\ BFlushed' = FALSE
 
 CallMethod == \/ AReadiesFirst
               \/ BReadiesFirst
