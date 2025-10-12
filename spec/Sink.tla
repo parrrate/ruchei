@@ -43,7 +43,7 @@ Next == CallMethod
 
 Spec == Init /\ [][Next]_<< Ready, Flushed >>
 
-EventuallyFlushed == []<><<PollFlushReady>>_<< Ready, Flushed >>
+EventuallyFlushed == WF_<< Ready, Flushed >>(PollFlushReady)
 
 FairSpec == Spec /\ EventuallyFlushed
 
