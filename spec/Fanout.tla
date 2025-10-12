@@ -89,7 +89,8 @@ Complies == /\  Sink!Spec
             /\ ASink!Spec
             /\ BSink!Spec
 
-FairComplies == /\ ASink!FairSpec
+FairComplies == /\  Sink!FairSpec
+                /\ ASink!FairSpec
                 /\ BSink!FairSpec
 
 ====
