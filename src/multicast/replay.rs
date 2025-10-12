@@ -141,7 +141,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
         assert!(this.connections.link_contains::<OP_IS_S_PRE_F>(key));
         assert!(this.connections[key].flushed < *this.flush_target);
         assert!(this.connections.link_push_back::<OP_IS_FLUSHING>(key));
-        this.flush.downgrade().insert(key);
+        this.connections.link_push_back::<OP_WAKE_FLUSH>(key);
     }
 
     /// wait until `sent` reaches `items.len()`
@@ -319,7 +319,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Sink<T> for Multicast<S, T, E> 
         while let Some(key) = this.connections.link_pop_front::<OP_IS_NOT_BEHIND>() {
             this.connections.link_pop_at::<OP_IS_FLUSHING>(key);
             this.connections.link_push_back::<OP_IS_BEHIND>(key);
-            this.ready.downgrade().insert(key);
+            this.connections.link_push_back::<OP_WAKE_READY>(key);
         }
         Ok(())
     }
