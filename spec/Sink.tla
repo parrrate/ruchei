@@ -1,4 +1,4 @@
----- MODULE sink ----
+---- MODULE Sink ----
 EXTENDS TLC
 
 VARIABLES Ready, Flushed
@@ -9,29 +9,31 @@ TypeOK == /\ Ready      \in {TRUE, FALSE}
 Init == /\ Ready   = FALSE
         /\ Flushed = TRUE
 
-PollReadyReady == Ready' = TRUE
+PollReadyReady == /\ Ready = FALSE
+                  /\ Ready' = TRUE
+                  /\ UNCHANGED << Flushed >>
 
 PollReadyPending == /\ Ready  = FALSE
                     /\ Ready' = FALSE
+                    /\ UNCHANGED << Flushed >>
 
-PollReady == /\ \/ PollReadyReady
-                \/ PollReadyPending
-             /\ UNCHANGED << Flushed >>
-             /\ Ready = FALSE
+PollReady == \/ PollReadyReady
+             \/ PollReadyPending
 
 StartSend == /\ Ready    = TRUE
              /\ Ready'   = FALSE
              /\ Flushed' = FALSE
 
-PollFlushReady == Flushed' = TRUE
+PollFlushReady == /\ Flushed  = FALSE
+                  /\ Flushed' = TRUE
+                  /\ UNCHANGED << Ready >>
 
 PollFlushPending == /\ Flushed  = FALSE
                     /\ Flushed' = FALSE
+                    /\ UNCHANGED << Ready >>
 
-PollFlush == /\ \/ PollFlushReady
-                \/ PollFlushPending
-             /\ UNCHANGED << Ready >>
-             /\ Flushed = FALSE
+PollFlush == \/ PollFlushReady
+             \/ PollFlushPending
 
 CallMethod == \/ PollReady
               \/ StartSend
@@ -41,10 +43,7 @@ Next == CallMethod
 
 Spec == Init /\ [][Next]_<< Ready, Flushed >>
 
-GetsFlushed == /\ PollFlush
-               /\ PollFlushReady
-
-EventuallyFlushed == []<><<GetsFlushed>>_<< Ready, Flushed >>
+EventuallyFlushed == []<><<PollFlushReady>>_<< Ready, Flushed >>
 
 FairSpec == Spec /\ EventuallyFlushed
 

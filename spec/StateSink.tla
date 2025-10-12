@@ -1,14 +1,14 @@
----- MODULE state_sink ----
+---- MODULE StateSink ----
 EXTENDS TLC
 
 VARIABLES Ready, Flushed, State
 
-sink == INSTANCE sink
+Sink == INSTANCE Sink
 
-TypeOK == /\ sink!TypeOK
+TypeOK == /\ Sink!TypeOK
           /\ State \in {"readying", "ready", "started", "flushing", "flushed"}
 
-Init == /\ sink!Init
+Init == /\ Sink!Init
         /\ State = "flushed"
 
 StartedToReadying == /\ State    = "started"
@@ -52,8 +52,8 @@ Spec == Init /\ [][Next]_<< Ready, Flushed, State >>
 
 FairSpec == Spec /\ []<><<FlushingToFlushed>>_<< Ready, Flushed, State >>
 
-Complies == sink!Spec
+Complies == Sink!Spec
 
-FairComplies == sink!FairSpec
+FairComplies == Sink!FairSpec
 
 ====

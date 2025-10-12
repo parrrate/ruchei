@@ -1,23 +1,23 @@
----- MODULE fanout ----
+---- MODULE Fanout ----
 EXTENDS TLC
 
 VARIABLES AReady, AFlushed, BReady, BFlushed, Ready, Flushed
 
-Asink == INSTANCE sink WITH Ready   <- AReady,
+ASink == INSTANCE Sink WITH Ready   <- AReady,
                             Flushed <- AFlushed
 
-Bsink == INSTANCE sink WITH Ready   <- BReady,
+BSink == INSTANCE Sink WITH Ready   <- BReady,
                             Flushed <- BFlushed
 
-sink  == INSTANCE sink
+Sink  == INSTANCE Sink
 
-TypeOK == /\ Asink!TypeOK
-          /\ Bsink!TypeOK
-          /\  sink!TypeOK
+TypeOK == /\ ASink!TypeOK
+          /\ BSink!TypeOK
+          /\  Sink!TypeOK
 
-Init == /\ Asink!Init
-        /\ Bsink!Init
-        /\  sink!Init
+Init == /\ ASink!Init
+        /\ BSink!Init
+        /\  Sink!Init
 
 AReadiesFirst == /\ AReady  = FALSE
                  /\ BReady  = FALSE
@@ -63,7 +63,7 @@ BFlushesLater == /\ AFlushed  = TRUE
                  /\ Flushed'  = TRUE
                  /\ UNCHANGED << AReady, BReady, AFlushed, Ready >>
 
-StartSend == /\ sink!StartSend
+StartSend == /\ Sink!StartSend
              /\ AReady'   = FALSE
              /\ BReady'   = FALSE
              /\ AFlushed' = FALSE
@@ -83,13 +83,13 @@ Next == CallMethod
 
 Spec == Init /\ [][Next]_<< AReady, AFlushed, BReady, BFlushed, Ready, Flushed >>
 
-FairSpec == Spec /\ sink!EventuallyFlushed
+FairSpec == Spec /\ Sink!EventuallyFlushed
 
-Complies == /\  sink!Spec
-            /\ Asink!Spec
-            /\ Bsink!Spec
+Complies == /\  Sink!Spec
+            /\ ASink!Spec
+            /\ BSink!Spec
 
-FairComplies == /\ Asink!FairSpec
-                /\ Bsink!FairSpec
+FairComplies == /\ ASink!FairSpec
+                /\ BSink!FairSpec
 
 ====
