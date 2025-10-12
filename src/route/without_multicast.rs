@@ -97,7 +97,7 @@ impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>> Stream for Router<S, E> {
             {
                 match o {
                     Some(Ok(item)) => {
-                        this.next.downgrade().insert(key);
+                        this.connections.link_push_back::<OP_WAKE_NEXT>(key);
                         return Poll::Ready(Some(ConnectionItem::Item((RouteKey(key), item))));
                     }
                     Some(Err(e)) => {
