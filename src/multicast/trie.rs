@@ -118,7 +118,7 @@ impl<K: AsRef<[u8]>, O, E, S: Unpin + TryStream<Ok = SubRequest<K, O>, Error = E
             {
                 match o {
                     Some(Ok(item)) => {
-                        this.next.downgrade().insert(key);
+                        this.connections.link_push_back::<OP_WAKE_NEXT>(key);
                         match item {
                             SubRequest::Sub(route) => {
                                 this.connections.mt_add_owned(key, route.as_ref())
