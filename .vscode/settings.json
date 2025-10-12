@@ -7,5 +7,6 @@
     },
     "markdownlint.config": {
         "MD024": false
-    }
+    },
+    "tlaplus.tlc.modelChecker.options": "-workers 1 -coverage 1"
 }
