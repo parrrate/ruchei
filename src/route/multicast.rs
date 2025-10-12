@@ -134,7 +134,6 @@ impl<S, E> Router<S, E> {
         );
         while let Some(key) = this.flush.as_mut().next::<OP_WAKE_FLUSH>(this.connections) {
             if let Some(connection) = this.connections.get_mut(key) {
-                this.ready.downgrade().insert(key);
                 match connection
                     .flush
                     .poll0(cx, |cx| connection.stream.poll_flush_unpin(cx))
