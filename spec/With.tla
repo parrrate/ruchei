@@ -55,7 +55,7 @@ PollReadyPendingAssert ==  PollReadyPending => (InnerSink!PollReadyPending /\ Si
 PollFlushReady == /\ HasBuffer     = FALSE
                   /\ InnerFlushed' = TRUE
                   /\ Flushed       = FALSE
-                  /\ Flushed       = TRUE
+                  /\ Flushed'      = TRUE
                   /\ UNCHANGED << Ready, InnerReady, HasBuffer >>
 
 PollFlushReadyAssert == PollFlushReady => (InnerSink!PollFlushReady /\ Sink!PollFlushReady)
@@ -79,6 +79,9 @@ Next == CallMethod
 
 Spec == Init /\ [][Next]_<< Ready, Flushed, InnerReady, InnerFlushed, HasBuffer >>
 
+FairSpec == /\ Spec
+            /\ Sink!EventuallyFlushed
+
 AssertAll == /\ StartSendAssert
              /\ PollBufferReadyAssert
              /\ PollBufferPendingAssert
@@ -89,5 +92,11 @@ AssertAll == /\ StartSendAssert
              /\ PollFlushPendingAssert
 
 AssertOK == [][AssertAll]_<< Ready, Flushed, InnerReady, InnerFlushed, HasBuffer >>
+
+Complies == /\ Sink!Spec
+            /\ InnerSink!Spec
+
+FairComplies == /\ Sink!FairSpec
+                /\ InnerSink!FairSpec
 
 ====
