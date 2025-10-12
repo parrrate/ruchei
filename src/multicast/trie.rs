@@ -224,7 +224,6 @@ impl<K: Clone + AsRef<[u8]>, O: Clone, E, S: Unpin + Sink<(K, O), Error = E>> Si
         );
         while let Some(key) = this.flush.as_mut().next::<OP_WAKE_FLUSH>(this.connections) {
             if let Some(connection) = this.connections.get_mut(key) {
-                this.ready.downgrade().insert(key);
                 match connection
                     .flush
                     .poll(cx, |cx| connection.stream.poll_flush_unpin(cx))
