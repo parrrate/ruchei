@@ -4,10 +4,10 @@ EXTENDS TLC
 VARIABLES AReady, AFlushed, BReady, BFlushed, Ready, Flushed
 
 Asink == INSTANCE sink WITH Ready   <- AReady,
-                             Flushed <- AFlushed
+                            Flushed <- AFlushed
 
 Bsink == INSTANCE sink WITH Ready   <- BReady,
-                             Flushed <- BFlushed
+                            Flushed <- BFlushed
 
 sink  == INSTANCE sink
 
