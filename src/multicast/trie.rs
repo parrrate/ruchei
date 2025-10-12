@@ -207,7 +207,7 @@ impl<K: Clone + AsRef<[u8]>, O: Clone, E, S: Unpin + Sink<(K, O), Error = E>> Si
                         this.connections.link_pop_at::<OP_IS_FLUSHING>(key);
                         this.flush.wake();
                     }
-                    this.ready.downgrade().insert(key);
+                    this.connections.link_push_back::<OP_WAKE_READY>(key);
                 }
             }
             this = self.as_mut().project();
