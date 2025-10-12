@@ -260,7 +260,7 @@ impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>> Sink<(RouteKey, Out)> for R
                     this.connections.link_pop_at::<OP_IS_FLUSHING>(key);
                     this.flush.wake();
                 }
-                this.ready.downgrade().insert(key);
+                this.connections.link_push_back::<OP_WAKE_READY>(key);
             }
         }
         Ok(())
@@ -294,7 +294,7 @@ impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>> Sink<(Out,)> for Router<S, 
                         this.connections.link_pop_at::<OP_IS_FLUSHING>(key);
                         this.flush.wake();
                     }
-                    this.ready.downgrade().insert(key);
+                    this.connections.link_push_back::<OP_WAKE_READY>(key);
                 }
             }
             this = self.as_mut().project();
