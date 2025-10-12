@@ -22,17 +22,17 @@ use crate::connection_item::ConnectionItem;
 
 const OP_WAKE_NEXT: usize = 0;
 const OP_WAKE_READY: usize = 1;
-const OP_WAKE_FLUSH: usize = 1;
-const OP_WAKE_CLOSE: usize = 2;
+const OP_WAKE_FLUSH: usize = 2;
+const OP_WAKE_CLOSE: usize = 3;
 /// `start`ed, haven't yet reached the `flush_target`
-const OP_IS_S_PRE_F: usize = 3;
+const OP_IS_S_PRE_F: usize = 4;
 /// `start`ed, already reached the `flush_target`
-const OP_IS_S_POST_F: usize = 4;
-const OP_IS_BEHIND: usize = 5;
-const OP_IS_NOT_BEHIND: usize = 6;
+const OP_IS_S_POST_F: usize = 5;
+const OP_IS_BEHIND: usize = 6;
+const OP_IS_NOT_BEHIND: usize = 7;
 /// `OP_IS_S_PRE_F` and `OP_IS_NOT_BEHIND`
-const OP_IS_FLUSHING: usize = 7;
-const OP_COUNT: usize = 8;
+const OP_IS_FLUSHING: usize = 8;
+const OP_COUNT: usize = 9;
 
 #[derive(Debug)]
 pub(crate) struct Connection<S> {
