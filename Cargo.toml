@@ -43,6 +43,7 @@ exclude = [
     "/.gitignore",
     "/check.sh",
     "/doc.sh",
+    "/spec",
 ]
 
 [workspace.dependencies]
