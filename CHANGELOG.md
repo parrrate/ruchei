@@ -5,6 +5,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] — 2025-10-13
+
 ### Added
 
 - `extending_keyed` (gated behind `unstable`)
@@ -253,7 +255,8 @@ first stable release
 
 (baseline)
 
-[unreleased]: https://github.com/parrrate/ruchei/compare/0.1.0...HEAD
+[unreleased]: https://github.com/parrrate/ruchei/compare/0.1.1...HEAD
+[0.1.1]: https://github.com/parrrate/ruchei/compare/0.1.0...0.1.1
 [0.1.0]: https://github.com/parrrate/ruchei/compare/0.0.100...0.1.0
 [0.0.100]: https://github.com/parrrate/ruchei/compare/0.0.99...0.0.100
 [0.0.99]: https://github.com/parrrate/ruchei/compare/0.0.98...0.0.99
