@@ -8,7 +8,7 @@ use std::{
 use extend_pinned::ExtendPinned;
 use futures_util::{Sink, SinkExt, Stream, TryStream, TryStreamExt, ready, stream::FusedStream};
 use pin_project::pin_project;
-use route_sink::{FlushRoute, ReadyRoute};
+use route_sink::{FlushRoute, ReadyRoute, ReadySome};
 use ruchei_collections::{
     as_linked_slab::{AsLinkedSlab, SlabKey},
     linked_slab::LinkedSlab,
@@ -370,6 +370,25 @@ impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>> ReadyRoute<RouteKey, Out> f
             }
         }
         Poll::Ready(Ok(()))
+    }
+}
+
+impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>> ReadySome<RouteKey, Out> for Router<S, E> {
+    fn poll_ready_some(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Result<RouteKey, Self::Error>> {
+        macro_rules! return_some {
+            () => {
+                if let Some(key) = self.connections.front::<OP_IS_READIED>() {
+                    return Poll::Ready(Ok(RouteKey(key)));
+                }
+            };
+        }
+        return_some!();
+        let _: Poll<()> = self.as_mut().poll_ready(cx);
+        return_some!();
+        Poll::Pending
     }
 }
 
