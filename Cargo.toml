@@ -23,7 +23,7 @@ rust-version = "1.88"
 
 [package]
 name = "ruchei"
-version = "0.1.1"
+version = "0.1.1-a.0"
 description = "Utilities for working with many streams"
 documentation = "https://docs.rs/ruchei"
 keywords = ["streams", "async", "stream"]
@@ -50,7 +50,7 @@ exclude = [
 extend-pinned = { path = "extend-pinned", version = "0.1.0" }
 route-sink = { path = "route-sink", version = "0.1.3" }
 ruchei-callback = { path = "ruchei-callback", version = "0.1.2" }
-ruchei-collections = { path = "ruchei-collections", version = "=0.0.0-a.4" }
+ruchei-collections = { path = "ruchei-collections", version = "=0.0.0-a.5" }
 ruchei-connection = { path = "ruchei-connection", version = "=0.0.0-a.2" }
 ruchei-extend = { path = "ruchei-extend", version = "0.1.2" }
 ruchei-extra = { path = "ruchei-extra", version = "0.1.4" }
