@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `extending_keyed` (gated behind `unstable`)
 
+### Changed
+
+- `route_multicast` should now have per-route and all-route wakers independent
+
+- `echo_route` now correctly works with non-routing `Sink`s
+
+### Fixed
+
+- some `echo_route` wake edge-case deadlocks have been prevented
+
+- many unnecessary wakes have been removed
+
 ## [0.1.0] — 2025-09-20
 
 first stable release
