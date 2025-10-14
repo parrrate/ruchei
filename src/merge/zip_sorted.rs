@@ -51,11 +51,11 @@ impl<
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
         macro_rules! try_next {
-            ($s:ident, $on_pending:expr) => {{
+            ($s:ident) => {{
                 assert!(this.last.is_none());
                 match this.$s.as_mut().poll_next(cx) {
                     Poll::Ready(Some(kv)) => match kv.into_kv::<(Lv, Rv)>() {
-                        Ok(kv) => kv,
+                        Ok(kv) => Poll::Ready(kv),
                         Err(e) => {
                             return Poll::Ready(Some(e));
                         }
@@ -63,10 +63,7 @@ impl<
                     Poll::Ready(None) => {
                         return Poll::Ready(None);
                     }
-                    Poll::Pending => {
-                        $on_pending;
-                        return Poll::Pending;
-                    }
+                    Poll::Pending => Poll::Pending,
                 }
             }};
         }
@@ -75,16 +72,18 @@ impl<
                 let (lk, lv, rk, rv) = match v {
                     Either::Left(lv) => {
                         let lk = k;
-                        let (rk, rv) = try_next!(r, {
+                        let Poll::Ready((rk, rv)) = try_next!(r) else {
                             *this.last = Some((lk, Either::Left(lv)));
-                        });
+                            return Poll::Pending;
+                        };
                         (lk, lv, rk, rv)
                     }
                     Either::Right(rv) => {
                         let rk = k;
-                        let (lk, lv) = try_next!(l, {
+                        let Poll::Ready((lk, lv)) = try_next!(l) else {
                             *this.last = Some((rk, Either::Right(rv)));
-                        });
+                            return Poll::Pending;
+                        };
                         (lk, lv, rk, rv)
                     }
                 };
@@ -93,9 +92,12 @@ impl<
                     Ordering::Equal => break Some(PairItem::from_kv(lk, (lv, rv))),
                     Ordering::Greater => *this.last = Some((lk, Either::Left(lv))),
                 }
-            } else {
-                let (lk, lv) = try_next!(l, {});
+            } else if let Poll::Ready((lk, lv)) = try_next!(l) {
                 *this.last = Some((lk, Either::Left(lv)));
+            } else if let Poll::Ready((rk, rv)) = try_next!(r) {
+                *this.last = Some((rk, Either::Right(rv)));
+            } else {
+                return Poll::Pending;
             }
         })
     }
