@@ -51,34 +51,40 @@ impl<
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
         macro_rules! try_next {
-            ($s:ident) => {
+            ($s:ident, $on_pending:expr) => {{
+                assert!(this.last.is_none());
                 match this.$s.as_mut().poll_next(cx) {
                     Poll::Ready(Some(kv)) => match kv.into_kv::<(Lv, Rv)>() {
                         Ok(kv) => kv,
                         Err(e) => {
-                            this.last.take();
                             return Poll::Ready(Some(e));
                         }
                     },
                     Poll::Ready(None) => {
-                        this.last.take();
                         return Poll::Ready(None);
                     }
-                    Poll::Pending => return Poll::Pending,
+                    Poll::Pending => {
+                        $on_pending;
+                        return Poll::Pending;
+                    }
                 }
-            };
+            }};
         }
         Poll::Ready(loop {
             if let Some((k, v)) = this.last.take() {
                 let (lk, lv, rk, rv) = match v {
                     Either::Left(lv) => {
                         let lk = k;
-                        let (rk, rv) = try_next!(r);
+                        let (rk, rv) = try_next!(r, {
+                            *this.last = Some((lk, Either::Left(lv)));
+                        });
                         (lk, lv, rk, rv)
                     }
                     Either::Right(rv) => {
                         let rk = k;
-                        let (lk, lv) = try_next!(l);
+                        let (lk, lv) = try_next!(l, {
+                            *this.last = Some((rk, Either::Right(rv)));
+                        });
                         (lk, lv, rk, rv)
                     }
                 };
@@ -88,7 +94,7 @@ impl<
                     Ordering::Greater => *this.last = Some((lk, Either::Left(lv))),
                 }
             } else {
-                let (lk, lv) = try_next!(l);
+                let (lk, lv) = try_next!(l, {});
                 *this.last = Some((lk, Either::Left(lv)));
             }
         })
