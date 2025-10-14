@@ -5,6 +5,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `zip_group_sorted`
+
 ### Changed
 
 - more eagerly stop `zip_sorted`, `group_sorted`
