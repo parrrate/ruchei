@@ -1,4 +1,5 @@
 #![no_std]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(docsrs, doc(cfg_hide(doc)))]
 
 use core::{

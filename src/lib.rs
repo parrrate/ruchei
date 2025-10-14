@@ -1,6 +1,7 @@
 //! Utilities for working with many streams
 
 #![forbid(unsafe_code)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(docsrs, doc(cfg_hide(doc)))]
 
 extern crate self as ruchei;
