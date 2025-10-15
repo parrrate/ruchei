@@ -2,6 +2,8 @@
 //!
 //! or it might not, since we want `route-sink` passthrough, and that's `ruchei`-specific
 
+#![no_std]
+
 use futures_core::Stream;
 
 use self::dedup_eager::DedupEager;
