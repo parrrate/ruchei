@@ -60,7 +60,7 @@ ruchei-sample.path = "internal/ruchei-sample"
 futures-channel = "0.3.31"
 futures-core = { version = "0.3.31", default-features = false }
 futures-sink = "0.3.31"
-futures-util = { version = "0.3.31", features = ["sink"] }
+futures-util = { version = "0.3.31" }
 linked-hash-map = "0.5.6"
 linked_hash_set = "0.1.5"
 pin-project = "1"

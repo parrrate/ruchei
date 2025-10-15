@@ -5,7 +5,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-futures-util.workspace = true
+futures-util = { workspace = true, features = ["sink"] }
 pin-project.workspace = true
 
 [package.metadata.tagit]
