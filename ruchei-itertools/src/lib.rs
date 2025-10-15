@@ -14,6 +14,7 @@ mod dedup_eager;
 mod macros;
 
 pub trait AsyncItertools: Stream {
+    /// deduplicates items, and yields them *as soon as they become available* (that's why `Clone`)
     fn dedup_eager(self) -> DedupEager<Self>
     where
         Self: Sized,
