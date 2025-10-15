@@ -8,6 +8,7 @@ members = [
     "ruchei-connection",
     "ruchei-extend",
     "ruchei-extra",
+    "ruchei-itertools",
     "ruchei-route",
     "ruchei-test",
     "xtask",
@@ -59,6 +60,7 @@ ruchei-sample.path = "internal/ruchei-sample"
 
 futures-channel = "0.3.31"
 futures-core = { version = "0.3.31", default-features = false }
+futures-executor = "0.3.31"
 futures-sink = "0.3.31"
 futures-util = { version = "0.3.31" }
 linked-hash-map = "0.5.6"
