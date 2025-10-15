@@ -12,6 +12,8 @@ pub use ruchei_callback as callback;
 pub use ruchei_extend as extend;
 #[cfg(feature = "extra")]
 pub use ruchei_extra as with_extra;
+#[cfg(feature = "itertools")]
+pub use ruchei_itertools as itertools;
 
 #[cfg(feature = "unstable")]
 pub mod compress;
