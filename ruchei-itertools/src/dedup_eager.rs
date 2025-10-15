@@ -44,18 +44,19 @@ impl<S: FusedStream<Item: PartialEq + Clone>> FusedStream for DedupEager<S> {
 
 crate::macros::forward!(DedupEager, T);
 
-#[test]
-fn unique() {
+#[cfg(test)]
+mod test {
     use crate::AsyncItertools;
-    let x = futures_util::stream::iter([1, 2, 3]);
-    let x = futures_executor::block_on_stream(x.dedup_eager()).collect::<Vec<_>>();
-    assert_eq!(x, [1, 2, 3]);
-}
 
-#[test]
-fn all_duplicates() {
-    use crate::AsyncItertools;
-    let x = futures_util::stream::iter([1, 1, 2, 2, 3, 3]);
-    let x = futures_executor::block_on_stream(x.dedup_eager()).collect::<Vec<_>>();
-    assert_eq!(x, [1, 2, 3]);
+    #[test]
+    fn unique() {
+        let s = futures_util::stream::iter([1, 2, 3]);
+        assert!(futures_executor::block_on_stream(s.dedup_eager()).eq([1, 2, 3]));
+    }
+
+    #[test]
+    fn all_duplicates() {
+        let s = futures_util::stream::iter([1, 1, 2, 2, 3, 3]);
+        assert!(futures_executor::block_on_stream(s.dedup_eager()).eq([1, 2, 3]));
+    }
 }
