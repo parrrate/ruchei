@@ -1,4 +1,4 @@
-//! once this is somewhat useful and correct, this might get renamed to `async-itertools`
+//! once it is somewhat useful and correct, this might get renamed to `async-itertools`
 //!
 //! or it might not, since we want `route-sink` passthrough, and that's `ruchei`-specific
 
@@ -13,6 +13,12 @@ use self::dedup_eager::DedupEager;
 mod dedup_eager;
 mod macros;
 
+/// `Itertools` for `Stream`s
+///
+/// most combinators also forward [`futures-sink`] and [`route-sink`] methods
+///
+/// [`futures-sink`]: https://docs.rs/futures-sink/0.3
+/// [`route-sink`]: https://docs.rs/route-sink/0.1
 pub trait AsyncItertools: Stream {
     /// deduplicates items, and yields them *as soon as they become available* (that's why `Clone`)
     fn dedup_eager(self) -> DedupEager<Self>
