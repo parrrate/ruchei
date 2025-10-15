@@ -3,6 +3,8 @@
 //! or it might not, since we want `route-sink` passthrough, and that's `ruchei`-specific
 
 #![no_std]
+#![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(docsrs, doc(cfg_hide(doc)))]
 
 use futures_core::Stream;
 
