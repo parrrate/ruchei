@@ -8,10 +8,8 @@
 
 use futures_util::Stream;
 
-pub use self::{
-    dedup_eager::DedupEager,
-    interleave::{Interleave, interleave},
-};
+pub use self::interleave::interleave;
+use self::{dedup_eager::DedupEager, interleave::Interleave};
 
 mod check;
 mod dedup_eager;
