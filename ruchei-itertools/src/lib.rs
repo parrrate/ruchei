@@ -8,7 +8,7 @@
 
 use futures_core::Stream;
 
-use self::dedup_eager::DedupEager;
+pub use self::dedup_eager::DedupEager;
 
 mod dedup_eager;
 mod macros;
