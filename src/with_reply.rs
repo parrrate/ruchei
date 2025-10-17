@@ -199,7 +199,9 @@ impl<S: Sink<T, Error = E>, T, E, F> Sink<T> for WithReply<S, T, F> {
         self.poll_flush_raw(cx)
     }
 
-    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.wakers.flush.register(cx.waker());
+        ready!(self.as_mut().poll())?;
         self.project().stream.poll_close(cx)
     }
 }
