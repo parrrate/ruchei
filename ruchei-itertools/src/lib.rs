@@ -1,6 +1,9 @@
 //! once it is somewhat useful and correct, this might get renamed to `async-itertools`
 //!
 //! or it might not, since we want `route-sink` passthrough, and that's `ruchei`-specific
+//!
+//! this project is largely based off <https://docs.rs/itertools/0.14.0>, which is licensed under
+//! `MIT OR Apache-2.0 `
 
 #![no_std]
 #![cfg_attr(docsrs, feature(doc_cfg))]
