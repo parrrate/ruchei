@@ -42,7 +42,7 @@ impl<I: Stream, J: Stream<Item = I::Item>> Stream for Interleave<I, J> {
     }
 }
 
-pub fn interleave<I: Stream, J: Stream<Item = I::Item>>(i: I, j: J) -> Interleave<I, J> {
+pub fn interleave<I: Stream, J: Stream<Item = I::Item>>(i: I, j: J) -> crate::Interleave<I, J> {
     assert_stream(Interleave {
         i: i.fuse(),
         j: j.fuse(),

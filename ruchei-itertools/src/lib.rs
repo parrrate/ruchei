@@ -14,19 +14,22 @@ use futures_util::Stream;
 use futures_util::{StreamExt, stream::Collect};
 
 use self::check::{assert_future, assert_stream};
-pub use self::interleave::interleave;
+pub use self::{either_or_both::EitherOrBoth, interleave::interleave, zip_longest::zip_longest};
 
 mod advance_by;
 mod all_equal;
 mod check;
 mod dedup_eager;
+mod either_or_both;
 mod interleave;
 mod macros;
+mod zip_longest;
 
 pub type AdvanceBy<'a, S> = self::advance_by::AdvanceBy<'a, S>;
 pub type AllEqual<S> = self::all_equal::AllEqual<S>;
 pub type DedupEager<I> = self::dedup_eager::DedupEager<I>;
 pub type Interleave<I, J> = self::interleave::Interleave<I, J>;
+pub type ZipLongest<L, R> = self::zip_longest::ZipLongest<L, R>;
 
 /// `Itertools` for `Stream`s
 ///
@@ -79,6 +82,14 @@ pub trait AsyncItertools: Stream {
         J: Stream<Item = Self::Item>,
     {
         interleave(self, other)
+    }
+
+    fn zip_longest<J>(self, other: J) -> ZipLongest<Self, J>
+    where
+        Self: Sized,
+        J: Stream,
+    {
+        zip_longest(self, other)
     }
 }
 
