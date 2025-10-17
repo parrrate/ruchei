@@ -2,4 +2,5 @@
 //!
 //! [`Sink`]: futures_util::Sink
 
+pub mod route;
 pub mod without_multicast;
