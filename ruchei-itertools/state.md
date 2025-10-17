@@ -40,8 +40,8 @@ methods
 | `chunks`                 |         | &check;     | &check;        |                |                | &mldr;             |
 | `chunks_timeout`         |         |             |                | &check;        |                |                    |
 | `circulat_tuple_windows` |         | &check;     |                |                |                |                    |
-| `cloned`                 | &check; | &mldr;      |                |                | &check;        |                    |
-| `cmp`                    | &check; | &mldr;      |                |                |                |                    |
+| `cloned`                 | &check; | &mldr;      |                |                | &check;        | &check;            |
+| `cmp`                    | &check; | &mldr;      |                |                |                | &check;            |
 | `cmp_by`                 | &check; | &mldr;      |                |                |                |                    |
 | `coalesce`               |         | &check;     |                |                |                |                    |
 | `collect`                | &check; | &mldr;      | &check;        | &check;        | &check;        | &mldr;             |
@@ -170,8 +170,8 @@ methods
 | `or`                     |         |             |                |                | &check;        |                    |
 | `or_else`                |         |             | &check;        |                |                | &mldr;             |
 | `pad_using`              |         | &check;     |                |                |                |                    |
-| `partial_cmp`            | &check; | &mldr;      |                |                |                |                    |
-| `partial_cmp_by`         | &check; | &mldr;      |                |                |                |                    |
+| `partial_cmp`            | &check; | &mldr;      |                |                |                | &check;            |
+| `partial_cmp_by`         | &check; | &mldr;      |                |                |                | &check;            |
 | `partition`              | &check; | &mldr;      |                |                | &check;        |                    |
 | `partition_in_place`     | &check; | &mldr;      |                |                |                |                    |
 | `partition_map`          |         | &check;     |                |                |                |                    |
