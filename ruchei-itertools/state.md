@@ -1,6 +1,7 @@
 # State of `Iterator` and `Stream` methods
 
-> [!NOTE] current document hasn't been thoroughly checked yet
+> [!NOTE]
+> current document hasn't been thoroughly checked yet
 
 versions
 
