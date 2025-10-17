@@ -20,7 +20,7 @@ methods
 
 |                          | `core`  | `itertools` | `futures-util` | `tokio-stream` | `futures-lite` | `ruchei-itertools` |
 | ------------------------ | :-----: | :---------: | :------------: | :------------: | :------------: | :----------------: |
-| `advance_by`             | &check; | &mldr;      |                |                |                |                    |
+| `advance_by`             | &check; | &mldr;      |                |                |                | &check;            |
 | `all`                    | &check; | &mldr;      | &check;        | &check;        | &check;        | &mldr;             |
 | `all_equal`              |         | &check;     |                |                |                |                    |
 | `all_equal_value`        |         | &check;     |                |                |                |                    |
