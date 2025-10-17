@@ -6,7 +6,12 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(docsrs, doc(cfg_hide(doc)))]
 
+#[cfg(feature = "std")]
+extern crate std;
+
 use futures_util::Stream;
+#[cfg(feature = "std")]
+use futures_util::{StreamExt, stream::Collect};
 
 use self::check::{assert_future, assert_stream};
 pub use self::interleave::interleave;
@@ -49,6 +54,14 @@ pub trait AsyncItertools: Stream {
             stream: self,
             first: None,
         })
+    }
+
+    #[cfg(feature = "std")]
+    fn collect_vec(self) -> Collect<Self, std::vec::Vec<Self::Item>>
+    where
+        Self: Sized,
+    {
+        self.collect()
     }
 
     /// deduplicates items, and yields them *as soon as they become available* (that's why `Clone`)

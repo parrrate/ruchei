@@ -18,6 +18,7 @@ route-sink = { workspace = true, optional = true }
 
 [features]
 sink = ["dep:futures-sink"]
+std = []
 route-sink = ["sink", "dep:route-sink"]
 
 [dev-dependencies]

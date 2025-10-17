@@ -48,7 +48,7 @@ methods
 | `collect_array`          |         | &check;     |                |                |                |                    |
 | `collect_into`           | &check; | &mldr;      |                |                |                |                    |
 | `collect_tuple`          |         | &check;     |                |                |                |                    |
-| `collect_vec`            |         | &check;     |                |                |                |                    |
+| `collect_vec`            |         | &check;     |                |                |                | &check;            |
 | `combinations`           |         | &check;     |                |                |                |                    |
 | `combinations_with_...`  |         | &check;     |                |                |                |                    |
 | `concat`                 |         | &check;     | &check;        |                |                | &mldr;             |

@@ -63,7 +63,7 @@ futures-channel = "0.3.31"
 futures-core = { version = "0.3.31", default-features = false }
 futures-executor = "0.3.31"
 futures-sink = "0.3.31"
-futures-util = { version = "0.3.31" }
+futures-util = { version = "0.3.31", default-features = false }
 linked-hash-map = "0.5.6"
 linked_hash_set = "0.1.5"
 pin-project = "1"
