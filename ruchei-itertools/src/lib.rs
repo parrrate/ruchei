@@ -8,13 +8,16 @@
 
 use futures_util::Stream;
 
+use self::check::{assert_future, assert_stream};
 pub use self::interleave::interleave;
 
+mod advance_by;
 mod check;
 mod dedup_eager;
 mod interleave;
 mod macros;
 
+pub type AdvanceBy<'a, S> = self::advance_by::AdvanceBy<'a, S>;
 pub type DedupEager<I> = self::dedup_eager::DedupEager<I>;
 pub type Interleave<I, J> = self::interleave::Interleave<I, J>;
 
@@ -25,12 +28,14 @@ pub type Interleave<I, J> = self::interleave::Interleave<I, J>;
 /// [`futures-sink`]: https://docs.rs/futures-sink/0.3
 /// [`route-sink`]: https://docs.rs/route-sink/0.1
 pub trait AsyncItertools: Stream {
-    fn interleave<J>(self, other: J) -> Interleave<Self, J>
+    fn advance_by(&mut self, n: usize) -> AdvanceBy<'_, Self>
     where
-        Self: Sized,
-        J: Stream<Item = Self::Item>,
+        Self: Unpin,
     {
-        interleave(self, other)
+        assert_future(AdvanceBy {
+            stream: self,
+            remaining: n,
+        })
     }
 
     /// deduplicates items, and yields them *as soon as they become available* (that's why `Clone`)
@@ -39,7 +44,15 @@ pub trait AsyncItertools: Stream {
         Self: Sized,
         Self::Item: PartialEq + Clone,
     {
-        DedupEager::new(self)
+        assert_stream(DedupEager::new(self))
+    }
+
+    fn interleave<J>(self, other: J) -> Interleave<Self, J>
+    where
+        Self: Sized,
+        J: Stream<Item = Self::Item>,
+    {
+        interleave(self, other)
     }
 }
 
