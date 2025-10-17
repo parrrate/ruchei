@@ -19,6 +19,7 @@ use self::{
     by_fn::ByFn,
     check::{assert_future, assert_stream},
     cmp_by::{ByOrd, cmp_by},
+    partial_cmp_by::{ByPartialOrd, partial_cmp_by},
 };
 pub use self::{either_or_both::EitherOrBoth, interleave::interleave, zip_longest::zip_longest};
 
@@ -31,6 +32,7 @@ mod dedup_eager;
 mod either_or_both;
 mod interleave;
 mod macros;
+mod partial_cmp_by;
 mod zip_longest;
 
 pub type AdvanceBy<'a, S> = self::advance_by::AdvanceBy<'a, S>;
@@ -39,6 +41,8 @@ pub type Cmp<L, R> = self::cmp_by::CmpBy<L, R, ByOrd>;
 pub type CmpBy<L, R, F> = self::cmp_by::CmpBy<L, R, ByFn<F>>;
 pub type DedupEager<I> = self::dedup_eager::DedupEager<I>;
 pub type Interleave<I, J> = self::interleave::Interleave<I, J>;
+pub type PartialCmp<L, R> = self::partial_cmp_by::PartialCmpBy<L, R, ByPartialOrd>;
+pub type PartialCmpBy<L, R, F> = self::partial_cmp_by::PartialCmpBy<L, R, ByFn<F>>;
 pub type ZipLongest<L, R> = self::zip_longest::ZipLongest<L, R>;
 
 /// `Itertools` for `Stream`s
@@ -110,6 +114,24 @@ pub trait AsyncItertools: Stream {
         J: Stream<Item = Self::Item>,
     {
         interleave(self, other)
+    }
+
+    fn partial_cmp<J>(self, other: J) -> PartialCmp<Self, J>
+    where
+        Self: Sized,
+        Self::Item: PartialOrd<J::Item>,
+        J: Stream,
+    {
+        partial_cmp_by(self, other, ByPartialOrd)
+    }
+
+    fn partial_cmp_by<J, F>(self, other: J, cmp: F) -> PartialCmpBy<Self, J, F>
+    where
+        Self: Sized,
+        J: Stream,
+        F: FnMut(&Self::Item, &J::Item) -> Option<Ordering>,
+    {
+        partial_cmp_by(self, other, ByFn(cmp))
     }
 
     fn zip_longest<J>(self, other: J) -> ZipLongest<Self, J>
