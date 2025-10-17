@@ -9,12 +9,14 @@
 use futures_util::Stream;
 
 pub use self::interleave::interleave;
-use self::{dedup_eager::DedupEager, interleave::Interleave};
 
 mod check;
 mod dedup_eager;
 mod interleave;
 mod macros;
+
+pub type DedupEager<I> = self::dedup_eager::DedupEager<I>;
+pub type Interleave<I, J> = self::interleave::Interleave<I, J>;
 
 /// `Itertools` for `Stream`s
 ///
