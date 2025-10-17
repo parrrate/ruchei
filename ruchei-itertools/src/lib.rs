@@ -9,16 +9,24 @@
 #[cfg(feature = "std")]
 extern crate std;
 
+use core::cmp::Ordering;
+
 use futures_util::Stream;
 #[cfg(feature = "std")]
 use futures_util::{StreamExt, stream::Collect};
 
-use self::check::{assert_future, assert_stream};
+use self::{
+    by_fn::ByFn,
+    check::{assert_future, assert_stream},
+    cmp_by::{ByOrd, cmp_by},
+};
 pub use self::{either_or_both::EitherOrBoth, interleave::interleave, zip_longest::zip_longest};
 
 mod advance_by;
 mod all_equal;
+mod by_fn;
 mod check;
+mod cmp_by;
 mod dedup_eager;
 mod either_or_both;
 mod interleave;
@@ -27,6 +35,8 @@ mod zip_longest;
 
 pub type AdvanceBy<'a, S> = self::advance_by::AdvanceBy<'a, S>;
 pub type AllEqual<S> = self::all_equal::AllEqual<S>;
+pub type Cmp<L, R> = self::cmp_by::CmpBy<L, R, ByOrd>;
+pub type CmpBy<L, R, F> = self::cmp_by::CmpBy<L, R, ByFn<F>>;
 pub type DedupEager<I> = self::dedup_eager::DedupEager<I>;
 pub type Interleave<I, J> = self::interleave::Interleave<I, J>;
 pub type ZipLongest<L, R> = self::zip_longest::ZipLongest<L, R>;
@@ -65,6 +75,24 @@ pub trait AsyncItertools: Stream {
         Self: Sized,
     {
         self.collect()
+    }
+
+    fn cmp<J>(self, other: J) -> Cmp<Self, J>
+    where
+        Self: Sized,
+        Self::Item: Ord,
+        J: Stream<Item = Self::Item>,
+    {
+        cmp_by(self, other, ByOrd)
+    }
+
+    fn cmp_by<J, F>(self, other: J, cmp: F) -> CmpBy<Self, J, F>
+    where
+        Self: Sized,
+        J: Stream,
+        F: FnMut(&Self::Item, &J::Item) -> Ordering,
+    {
+        cmp_by(self, other, ByFn(cmp))
     }
 
     /// deduplicates items, and yields them *as soon as they become available* (that's why `Clone`)
