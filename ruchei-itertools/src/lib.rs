@@ -12,12 +12,14 @@ use self::check::{assert_future, assert_stream};
 pub use self::interleave::interleave;
 
 mod advance_by;
+mod all_equal;
 mod check;
 mod dedup_eager;
 mod interleave;
 mod macros;
 
 pub type AdvanceBy<'a, S> = self::advance_by::AdvanceBy<'a, S>;
+pub type AllEqual<S> = self::all_equal::AllEqual<S>;
 pub type DedupEager<I> = self::dedup_eager::DedupEager<I>;
 pub type Interleave<I, J> = self::interleave::Interleave<I, J>;
 
@@ -35,6 +37,17 @@ pub trait AsyncItertools: Stream {
         assert_future(AdvanceBy {
             stream: self,
             remaining: n,
+        })
+    }
+
+    fn all_equal(self) -> AllEqual<Self>
+    where
+        Self: Sized,
+        Self::Item: PartialEq,
+    {
+        assert_future(AllEqual {
+            stream: self,
+            first: None,
         })
     }
 

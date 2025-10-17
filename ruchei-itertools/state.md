@@ -22,7 +22,7 @@ methods
 | ------------------------ | :-----: | :---------: | :------------: | :------------: | :------------: | :----------------: |
 | `advance_by`             | &check; | &mldr;      |                |                |                | &check;            |
 | `all`                    | &check; | &mldr;      | &check;        | &check;        | &check;        | &mldr;             |
-| `all_equal`              |         | &check;     |                |                |                |                    |
+| `all_equal`              |         | &check;     |                |                |                | &check;            |
 | `all_equal_value`        |         | &check;     |                |                |                |                    |
 | `all_unique`             |         | &check;     |                |                |                |                    |
 | `and_then`               |         |             | &check;        |                |                | &mldr;             |
