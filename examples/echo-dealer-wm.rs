@@ -1,11 +1,9 @@
-//! [`ruchei::deal`] with [`ruchei::echo::buffered`]
-
 use async_net::TcpListener;
 use futures_util::{StreamExt, future::ready};
 use ruchei::{
-    concurrent::ConcurrentExt, connection_item::ConnectionItemExt, deal::route::DealRoute,
-    echo::bufferless::EchoBufferless, poll_on_wake::PollOnWakeExt,
-    route::multicast::RouteMulticast,
+    concurrent::ConcurrentExt, connection_item::ConnectionItemExt,
+    deal::without_multicast::DealWithoutMulticast, echo::bufferless::EchoBufferless,
+    poll_on_wake::PollOnWakeExt,
 };
 
 #[async_std::main]
@@ -21,9 +19,8 @@ async fn main() {
         .concurrent()
         .filter_map(|r| async { r.ok() })
         .map(|s| s.filter(|m| ready(m.as_ref().is_ok_and(|m| !m.is_close()))))
-        .route_multicast()
+        .deal_without_multicast()
         .connection_item_ignore()
-        .deal_route()
         .echo_bufferless()
         .await
         .unwrap();
