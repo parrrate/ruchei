@@ -263,6 +263,6 @@ methods
 | `zip`                    | &check; | &mldr;      | &check;        |                | &check;        | &mldr;             | &mldr;            |
 | `zip_eq`                 |         | &check;     |                |                |                |                    |                   |
 | `zip_lazy`               |         |             |                |                |                | &check;            |                   |
-| `zip_longest`            |         | &check;     |                |                |                |                    |                   |
+| `zip_longest`            |         | &check;     |                |                |                | &check;            |                   |
 
 [^tm]: `tokio` calls `interleave` \``merge`'
