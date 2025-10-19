@@ -130,8 +130,8 @@ methods
 | `k_smallest_relaxed`     |         | &check;     |                |                |                |                    |                   |
 | `k_smallest_relaxed_by`  |         | &check;     |                |                |                |                    |                   |
 | `k_smallest_relaxed_...` |         | &check;     |                |                |                |                    |                   |
-| `k_merge`                |         | &check;     |                |                |                |                    |                   |
-| `k_merge_by`             |         | &check;     |                |                |                |                    |                   |
+| `kmerge`                 |         | &check;     |                |                |                |                    |                   |
+| `kmerge_by`              |         | &check;     |                |                |                |                    |                   |
 | `last`                   | &check; | &mldr;      |                |                | &check;        |                    | &mldr;            |
 | `le`                     | &check; | &mldr;      |                |                |                |                    |                   |
 | `left_stream`            |         |             | &check;        |                |                | &mldr;             |                   |
