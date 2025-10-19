@@ -17,6 +17,7 @@ pub use ruchei_itertools as itertools;
 
 #[cfg(feature = "unstable")]
 pub mod compress;
+#[cfg(feature = "std")]
 pub mod concurrent;
 pub mod connection_item;
 #[cfg(all(feature = "connection", feature = "extend"))]
@@ -24,7 +25,7 @@ pub mod deal;
 pub mod echo;
 #[cfg(feature = "unstable")]
 pub mod group_sequential;
-#[cfg(feature = "unstable")]
+#[cfg(all(feature = "unstable", feature = "std"))]
 pub mod liveness;
 pub mod merge;
 #[cfg(all(feature = "connection", feature = "extend"))]
