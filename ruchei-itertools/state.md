@@ -249,6 +249,7 @@ methods
 | `try_ready_chunks`       |         |             | &check;        |                |                | &mldr;             |
 | `try_skip_while`         |         |             | &check;        |                |                | &mldr;             |
 | `try_take_while`         |         |             | &check;        |                |                | &mldr;             |
+| `try_zip_lazy`           |         |             |                |                |                | &check;            |
 | `tuple_combinations`     |         | &check;     |                |                |                |                    |
 | `tuple_windows`          |         | &check;     |                |                |                |                    |
 | `tuples`                 |         | &check;     |                |                |                |                    |
@@ -260,6 +261,7 @@ methods
 | `with_position`          |         | &check;     |                |                |                |                    |
 | `zip`                    | &check; | &mldr;      | &check;        |                | &check;        | &mldr;             |
 | `zip_eq`                 |         | &check;     |                |                |                |                    |
+| `zip_lazy`               |         |             |                |                |                | &check;            |
 | `zip_longest`            |         | &check;     |                |                |                |                    |
 
 [^tm]: `tokio` calls `interleave` \``merge`'
