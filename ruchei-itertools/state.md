@@ -40,9 +40,9 @@ methods
 | `chunks`                 |         | &check;     | &check;        |                |                | &mldr;             |
 | `chunks_timeout`         |         |             |                | &check;        |                |                    |
 | `circulat_tuple_windows` |         | &check;     |                |                |                |                    |
-| `cloned`                 | &check; | &mldr;      |                |                | &check;        | &check;            |
+| `cloned`                 | &check; | &mldr;      |                |                | &check;        |                    |
 | `cmp`                    | &check; | &mldr;      |                |                |                | &check;            |
-| `cmp_by`                 | &check; | &mldr;      |                |                |                |                    |
+| `cmp_by`                 | &check; | &mldr;      |                |                |                | &check;            |
 | `coalesce`               |         | &check;     |                |                |                |                    |
 | `collect`                | &check; | &mldr;      | &check;        | &check;        | &check;        | &mldr;             |
 | `collect_array`          |         | &check;     |                |                |                |                    |
