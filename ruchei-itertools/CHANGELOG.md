@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- `try_zip_lazy`
+
 ## [0.0.0-a.2] — 2025-10-19
 
 ### Added

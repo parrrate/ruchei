@@ -14,7 +14,7 @@ extern crate std;
 
 use core::cmp::Ordering;
 
-use futures_util::Stream;
+use futures_util::{Stream, TryStream};
 #[cfg(feature = "std")]
 use futures_util::{StreamExt, stream::Collect};
 
@@ -25,8 +25,8 @@ use self::{
     partial_cmp_by::{ByPartialOrd, partial_cmp_by},
 };
 pub use self::{
-    either_or_both::EitherOrBoth, interleave::interleave, zip_lazy::zip_lazy,
-    zip_longest::zip_longest,
+    either_or_both::EitherOrBoth, interleave::interleave, try_zip_lazy::try_zip_lazy,
+    zip_lazy::zip_lazy, zip_longest::zip_longest,
 };
 
 mod advance_by;
@@ -39,6 +39,7 @@ mod either_or_both;
 mod interleave;
 mod macros;
 mod partial_cmp_by;
+mod try_zip_lazy;
 mod zip_lazy;
 mod zip_longest;
 
@@ -50,6 +51,7 @@ pub type DedupEager<I> = self::dedup_eager::DedupEager<I>;
 pub type Interleave<I, J> = self::interleave::Interleave<I, J>;
 pub type PartialCmp<L, R> = self::partial_cmp_by::PartialCmpBy<L, R, ByPartialOrd>;
 pub type PartialCmpBy<L, R, F> = self::partial_cmp_by::PartialCmpBy<L, R, ByFn<F>>;
+pub type TryZipLazy<L, R> = self::try_zip_lazy::TryZipLazy<L, R>;
 pub type ZipLazy<L, R> = self::zip_lazy::ZipLazy<L, R>;
 pub type ZipLongest<L, R> = self::zip_longest::ZipLongest<L, R>;
 
@@ -140,6 +142,14 @@ pub trait AsyncItertools: Stream {
         F: FnMut(&Self::Item, &J::Item) -> Option<Ordering>,
     {
         partial_cmp_by(self, other, ByFn(cmp))
+    }
+
+    fn try_zip_lazy<J>(self, other: J) -> TryZipLazy<Self, J>
+    where
+        Self: Sized + TryStream,
+        J: TryStream<Error = Self::Error>,
+    {
+        try_zip_lazy(self, other)
     }
 
     fn zip_lazy<J>(self, other: J) -> ZipLazy<Self, J>
