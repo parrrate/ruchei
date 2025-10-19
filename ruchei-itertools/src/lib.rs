@@ -24,7 +24,10 @@ use self::{
     cmp_by::{ByOrd, cmp_by},
     partial_cmp_by::{ByPartialOrd, partial_cmp_by},
 };
-pub use self::{either_or_both::EitherOrBoth, interleave::interleave, zip_longest::zip_longest};
+pub use self::{
+    either_or_both::EitherOrBoth, interleave::interleave, zip_lazy::zip_lazy,
+    zip_longest::zip_longest,
+};
 
 mod advance_by;
 mod all_equal;
@@ -36,6 +39,7 @@ mod either_or_both;
 mod interleave;
 mod macros;
 mod partial_cmp_by;
+mod zip_lazy;
 mod zip_longest;
 
 pub type AdvanceBy<'a, S> = self::advance_by::AdvanceBy<'a, S>;
@@ -46,6 +50,7 @@ pub type DedupEager<I> = self::dedup_eager::DedupEager<I>;
 pub type Interleave<I, J> = self::interleave::Interleave<I, J>;
 pub type PartialCmp<L, R> = self::partial_cmp_by::PartialCmpBy<L, R, ByPartialOrd>;
 pub type PartialCmpBy<L, R, F> = self::partial_cmp_by::PartialCmpBy<L, R, ByFn<F>>;
+pub type ZipLazy<L, R> = self::zip_lazy::ZipLazy<L, R>;
 pub type ZipLongest<L, R> = self::zip_longest::ZipLongest<L, R>;
 
 /// `Itertools` for `Stream`s
@@ -135,6 +140,14 @@ pub trait AsyncItertools: Stream {
         F: FnMut(&Self::Item, &J::Item) -> Option<Ordering>,
     {
         partial_cmp_by(self, other, ByFn(cmp))
+    }
+
+    fn zip_lazy<J>(self, other: J) -> ZipLazy<Self, J>
+    where
+        Self: Sized,
+        J: Stream,
+    {
+        zip_lazy(self, other)
     }
 
     fn zip_longest<J>(self, other: J) -> ZipLongest<Self, J>

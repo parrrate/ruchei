@@ -24,7 +24,7 @@ rust-version = "1.88"
 
 [package]
 name = "ruchei"
-version = "0.1.2-a.4"
+version = "0.1.2-a.5"
 description = "Utilities for working with many streams"
 documentation = "https://docs.rs/ruchei"
 keywords = ["streams", "async", "stream"]
@@ -55,7 +55,7 @@ ruchei-collections = { path = "ruchei-collections", version = "=0.0.0-a.5" }
 ruchei-connection = { path = "ruchei-connection", version = "=0.0.0-a.3" }
 ruchei-extend = { path = "ruchei-extend", version = "0.1.2" }
 ruchei-extra = { path = "ruchei-extra", version = "0.1.4" }
-ruchei-itertools = { path = "ruchei-itertools", version = "=0.0.0-a.1" }
+ruchei-itertools = { path = "ruchei-itertools", version = "=0.0.0-a.2" }
 ruchei-route = { path = "ruchei-route", version = "0.1.9", default-features = false }
 ruchei-sample.path = "internal/ruchei-sample"
 
@@ -66,6 +66,7 @@ futures-sink = "0.3.31"
 futures-util = { version = "0.3.31", default-features = false }
 linked-hash-map = "0.5.6"
 linked_hash_set = "0.1.5"
+option-entry = "0.1.0"
 pin-project = "1"
 slab = "0.4.11"
 
