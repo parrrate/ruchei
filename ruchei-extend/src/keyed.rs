@@ -6,9 +6,9 @@ use core::{
 };
 
 use extend_pinned::ExtendPinned;
-use futures_core::{FusedStream, Stream};
 #[cfg(feature = "sink")]
 use futures_sink::Sink;
+use futures_util::{stream::FusedStream, Stream};
 use pin_project::pin_project;
 #[cfg(feature = "route-sink")]
 use route_sink::{FlushRoute, ReadyRoute, ReadySome};

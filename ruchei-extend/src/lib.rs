@@ -15,9 +15,12 @@ use core::{
 };
 
 pub use extend_pinned::ExtendPinned;
-use futures_core::{FusedStream, Stream};
 #[cfg(feature = "sink")]
 use futures_sink::Sink;
+use futures_util::{
+    Stream, StreamExt,
+    stream::{Fuse, FusedStream},
+};
 use pin_project::pin_project;
 #[cfg(feature = "route-sink")]
 use route_sink::{FlushRoute, ReadyRoute, ReadySome};
@@ -26,19 +29,28 @@ use route_sink::{FlushRoute, ReadyRoute, ReadySome};
 pub mod keyed;
 
 /// Type extending an [`ExtendPinned`] value from a fused stream.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(Debug)]
 #[pin_project]
 pub struct Extending<S, R> {
     #[pin]
-    incoming: R,
+    incoming: Fuse<R>,
     #[pin]
     inner: S,
 }
 
-impl<S, R> Extending<S, R> {
+impl<S: Default, R: Default + Stream> Default for Extending<S, R> {
+    fn default() -> Self {
+        R::default().into()
+    }
+}
+
+impl<S, R: Stream> Extending<S, R> {
     #[must_use]
     pub fn new(incoming: R, inner: S) -> Self {
-        Self { incoming, inner }
+        Self {
+            incoming: incoming.fuse(),
+            inner,
+        }
     }
 
     /// Pinned mutable reference to the inner stream/sink.
@@ -55,22 +67,22 @@ impl<S, R> Extending<S, R> {
 
     #[must_use]
     pub fn incoming_pin_mut(self: Pin<&mut Self>) -> Pin<&mut R> {
-        self.project().incoming
+        self.project().incoming.get_pin_mut()
     }
 
     #[must_use]
     pub fn incoming(&self) -> &R {
-        &self.incoming
+        self.incoming.get_ref()
     }
 
     #[must_use]
     pub fn incoming_mut(&mut self) -> &mut R {
-        &mut self.incoming
+        self.incoming.get_mut()
     }
 
     #[must_use]
     pub fn into_incoming(self) -> R {
-        self.incoming
+        self.incoming.into_inner()
     }
 }
 
@@ -102,7 +114,7 @@ impl<R: Stream> Iterator for PollIter<'_, '_, R> {
     }
 }
 
-impl<A, S: Stream + ExtendPinned<A>, R: FusedStream<Item = A>> Stream for Extending<S, R> {
+impl<A, S: Stream + ExtendPinned<A>, R: Stream<Item = A>> Stream for Extending<S, R> {
     type Item = S::Item;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -120,9 +132,7 @@ impl<A, S: Stream + ExtendPinned<A>, R: FusedStream<Item = A>> Stream for Extend
     }
 }
 
-impl<A, S: FusedStream + ExtendPinned<A>, R: FusedStream<Item = A>> FusedStream
-    for Extending<S, R>
-{
+impl<A, S: FusedStream + ExtendPinned<A>, R: Stream<Item = A>> FusedStream for Extending<S, R> {
     fn is_terminated(&self) -> bool {
         self.inner.is_terminated() && self.incoming.is_terminated()
     }
@@ -189,7 +199,7 @@ impl<Route, Msg, S: ReadySome<Route, Msg>, R> ReadySome<Route, Msg> for Extendin
     }
 }
 
-pub trait ExtendingExt: Sized + FusedStream {
+pub trait ExtendingExt: Sized + Stream {
     #[must_use]
     fn extending<S: ExtendPinned<Self::Item>>(self, inner: S) -> Extending<S, Self> {
         Extending::new(self, inner)
@@ -201,13 +211,10 @@ pub trait ExtendingExt: Sized + FusedStream {
     }
 }
 
-impl<R: FusedStream> ExtendingExt for R {}
+impl<R: Stream> ExtendingExt for R {}
 
-impl<S: Default, R> From<R> for Extending<S, R> {
+impl<S: Default, R: Stream> From<R> for Extending<S, R> {
     fn from(incoming: R) -> Self {
-        Self {
-            incoming,
-            inner: Default::default(),
-        }
+        Self::new(incoming, Default::default())
     }
 }
