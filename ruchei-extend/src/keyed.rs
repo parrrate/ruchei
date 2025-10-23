@@ -8,7 +8,7 @@ use core::{
 use extend_pinned::ExtendPinned;
 #[cfg(feature = "sink")]
 use futures_sink::Sink;
-use futures_util::{stream::FusedStream, Stream};
+use futures_util::{Stream, stream::FusedStream};
 use pin_project::pin_project;
 #[cfg(feature = "route-sink")]
 use route_sink::{FlushRoute, ReadyRoute, ReadySome};
@@ -142,7 +142,7 @@ impl<Route, Msg, S: ReadySome<Route, Msg>, K> ReadySome<Route, Msg> for ExtendKe
     }
 }
 
-pub trait ExtendingKeyedExt: Sized + FusedStream<Item = (Self::K, Self::T)> {
+pub trait ExtendingKeyedExt: Sized + Stream<Item = (Self::K, Self::T)> {
     type K;
     type T;
 
