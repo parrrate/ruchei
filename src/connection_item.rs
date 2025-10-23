@@ -1,9 +1,9 @@
 use std::convert::Infallible;
 
 use futures_util::{
-    StreamExt, TryStream,
+    Stream, StreamExt, TryStream,
     future::{Ready, ready},
-    stream::{FilterMap, FusedStream},
+    stream::FilterMap,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -25,7 +25,7 @@ type Mi<R> = ConnectionItem<
 >;
 
 pub trait ConnectionItemExt:
-    Sized + FusedStream<Item = ConnectionItem<Self::S, Self::T, Self::E>>
+    Sized + Stream<Item = ConnectionItem<Self::S, Self::T, Self::E>>
 {
     type T;
     type S;
@@ -43,7 +43,7 @@ pub trait ConnectionItemExt:
     }
 }
 
-impl<T, S, E, R: FusedStream<Item = ConnectionItem<S, T, E>>> ConnectionItemExt for R {
+impl<T, S, E, R: Stream<Item = ConnectionItem<S, T, E>>> ConnectionItemExt for R {
     type T = T;
     type S = S;
     type E = E;
