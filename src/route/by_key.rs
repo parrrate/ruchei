@@ -189,7 +189,7 @@ impl<K: Key, S, E> ExtendPinned<(K, S)> for Router<K, S, E> {
 pub type RouterExtending<R> = Extending<Router<<R as RouteByKey>::K, <R as RouteByKey>::S>, R>;
 
 /// Extension trait to auto-extend a [`Router`] from a stream of connections.
-pub trait RouteByKey: Sized + FusedStream<Item = (Self::K, Self::S)> {
+pub trait RouteByKey: Sized + Stream<Item = (Self::K, Self::S)> {
     /// Key.
     type K: Key;
     /// Single [`Stream`]/[`Sink`].
@@ -202,7 +202,7 @@ pub trait RouteByKey: Sized + FusedStream<Item = (Self::K, Self::S)> {
     }
 }
 
-impl<K: Key, S: Unpin + TryStream, R: FusedStream<Item = (K, S)>> RouteByKey for R {
+impl<K: Key, S: Unpin + TryStream, R: Stream<Item = (K, S)>> RouteByKey for R {
     type K = K;
     type S = S;
 }
