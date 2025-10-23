@@ -402,14 +402,11 @@ impl<S, E> ExtendPinned<S> for Router<S, E> {
 
 pub type RouterExtending<R> = Extending<Router<<R as Stream>::Item>, R>;
 
-pub trait RouteMulticast: Sized + FusedStream<Item: Unpin + TryStream> {
+pub trait RouteMulticast: Sized + Stream<Item: Unpin + TryStream> {
     #[must_use]
     fn route_multicast(self) -> RouterExtending<Self> {
         self.extending_default()
     }
 }
 
-impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, R: FusedStream<Item = S>> RouteMulticast
-    for R
-{
-}
+impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>, R: Stream<Item = S>> RouteMulticast for R {}
