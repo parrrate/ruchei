@@ -3,18 +3,21 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures_util::{Stream, ready, stream::FusedStream};
+use futures_util::{
+    Stream, StreamExt, ready,
+    stream::{Fuse, FusedStream},
+};
 use pin_project::pin_project;
 
 #[pin_project]
 #[derive(Debug)]
 pub struct Grouped<S, T, K = <<S as Stream>::Item as GroupItem>::K> {
     #[pin]
-    stream: S,
+    stream: Fuse<S>,
     current: Option<(K, T)>,
 }
 
-impl<S: Default, T, K> Default for Grouped<S, T, K> {
+impl<S: Default + Stream, T, K> Default for Grouped<S, T, K> {
     fn default() -> Self {
         S::default().into()
     }
@@ -116,9 +119,7 @@ impl<K: PartialEq, V, E> GroupItem for Result<(K, V), E> {
     }
 }
 
-impl<S: FusedStream<Item = I>, I: GroupItem, T: Default + Extend<I::V>> Stream
-    for Grouped<S, T, I::K>
-{
+impl<S: Stream<Item = I>, I: GroupItem, T: Default + Extend<I::V>> Stream for Grouped<S, T, I::K> {
     type Item = I::Grouped<T>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -127,7 +128,7 @@ impl<S: FusedStream<Item = I>, I: GroupItem, T: Default + Extend<I::V>> Stream
     }
 }
 
-impl<S: FusedStream<Item = I>, I: GroupItem, T: Default + Extend<I::V>> FusedStream
+impl<S: Stream<Item = I>, I: GroupItem, T: Default + Extend<I::V>> FusedStream
     for Grouped<S, T, I::K>
 {
     fn is_terminated(&self) -> bool {
@@ -135,16 +136,16 @@ impl<S: FusedStream<Item = I>, I: GroupItem, T: Default + Extend<I::V>> FusedStr
     }
 }
 
-impl<S, T, K> From<S> for Grouped<S, T, K> {
+impl<S: Stream, T, K> From<S> for Grouped<S, T, K> {
     fn from(stream: S) -> Self {
         Self {
-            stream,
+            stream: stream.fuse(),
             current: None,
         }
     }
 }
 
-pub trait GroupSequential: Sized + FusedStream<Item: GroupItem<V = Self::V>> {
+pub trait GroupSequential: Sized + Stream<Item: GroupItem<V = Self::V>> {
     type V;
     #[must_use]
     fn group_sequential<T: Default + Extend<Self::V>>(self) -> Grouped<Self, T> {
@@ -152,6 +153,6 @@ pub trait GroupSequential: Sized + FusedStream<Item: GroupItem<V = Self::V>> {
     }
 }
 
-impl<S: FusedStream<Item = I>, I: GroupItem> GroupSequential for S {
+impl<S: Stream<Item = I>, I: GroupItem> GroupSequential for S {
     type V = I::V;
 }
