@@ -5,6 +5,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] — 2025-10-23
+
 ### Added
 
 - `zip_group_sorted`
@@ -20,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - more eagerly stop `zip_sorted`, `group_sorted`
+
+- combinators no longer require `FusedStream`, but do requier `Stream` for more constructors
 
 ### Fixed
 
@@ -281,7 +285,8 @@ first stable release
 
 (baseline)
 
-[unreleased]: https://github.com/parrrate/ruchei/compare/0.1.1...HEAD
+[unreleased]: https://github.com/parrrate/ruchei/compare/0.1.2...HEAD
+[0.1.2]: https://github.com/parrrate/ruchei/compare/0.1.1...0.1.2
 [0.1.1]: https://github.com/parrrate/ruchei/compare/0.1.0...0.1.1
 [0.1.0]: https://github.com/parrrate/ruchei/compare/0.0.100...0.1.0
 [0.0.100]: https://github.com/parrrate/ruchei/compare/0.0.99...0.0.100

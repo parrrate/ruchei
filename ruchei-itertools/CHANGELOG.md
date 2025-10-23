@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.0.0-a.3] — 2025-10-23
+
 ### Added
 
 - `try_zip_lazy`
@@ -40,7 +42,8 @@
 
 - `dedup_eager`
 
-[unreleased]: https://github.com/parrrate/ruchei/compare/ruchei-itertools/0.0.0-a.2...HEAD
+[unreleased]: https://github.com/parrrate/ruchei/compare/ruchei-itertools/0.0.0-a.3...HEAD
+[0.0.0-a.3]: https://github.com/parrrate/ruchei/compare/ruchei-itertools/0.0.0-a.2...ruchei-itertools/0.0.0-a.3
 [0.0.0-a.2]: https://github.com/parrrate/ruchei/compare/ruchei-itertools/0.0.0-a.1...ruchei-itertools/0.0.0-a.2
 [0.0.0-a.1]: https://github.com/parrrate/ruchei/compare/ruchei-itertools/0.0.0-a.0...ruchei-itertools/0.0.0-a.1
 [0.0.0-a.0]: https://github.com/parrrate/ruchei/releases/tag/ruchei-itertools/0.0.0-a.0
