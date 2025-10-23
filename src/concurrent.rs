@@ -25,8 +25,8 @@ use std::{
 };
 
 use futures_util::{
-    Future, Stream,
-    stream::{FusedStream, FuturesUnordered},
+    Future, Stream, StreamExt,
+    stream::{Fuse, FusedStream, FuturesUnordered},
 };
 use pin_project::pin_project;
 
@@ -37,21 +37,18 @@ use pin_project::pin_project;
 #[pin_project]
 pub struct Concurrent<R, Fut = <R as Stream>::Item> {
     #[pin]
-    stream: R,
+    stream: Fuse<R>,
     #[pin]
     futures: FuturesUnordered<Fut>,
 }
 
-impl<R: Default, Fut> Default for Concurrent<R, Fut> {
+impl<R: Default + Stream, Fut> Default for Concurrent<R, Fut> {
     fn default() -> Self {
-        Self {
-            stream: Default::default(),
-            futures: Default::default(),
-        }
+        R::default().into()
     }
 }
 
-impl<Fut: Future, R: FusedStream<Item = Fut>> Stream for Concurrent<R, Fut> {
+impl<Fut: Future, R: Stream<Item = Fut>> Stream for Concurrent<R, Fut> {
     type Item = Fut::Output;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -77,16 +74,16 @@ impl<Fut: Future, R: FusedStream<Item = Fut>> Stream for Concurrent<R, Fut> {
     }
 }
 
-impl<Fut: Future, R: FusedStream<Item = Fut>> FusedStream for Concurrent<R, Fut> {
+impl<Fut: Future, R: Stream<Item = Fut>> FusedStream for Concurrent<R, Fut> {
     fn is_terminated(&self) -> bool {
         self.stream.is_terminated() && self.futures.is_terminated()
     }
 }
 
-impl<Fut, R> From<R> for Concurrent<R, Fut> {
+impl<Fut, R: Stream> From<R> for Concurrent<R, Fut> {
     fn from(stream: R) -> Self {
         Self {
-            stream,
+            stream: stream.fuse(),
             futures: Default::default(),
         }
     }
@@ -100,4 +97,4 @@ pub trait ConcurrentExt: Sized + Stream<Item: Future> {
     }
 }
 
-impl<R: FusedStream<Item: Future>> ConcurrentExt for R {}
+impl<R: Stream<Item: Future>> ConcurrentExt for R {}
