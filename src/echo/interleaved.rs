@@ -4,7 +4,10 @@ use std::{
     task::{Context, Poll},
 };
 
-use futures_util::{Future, Sink, TryStream, stream::FusedStream};
+use futures_util::{
+    Future, Sink, StreamExt, TryStream, TryStreamExt,
+    stream::{Fuse, FusedStream, IntoStream},
+};
 use pin_project::pin_project;
 
 #[derive(Debug)]
@@ -12,21 +15,19 @@ use pin_project::pin_project;
 #[must_use = "futures must be awaited"]
 pub struct Echo<S, T = <S as TryStream>::Ok> {
     #[pin]
-    stream: S,
+    stream: Fuse<IntoStream<S>>,
     queue: VecDeque<T>,
     item: Option<T>,
     started: bool,
 }
 
-impl<S: Default, T> Default for Echo<S, T> {
+impl<S: Default + TryStream, T> Default for Echo<S, T> {
     fn default() -> Self {
         S::default().into()
     }
 }
 
-impl<T, E, S: FusedStream + TryStream<Ok = T, Error = E> + Sink<T, Error = E>> Future
-    for Echo<S, T>
-{
+impl<T, E, S: TryStream<Ok = T, Error = E> + Sink<T, Error = E>> Future for Echo<S, T> {
     type Output = Result<(), E>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
@@ -75,10 +76,10 @@ impl<T, E, S: FusedStream + TryStream<Ok = T, Error = E> + Sink<T, Error = E>> F
     }
 }
 
-impl<T, S> From<S> for Echo<S, T> {
+impl<T, S: TryStream> From<S> for Echo<S, T> {
     fn from(stream: S) -> Self {
         Self {
-            stream,
+            stream: stream.into_stream().fuse(),
             queue: Default::default(),
             item: None,
             started: false,
@@ -87,7 +88,7 @@ impl<T, S> From<S> for Echo<S, T> {
 }
 
 pub trait EchoInterleaved:
-    Sized + FusedStream + TryStream<Ok = Self::T, Error = Self::E> + Sink<Self::T, Error = Self::E>
+    Sized + TryStream<Ok = Self::T, Error = Self::E> + Sink<Self::T, Error = Self::E>
 {
     type T;
     type E;
@@ -97,9 +98,7 @@ pub trait EchoInterleaved:
     }
 }
 
-impl<T, E, S: FusedStream + TryStream<Ok = T, Error = E> + Sink<T, Error = E>> EchoInterleaved
-    for S
-{
+impl<T, E, S: TryStream<Ok = T, Error = E> + Sink<T, Error = E>> EchoInterleaved for S {
     type T = T;
     type E = E;
 }
