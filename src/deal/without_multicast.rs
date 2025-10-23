@@ -310,7 +310,7 @@ pub type DealerExtending<R, Out> = Extending<Dealer<<R as Stream>::Item, Out>, R
 
 /// Extension trait to auto-extend a [`Dealer`] from a stream of connections.
 pub trait DealWithoutMulticast<Out>:
-    Sized + FusedStream<Item: TryStream<Error = Self::E> + Sink<Out, Error = Self::E>>
+    Sized + Stream<Item: TryStream<Error = Self::E> + Sink<Out, Error = Self::E>>
 {
     type E;
 
@@ -326,7 +326,7 @@ impl<
     Out,
     E,
     S: Unpin + TryStream<Ok = In, Error = E> + Sink<Out, Error = E>,
-    R: FusedStream<Item = S>,
+    R: Stream<Item = S>,
 > DealWithoutMulticast<Out> for R
 {
     type E = E;
