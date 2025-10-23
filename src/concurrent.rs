@@ -14,7 +14,6 @@
 //!     .poll_on_wake()
 //!     .filter_map(|r| async { r.ok() })
 //!     .map(async_tungstenite::accept_async) // this part is made concurrent
-//!     .fuse()
 //!     .concurrent();
 //! # }
 //! ```

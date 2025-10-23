@@ -19,7 +19,6 @@ async fn main() {
         .poll_on_wake()
         .filter_map(|r| async { r.ok() })
         .map(async_tungstenite::accept_async)
-        .fuse()
         .concurrent()
         .filter_map(|r| async { r.ok() })
         .timeout_unused(|| async {

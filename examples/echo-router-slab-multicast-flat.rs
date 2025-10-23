@@ -17,12 +17,10 @@ async fn main() {
         .poll_on_wake()
         .filter_map(|r| ready(r.ok()))
         .map(async_tungstenite::accept_async)
-        .fuse()
         .concurrent()
         .filter_map(|r| ready(r.ok()))
         .route_multicast()
         .connection_item_ignore()
-        .fuse()
         .echo_bufferless()
         .await
         .unwrap();

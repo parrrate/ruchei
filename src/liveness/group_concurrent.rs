@@ -55,7 +55,6 @@
 //!             let group = stream.next().await?.ok()?;
 //!             Some((group, stream))
 //!         })
-//!         .fuse()
 //!         .concurrent()
 //!         .filter_map(|o| async move {
 //!             o.map(|(group, s)| (group.into_data(), s.poll_on_wake()))
