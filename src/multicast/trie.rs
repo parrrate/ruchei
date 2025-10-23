@@ -286,7 +286,7 @@ impl<S, E> ExtendPinned<S> for Multicast<S, E> {
 
 pub type MulticastExtending<R> = Extending<Multicast<<R as Stream>::Item>, R>;
 
-pub trait MulticastTrie: Sized + FusedStream<Item: TryStream> {
+pub trait MulticastTrie: Sized + Stream<Item: TryStream> {
     #[must_use]
     fn multicast_trie(self) -> MulticastExtending<Self> {
         self.extending_default()
@@ -298,7 +298,7 @@ impl<
     K: AsRef<[u8]>,
     E,
     S: Unpin + TryStream<Ok = SubRequest<K, O>, Error = E>,
-    R: FusedStream<Item = S>,
+    R: Stream<Item = S>,
 > MulticastTrie for R
 {
 }
