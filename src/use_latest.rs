@@ -29,7 +29,11 @@ use std::{
     task::{Context, Poll, Wake},
 };
 
-use futures_util::{Sink, Stream, TryStream, ready, stream::FusedStream, task::AtomicWaker};
+use futures_util::{
+    Sink, Stream, StreamExt, TryStream, ready,
+    stream::{Fuse, FusedStream},
+    task::AtomicWaker,
+};
 use pin_project::pin_project;
 
 #[derive(Debug, Default)]
@@ -55,7 +59,7 @@ impl Wake for Wakers {
 #[derive(Debug)]
 pub struct UseLatest<R, Out, S = <R as Stream>::Item> {
     #[pin]
-    incoming: R,
+    incoming: Fuse<R>,
     #[pin]
     current: Option<S>,
     swap: Option<S>,
@@ -63,13 +67,13 @@ pub struct UseLatest<R, Out, S = <R as Stream>::Item> {
     buffer: Option<Out>,
 }
 
-impl<R: Default, Out, S> Default for UseLatest<R, Out, S> {
+impl<R: Default + Stream, Out, S> Default for UseLatest<R, Out, S> {
     fn default() -> Self {
         R::default().into()
     }
 }
 
-impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: FusedStream<Item = S>>
+impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: Stream<Item = S>>
     UseLatest<R, Out, S>
 {
     fn poll_current(self: Pin<&mut Self>) -> Poll<Result<(), E>> {
@@ -119,7 +123,7 @@ impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: Fus
     }
 }
 
-impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: FusedStream<Item = S>>
+impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: Stream<Item = S>>
     Stream for UseLatest<R, Out, S>
 {
     type Item = Result<In, E>;
@@ -143,7 +147,7 @@ impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: Fus
     }
 }
 
-impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: FusedStream<Item = S>>
+impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: Stream<Item = S>>
     FusedStream for UseLatest<R, Out, S>
 {
     fn is_terminated(&self) -> bool {
@@ -151,7 +155,7 @@ impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: Fus
     }
 }
 
-impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: FusedStream<Item = S>>
+impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: Stream<Item = S>>
     Sink<Out> for UseLatest<R, Out, S>
 {
     type Error = E;
@@ -196,10 +200,10 @@ impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: Fus
     }
 }
 
-impl<R, Out, S> From<R> for UseLatest<R, Out, S> {
+impl<R: Stream, Out, S> From<R> for UseLatest<R, Out, S> {
     fn from(incoming: R) -> Self {
         UseLatest {
-            incoming,
+            incoming: incoming.fuse(),
             current: None,
             swap: None,
             w: Default::default(),
@@ -210,7 +214,7 @@ impl<R, Out, S> From<R> for UseLatest<R, Out, S> {
 
 /// Extension trait for constructing [`UseLatest`].
 pub trait UseLatestExt<Out>:
-    Sized + FusedStream<Item: TryStream<Error = Self::E> + Sink<Out, Error = Self::E>>
+    Sized + Stream<Item: TryStream<Error = Self::E> + Sink<Out, Error = Self::E>>
 {
     type E;
 
@@ -223,7 +227,7 @@ pub trait UseLatestExt<Out>:
     }
 }
 
-impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: FusedStream<Item = S>>
+impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: Stream<Item = S>>
     UseLatestExt<Out> for R
 {
     type E = E;
