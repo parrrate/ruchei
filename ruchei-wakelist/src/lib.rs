@@ -11,7 +11,7 @@ use std::{
     mem::MaybeUninit,
     ops::Index,
     pin::Pin,
-    sync::atomic::{AtomicBool, AtomicPtr, AtomicU8, AtomicUsize, Ordering},
+    sync::atomic::{AtomicPtr, AtomicU8, AtomicUsize, Ordering, fence},
     task::{Context, RawWaker, RawWakerVTable, Waker},
 };
 
@@ -57,6 +57,7 @@ struct Root<S, const W: usize, const L: usize = W> {
 
 struct OwnNode<S, const W: usize, const L: usize = W> {
     up: *const Node<S, W, L>,
+    has_value: bool,
     stream: MaybeUninit<S>,
     own_next: *const Node<S, W, L>,
     own_prev: *const Node<S, W, L>,
@@ -74,7 +75,6 @@ struct Node<S, const W: usize, const L: usize = W> {
     root: *const Root<S, W, L>,
     ctr: AtomicUsize,
     own: UnsafeCell<OwnNode<S, W, L>>,
-    has_value: AtomicBool,
     wake_next: [CachePadded<AtomicConst<Self>>; W],
     state: [CachePadded<AtomicU8>; W],
 }
@@ -87,19 +87,21 @@ impl<S, const W: usize, const L: usize> Node<S, W, L> {
     }
 
     fn increase_ctr(&self) {
-        let old_count = self.ctr.fetch_add(1, Ordering::AcqRel);
+        let old_count = self.ctr.fetch_add(1, Ordering::Relaxed);
         if old_count > MAX_REFCOUNT {
             std::process::abort();
         }
     }
 
     fn decrease_ctr(&self) -> bool {
-        let old_count = self.ctr.fetch_sub(1, Ordering::AcqRel);
+        let old_count = self.ctr.fetch_sub(1, Ordering::Release);
         old_count == 1
     }
 
     unsafe fn drop_self(node: *const Self) {
         if unsafe { (*node).decrease_ctr() } {
+            fence(Ordering::Acquire);
+            #[cfg(debug_assertions)]
             unsafe {
                 (*node)
                     .state
@@ -148,7 +150,7 @@ impl<S, const W: usize, const L: usize> Node<S, W, L> {
 impl<S, const W: usize, const L: usize> Root<S, W, L> {
     unsafe fn drop_self(root: *const Self) {
         if unsafe { (*root).stub.decrease_ctr() } {
-            assert!(unsafe { (*root).is_empty() });
+            debug_assert!(unsafe { (*root).is_empty() });
             drop(unsafe { Box::from_raw(root.cast_mut()) });
         }
     }
@@ -173,13 +175,13 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
                 ctr: AtomicUsize::new(1),
                 own: UnsafeCell::new(OwnNode {
                     up: std::ptr::null(),
+                    has_value: false,
                     stream: MaybeUninit::uninit(),
                     own_next: std::ptr::null_mut(),
                     own_prev: std::ptr::null_mut(),
                     link_prev: [std::ptr::null_mut(); L],
                     link_next: [std::ptr::null_mut(); L],
                 }),
-                has_value: AtomicBool::new(false),
                 wake_next: std::array::from_fn(|_| {
                     CachePadded::new(AtomicConst::new(std::ptr::null()))
                 }),
@@ -222,7 +224,7 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
             .compare_exchange(
                 STATE_CAN_WAKE,
                 STATE_QUEUEING,
-                Ordering::AcqRel,
+                Ordering::Acquire,
                 Ordering::Acquire,
             )
             .is_ok();
@@ -237,8 +239,8 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
 
     fn inner_push<const X: usize>(&self, n: &Node<S, W, L>) {
         let root_ptr = std::ptr::from_ref(self);
-        assert_eq!(n.root, root_ptr);
-        assert!(n.wake_next[X].load(Ordering::Acquire).is_null());
+        debug_assert_eq!(n.root, root_ptr);
+        debug_assert!(n.wake_next[X].load(Ordering::Acquire).is_null());
         let n = std::ptr::from_ref(n);
         let prev = self.wake_head[X].swap(n, Ordering::AcqRel);
         unsafe { (*prev).wake_next[X].store(n, Ordering::Release) };
@@ -287,7 +289,7 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
                         (*n).state[X].compare_exchange(
                             STATE_IN_QUEUE,
                             STATE_CAN_WAKE,
-                            Ordering::AcqRel,
+                            Ordering::Acquire,
                             Ordering::Acquire,
                         )
                     };
@@ -307,14 +309,14 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
     }
 
     unsafe fn remove(root: *const Self, n: *const Node<S, W, L>) -> S {
-        assert!(unsafe { (*n).has_value.load(Ordering::Acquire) });
+        debug_assert!(unsafe { (*(*n).own.get()).has_value });
         unsafe {
             (*n).state.iter().for_each(|state| {
                 loop {
                     let r = state.compare_exchange(
                         STATE_CAN_WAKE,
                         STATE_DISOWNED,
-                        Ordering::AcqRel,
+                        Ordering::Acquire,
                         Ordering::Acquire,
                     );
                     match r {
@@ -335,7 +337,7 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
         unsafe { (*(*prev).own.get()).own_next = next };
         unsafe { (*(*next).own.get()).own_prev = prev };
         let stream = unsafe { (*(*n).own.get()).stream.assume_init_read() };
-        unsafe { (*n).has_value.store(false, Ordering::Relaxed) };
+        unsafe { (*(*n).own.get()).has_value = false };
         unsafe { Node::drop_self(n) };
         unsafe { (*(*root).own.get()).len -= 1 };
         stream
@@ -350,13 +352,13 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
             ctr: AtomicUsize::new(1),
             own: UnsafeCell::new(OwnNode {
                 up: std::ptr::null(),
+                has_value: true,
                 stream: MaybeUninit::new(stream),
                 own_next: stub_ptr,
                 own_prev: tail_ptr,
                 link_prev: [std::ptr::null_mut(); L],
                 link_next: [std::ptr::null_mut(); L],
             }),
-            has_value: AtomicBool::new(true),
             wake_next: std::array::from_fn(|_| {
                 CachePadded::new(AtomicConst::new(std::ptr::null()))
             }),
@@ -381,8 +383,8 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
     unsafe fn link_remove<const X: usize>(root: *const Self, n: *mut OwnNode<S, W, L>) {
         let prev = unsafe { (*n).link_prev[X] };
         let next = unsafe { (*n).link_next[X] };
-        assert!(!prev.is_null());
-        assert!(!next.is_null());
+        debug_assert!(!prev.is_null());
+        debug_assert!(!next.is_null());
         unsafe { (*prev).link_next[X] = next };
         unsafe { (*next).link_prev[X] = prev };
         unsafe { (*n).link_prev[X] = std::ptr::null_mut() };
@@ -406,13 +408,13 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
         prev: *mut OwnNode<S, W, L>,
         next: *mut OwnNode<S, W, L>,
     ) {
-        assert_ne!(n, prev);
-        assert_ne!(n, next);
-        assert!(unsafe { !Self::link_contains::<X>(n) });
-        assert!(unsafe { Self::link_contains::<X>(prev) });
-        assert!(unsafe { Self::link_contains::<X>(next) });
-        assert_eq!(unsafe { (*prev).link_next[X] }, next);
-        assert_eq!(unsafe { (*next).link_prev[X] }, prev);
+        debug_assert_ne!(n, prev);
+        debug_assert_ne!(n, next);
+        debug_assert!(unsafe { !Self::link_contains::<X>(n) });
+        debug_assert!(unsafe { Self::link_contains::<X>(prev) });
+        debug_assert!(unsafe { Self::link_contains::<X>(next) });
+        debug_assert_eq!(unsafe { (*prev).link_next[X] }, next);
+        debug_assert_eq!(unsafe { (*next).link_prev[X] }, prev);
         unsafe { (*n).link_prev[X] = prev };
         unsafe { (*n).link_next[X] = next };
         unsafe { (*prev).link_next[X] = n };
@@ -463,7 +465,7 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
 
     fn own_node(root: *const Self, node: &Node<S, W, L>) -> *mut OwnNode<S, W, L> {
         assert_eq!(root, node.root);
-        assert!(node.has_value.load(Ordering::Acquire));
+        assert!(unsafe { (*node.own.get()).has_value });
         node.own.get()
     }
 }
@@ -502,7 +504,7 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
 
     pub fn remove(&mut self, r: &Ref<S, W, L>) -> Option<S> {
         assert_eq!(self.root, r.get().root);
-        if r.get().has_value.load(Ordering::Acquire) {
+        if unsafe { (*r.own()).has_value } {
             Some(unsafe { Root::remove(self.root, r.0) })
         } else {
             None
