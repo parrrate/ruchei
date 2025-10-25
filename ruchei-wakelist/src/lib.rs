@@ -9,7 +9,8 @@ use std::{
     cell::UnsafeCell,
     marker::PhantomData,
     mem::MaybeUninit,
-    ops::{Index, IndexMut},
+    ops::Index,
+    pin::Pin,
     sync::atomic::{AtomicBool, AtomicPtr, AtomicU8, AtomicUsize, Ordering},
     task::{Context, RawWaker, RawWakerVTable, Waker},
 };
@@ -588,6 +589,16 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
         self.register::<X>(cx.waker());
         self.queue_pull::<X>();
     }
+
+    pub fn index_pin_mut(&mut self, r: &Ref<S, W, L>) -> Pin<&mut S> {
+        unsafe {
+            Pin::new_unchecked(
+                (*Root::own_node(self.root, r.get()))
+                    .stream
+                    .assume_init_mut(),
+            )
+        }
+    }
 }
 
 impl<S, const W: usize, const L: usize> Drop for Queue<S, W, L> {
@@ -611,16 +622,6 @@ impl<'a, S, const W: usize, const L: usize> Index<&'a Ref<S, W, L>> for Queue<S,
             (*Root::own_node(self.root, r.get()).cast_const())
                 .stream
                 .assume_init_ref()
-        }
-    }
-}
-
-impl<'a, S, const W: usize, const L: usize> IndexMut<&'a Ref<S, W, L>> for Queue<S, W, L> {
-    fn index_mut(&mut self, r: &'a Ref<S, W, L>) -> &mut Self::Output {
-        unsafe {
-            (*Root::own_node(self.root, r.get()))
-                .stream
-                .assume_init_mut()
         }
     }
 }
@@ -766,7 +767,7 @@ fn can_pop() {
 fn can_get_mut() {
     let mut queue = Queue::<i32, 1>::new();
     let r = queue.insert(0);
-    queue[&r] = 1;
+    *queue.index_pin_mut(&r) = 1;
 }
 
 #[test]
