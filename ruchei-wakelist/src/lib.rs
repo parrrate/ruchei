@@ -101,7 +101,6 @@ impl<S, const W: usize, const L: usize> Node<S, W, L> {
     unsafe fn drop_self(node: *const Self) {
         if unsafe { (*node).decrease_ctr() } {
             fence(Ordering::Acquire);
-            #[cfg(debug_assertions)]
             unsafe {
                 (*node)
                     .state
@@ -150,7 +149,7 @@ impl<S, const W: usize, const L: usize> Node<S, W, L> {
 impl<S, const W: usize, const L: usize> Root<S, W, L> {
     unsafe fn drop_self(root: *const Self) {
         if unsafe { (*root).stub.decrease_ctr() } {
-            debug_assert!(unsafe { (*root).is_empty() });
+            assert!(unsafe { (*root).is_empty() });
             drop(unsafe { Box::from_raw(root.cast_mut()) });
         }
     }
@@ -239,8 +238,8 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
 
     fn inner_push<const X: usize>(&self, n: &Node<S, W, L>) {
         let root_ptr = std::ptr::from_ref(self);
-        debug_assert_eq!(n.root, root_ptr);
-        debug_assert!(n.wake_next[X].load(Ordering::Acquire).is_null());
+        assert_eq!(n.root, root_ptr);
+        n.wake_next[X].store(std::ptr::null(), Ordering::Release);
         let n = std::ptr::from_ref(n);
         let prev = self.wake_head[X].swap(n, Ordering::AcqRel);
         unsafe { (*prev).wake_next[X].store(n, Ordering::Release) };
@@ -270,7 +269,6 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
         if tail != head {
             return std::ptr::null();
         }
-        self.stub.wake_next[X].store(std::ptr::null(), Ordering::Release);
         self.inner_push::<X>(&self.stub);
         next = unsafe { (*tail).wake_next[X].load(Ordering::Acquire) };
         if !next.is_null() {
@@ -309,7 +307,13 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
     }
 
     unsafe fn remove(root: *const Self, n: *const Node<S, W, L>) -> S {
-        debug_assert!(unsafe { (*(*n).own.get()).has_value });
+        assert!(unsafe { (*(*n).own.get()).has_value });
+        (0..L).for_each(|x| unsafe {
+            let n = (*n).own.get();
+            if Self::link_contains_x(n, x) {
+                Self::link_remove_x(root, n, x);
+            }
+        });
         unsafe {
             (*n).state.iter().for_each(|state| {
                 loop {
@@ -380,26 +384,34 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
         unsafe { (*(*root).own.get()).lens[X] }
     }
 
-    unsafe fn link_remove<const X: usize>(root: *const Self, n: *mut OwnNode<S, W, L>) {
-        let prev = unsafe { (*n).link_prev[X] };
-        let next = unsafe { (*n).link_next[X] };
-        debug_assert!(!prev.is_null());
-        debug_assert!(!next.is_null());
-        unsafe { (*prev).link_next[X] = next };
-        unsafe { (*next).link_prev[X] = prev };
-        unsafe { (*n).link_prev[X] = std::ptr::null_mut() };
-        unsafe { (*n).link_next[X] = std::ptr::null_mut() };
-        unsafe { (*(*root).own.get()).lens[X] += 1 };
+    unsafe fn link_remove_x(root: *const Self, n: *mut OwnNode<S, W, L>, x: usize) {
+        let prev = unsafe { (*n).link_prev[x] };
+        let next = unsafe { (*n).link_next[x] };
+        assert!(!prev.is_null());
+        assert!(!next.is_null());
+        unsafe { (*prev).link_next[x] = next };
+        unsafe { (*next).link_prev[x] = prev };
+        unsafe { (*n).link_prev[x] = std::ptr::null_mut() };
+        unsafe { (*n).link_next[x] = std::ptr::null_mut() };
+        unsafe { (*(*root).own.get()).lens[x] -= 1 };
     }
 
-    unsafe fn link_contains<const X: usize>(n: *const OwnNode<S, W, L>) -> bool {
-        let prev_null = unsafe { (*n).link_prev[X].is_null() };
-        let next_null = unsafe { (*n).link_next[X].is_null() };
+    unsafe fn link_remove<const X: usize>(root: *const Self, n: *mut OwnNode<S, W, L>) {
+        unsafe { Self::link_remove_x(root, n, X) };
+    }
+
+    unsafe fn link_contains_x(n: *const OwnNode<S, W, L>, x: usize) -> bool {
+        let prev_null = unsafe { (*n).link_prev[x].is_null() };
+        let next_null = unsafe { (*n).link_next[x].is_null() };
         match (prev_null, next_null) {
             (true, true) => false,
             (false, false) => true,
             _ => panic!("inconsistent state"),
         }
+    }
+
+    unsafe fn link_contains<const X: usize>(n: *const OwnNode<S, W, L>) -> bool {
+        unsafe { Self::link_contains_x(n, X) }
     }
 
     unsafe fn link<const X: usize>(
@@ -408,13 +420,13 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
         prev: *mut OwnNode<S, W, L>,
         next: *mut OwnNode<S, W, L>,
     ) {
-        debug_assert_ne!(n, prev);
-        debug_assert_ne!(n, next);
-        debug_assert!(unsafe { !Self::link_contains::<X>(n) });
-        debug_assert!(unsafe { Self::link_contains::<X>(prev) });
-        debug_assert!(unsafe { Self::link_contains::<X>(next) });
-        debug_assert_eq!(unsafe { (*prev).link_next[X] }, next);
-        debug_assert_eq!(unsafe { (*next).link_prev[X] }, prev);
+        assert_ne!(n, prev);
+        assert_ne!(n, next);
+        assert!(unsafe { !Self::link_contains::<X>(n) });
+        assert!(unsafe { Self::link_contains::<X>(prev) });
+        assert!(unsafe { Self::link_contains::<X>(next) });
+        assert_eq!(unsafe { (*prev).link_next[X] }, next);
+        assert_eq!(unsafe { (*next).link_prev[X] }, prev);
         unsafe { (*n).link_prev[X] = prev };
         unsafe { (*n).link_next[X] = next };
         unsafe { (*prev).link_next[X] = n };
@@ -606,10 +618,10 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
     pub fn link_pop_at<const X: usize>(&mut self, r: &Ref<S, W, L>) -> bool {
         unsafe {
             if Root::link_contains::<X>(r.own()) {
-                false
-            } else {
                 Root::link_remove::<X>(self.root, r.own());
                 true
+            } else {
+                false
             }
         }
     }
