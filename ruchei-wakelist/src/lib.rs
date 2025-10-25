@@ -403,6 +403,7 @@ impl<'a, S, const W: usize, const L: usize> Index<&'a Ref<S, W, L>> for Queue<S,
 
     fn index(&self, r: &'a Ref<S, W, L>) -> &Self::Output {
         assert_eq!(r.get().root, self.root);
+        assert!(r.get().has_value.load(Ordering::Acquire));
         unsafe { (*r.get().own.get().cast_const()).stream.assume_init_ref() }
     }
 }
@@ -410,6 +411,7 @@ impl<'a, S, const W: usize, const L: usize> Index<&'a Ref<S, W, L>> for Queue<S,
 impl<'a, S, const W: usize, const L: usize> IndexMut<&'a Ref<S, W, L>> for Queue<S, W, L> {
     fn index_mut(&mut self, r: &'a Ref<S, W, L>) -> &mut Self::Output {
         assert_eq!(r.get().root, self.root);
+        assert!(r.get().has_value.load(Ordering::Acquire));
         unsafe { (*r.get().own.get()).stream.assume_init_mut() }
     }
 }
