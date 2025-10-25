@@ -17,10 +17,6 @@ use std::{
 use atomic_waker::AtomicWaker;
 use crossbeam_utils::CachePadded;
 
-struct OwnRoot<S, const W: usize> {
-    wake_tail: [*const Node<S, W>; W],
-}
-
 struct AtomicConst<T>(AtomicPtr<T>);
 
 impl<T> AtomicConst<T> {
@@ -45,17 +41,21 @@ impl<T> AtomicConst<T> {
     }
 }
 
-struct Root<S, const W: usize> {
-    own: UnsafeCell<OwnRoot<S, W>>,
-    wakers: [AtomicWaker; W],
-    wake_head: [CachePadded<AtomicConst<Node<S, W>>>; W],
-    wake_stub: Node<S, W>,
+struct OwnRoot<S, const W: usize, const L: usize = W> {
+    wake_tail: [*const Node<S, W, L>; W],
 }
 
-struct OwnNode<S, const W: usize> {
+struct Root<S, const W: usize, const L: usize = W> {
+    own: UnsafeCell<OwnRoot<S, W, L>>,
+    wakers: [AtomicWaker; W],
+    wake_head: [CachePadded<AtomicConst<Node<S, W, L>>>; W],
+    wake_stub: Node<S, W, L>,
+}
+
+struct OwnNode<S, const W: usize, const L: usize = W> {
     stream: MaybeUninit<S>,
-    own_next: *const Node<S, W>,
-    own_prev: *const Node<S, W>,
+    own_next: *const Node<S, W, L>,
+    own_prev: *const Node<S, W, L>,
 }
 
 const STATE_CAN_WAKE: u8 = 1;
@@ -64,10 +64,10 @@ const STATE_IN_QUEUE: u8 = 3;
 const STATE_DISOWNED: u8 = 4;
 const STATE_NOT_NODE: u8 = 5;
 
-struct Node<S, const W: usize> {
-    root: *const Root<S, W>,
+struct Node<S, const W: usize, const L: usize = W> {
+    root: *const Root<S, W, L>,
     ctr: AtomicUsize,
-    own: UnsafeCell<OwnNode<S, W>>,
+    own: UnsafeCell<OwnNode<S, W, L>>,
     has_value: AtomicBool,
     wake_next: [CachePadded<AtomicConst<Self>>; W],
     state: [CachePadded<AtomicU8>; W],
@@ -75,7 +75,7 @@ struct Node<S, const W: usize> {
 
 const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 
-impl<S, const W: usize> Node<S, W> {
+impl<S, const W: usize, const L: usize> Node<S, W, L> {
     fn increase_ctr(&self) {
         let old_count = self.ctr.fetch_add(1, Ordering::AcqRel);
         if old_count > MAX_REFCOUNT {
@@ -135,7 +135,7 @@ impl<S, const W: usize> Node<S, W> {
     }
 }
 
-impl<S, const W: usize> Root<S, W> {
+impl<S, const W: usize, const L: usize> Root<S, W, L> {
     unsafe fn drop_self(root: *const Self) {
         if unsafe { (*root).wake_stub.decrease_ctr() } {
             assert!(unsafe { (*root).is_empty() });
@@ -188,7 +188,7 @@ impl<S, const W: usize> Root<S, W> {
         x
     }
 
-    fn outer_push<const X: usize>(&self, n: &Node<S, W>) -> bool {
+    fn outer_push<const X: usize>(&self, n: &Node<S, W, L>) -> bool {
         let is_queueing = n.state[X]
             .compare_exchange(
                 STATE_CAN_WAKE,
@@ -206,7 +206,7 @@ impl<S, const W: usize> Root<S, W> {
         true
     }
 
-    fn inner_push<const X: usize>(&self, n: &Node<S, W>) {
+    fn inner_push<const X: usize>(&self, n: &Node<S, W, L>) {
         let root_ptr = std::ptr::from_ref(self);
         assert_eq!(n.root, root_ptr);
         assert!(n.wake_next[X].load(Ordering::Acquire).is_null());
@@ -219,7 +219,7 @@ impl<S, const W: usize> Root<S, W> {
         self.wakers[X].wake();
     }
 
-    unsafe fn pop_raw<const X: usize>(&self) -> *const Node<S, W> {
+    unsafe fn pop_raw<const X: usize>(&self) -> *const Node<S, W, L> {
         let own = unsafe { &mut *self.own.get() };
         let mut tail = own.wake_tail[X];
         let mut next = unsafe { (*tail).wake_next[X].load(Ordering::Acquire) };
@@ -249,7 +249,7 @@ impl<S, const W: usize> Root<S, W> {
         std::ptr::null()
     }
 
-    unsafe fn pop<const X: usize>(&self) -> *const Node<S, W> {
+    unsafe fn pop<const X: usize>(&self) -> *const Node<S, W, L> {
         'outer: loop {
             let n = unsafe { self.pop_raw::<X>() };
             if !n.is_null() {
@@ -277,7 +277,7 @@ impl<S, const W: usize> Root<S, W> {
         }
     }
 
-    unsafe fn remove(n: *const Node<S, W>) -> S {
+    unsafe fn remove(n: *const Node<S, W, L>) -> S {
         assert!(unsafe { (*n).has_value.load(Ordering::Acquire) });
         unsafe {
             (*n).state.iter().for_each(|state| {
@@ -310,7 +310,7 @@ impl<S, const W: usize> Root<S, W> {
         stream
     }
 
-    unsafe fn insert(root: *const Self, stream: S) -> *const Node<S, W> {
+    unsafe fn insert(root: *const Self, stream: S) -> *const Node<S, W, L> {
         unsafe { (*root).wake_stub.increase_ctr() };
         let stub_ptr = unsafe { &raw const (*root).wake_stub };
         let tail_ptr = unsafe { (*(*stub_ptr).own.get()).own_prev };
@@ -335,18 +335,18 @@ impl<S, const W: usize> Root<S, W> {
     }
 }
 
-pub struct Queue<S, const W: usize> {
-    root: *const Root<S, W>,
-    phantom: PhantomData<Root<S, W>>,
+pub struct Queue<S, const W: usize, const L: usize = W> {
+    root: *const Root<S, W, L>,
+    phantom: PhantomData<Root<S, W, L>>,
 }
 
-impl<S, const W: usize> Default for Queue<S, W> {
+impl<S, const W: usize, const L: usize> Default for Queue<S, W, L> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<S, const W: usize> Queue<S, W> {
+impl<S, const W: usize, const L: usize> Queue<S, W, L> {
     pub fn new() -> Self {
         Self {
             root: Root::new(),
@@ -354,11 +354,11 @@ impl<S, const W: usize> Queue<S, W> {
         }
     }
 
-    pub fn insert(&mut self, stream: S) -> Ref<S, W> {
+    pub fn insert(&mut self, stream: S) -> Ref<S, W, L> {
         Ref::new(unsafe { Root::insert(self.root, stream) })
     }
 
-    pub fn remove(&mut self, r: &Ref<S, W>) -> Option<S> {
+    pub fn remove(&mut self, r: &Ref<S, W, L>) -> Option<S> {
         if r.get().has_value.load(Ordering::Acquire) {
             Some(unsafe { Root::remove(r.0) })
         } else {
@@ -366,12 +366,12 @@ impl<S, const W: usize> Queue<S, W> {
         }
     }
 
-    pub fn queue_pop_front<const X: usize>(&mut self) -> Option<Ref<S, W>> {
+    pub fn queue_pop_front<const X: usize>(&mut self) -> Option<Ref<S, W, L>> {
         let n = unsafe { (*self.root).pop::<X>() };
         if n.is_null() { None } else { Some(Ref(n)) }
     }
 
-    pub fn queue_push_back<const X: usize>(&self, r: &Ref<S, W>) {
+    pub fn queue_push_back<const X: usize>(&self, r: &Ref<S, W, L>) {
         assert_eq!(r.get().root, self.root);
         unsafe { (*self.root).outer_push::<X>(r.get()) };
     }
@@ -385,7 +385,7 @@ impl<S, const W: usize> Queue<S, W> {
     }
 }
 
-impl<S, const W: usize> Drop for Queue<S, W> {
+impl<S, const W: usize, const L: usize> Drop for Queue<S, W, L> {
     fn drop(&mut self) {
         {
             while let head_ptr = unsafe { (*(*self.root).wake_stub.own.get()).own_next }
@@ -398,37 +398,37 @@ impl<S, const W: usize> Drop for Queue<S, W> {
     }
 }
 
-impl<S, const W: usize> Index<Ref<S, W>> for Queue<S, W> {
+impl<'a, S, const W: usize, const L: usize> Index<&'a Ref<S, W, L>> for Queue<S, W, L> {
     type Output = S;
 
-    fn index(&self, r: Ref<S, W>) -> &Self::Output {
+    fn index(&self, r: &'a Ref<S, W, L>) -> &Self::Output {
         assert_eq!(r.get().root, self.root);
         unsafe { (*r.get().own.get().cast_const()).stream.assume_init_ref() }
     }
 }
 
-impl<S, const W: usize> IndexMut<Ref<S, W>> for Queue<S, W> {
-    fn index_mut(&mut self, r: Ref<S, W>) -> &mut Self::Output {
+impl<'a, S, const W: usize, const L: usize> IndexMut<&'a Ref<S, W, L>> for Queue<S, W, L> {
+    fn index_mut(&mut self, r: &'a Ref<S, W, L>) -> &mut Self::Output {
         assert_eq!(r.get().root, self.root);
         unsafe { (*r.get().own.get()).stream.assume_init_mut() }
     }
 }
 
 #[derive(PartialEq, Eq)]
-pub struct Ref<S, const W: usize>(*const Node<S, W>);
+pub struct Ref<S, const W: usize, const L: usize = W>(*const Node<S, W, L>);
 
-impl<S, const W: usize> std::fmt::Debug for Ref<S, W> {
+impl<S, const W: usize, const L: usize> std::fmt::Debug for Ref<S, W, L> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_tuple("Ref").field(&self.0).finish()
     }
 }
 
-impl<S, const W: usize> Ref<S, W> {
-    fn get(&self) -> &Node<S, W> {
+impl<S, const W: usize, const L: usize> Ref<S, W, L> {
+    fn get(&self) -> &Node<S, W, L> {
         unsafe { &*self.0 }
     }
 
-    fn new(n: *const Node<S, W>) -> Self {
+    fn new(n: *const Node<S, W, L>) -> Self {
         unsafe { (*n).increase_ctr() };
         Self(n)
     }
@@ -438,13 +438,13 @@ impl<S, const W: usize> Ref<S, W> {
     }
 }
 
-impl<S, const W: usize> Drop for Ref<S, W> {
+impl<S, const W: usize, const L: usize> Drop for Ref<S, W, L> {
     fn drop(&mut self) {
         unsafe { Node::drop_self(self.0) }
     }
 }
 
-impl<S, const W: usize> Clone for Ref<S, W> {
+impl<S, const W: usize, const L: usize> Clone for Ref<S, W, L> {
     fn clone(&self) -> Self {
         self.get().increase_ctr();
         Self(self.0)
@@ -546,14 +546,14 @@ fn can_pop() {
 fn can_get_mut() {
     let mut queue = Queue::<i32, 1>::new();
     let r = queue.insert(0);
-    queue[r] = 1;
+    queue[&r] = 1;
 }
 
 #[test]
 fn can_get() {
     let mut queue = Queue::<i32, 1>::new();
     let r = queue.insert(0);
-    assert_eq!((&queue[r.clone()], &queue[r]), (&0, &0));
+    assert_eq!((&queue[&r], &queue[&r]), (&0, &0));
 }
 
 #[test]
