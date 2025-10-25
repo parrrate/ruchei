@@ -522,6 +522,10 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
         unsafe { Root::link_contains::<X>(r.own()) }
     }
 
+    pub fn link_empty<const X: usize>(&self) -> bool {
+        unsafe { Root::link_empty::<X>(self.root) }
+    }
+
     pub fn link_len<const X: usize>(&self) -> usize {
         unsafe { Root::link_len::<X>(self.root) }
     }
@@ -584,6 +588,17 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
                 None
             } else {
                 Some(Ref::from_own(Root::link_pop_back::<X>(self.root)))
+            }
+        }
+    }
+
+    pub fn link_pop_at<const X: usize>(&mut self, r: &Ref<S, W, L>) -> bool {
+        unsafe {
+            if Root::link_contains::<X>(r.own()) {
+                false
+            } else {
+                Root::link_remove::<X>(self.root, r.own());
+                true
             }
         }
     }
