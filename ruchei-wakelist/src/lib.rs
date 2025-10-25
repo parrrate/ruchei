@@ -45,6 +45,7 @@ impl<T> AtomicConst<T> {
 struct OwnRoot<S, const W: usize, const L: usize = W> {
     wake_tail: [*const Node<S, W, L>; W],
     lens: [usize; L],
+    len: usize,
 }
 
 struct Root<S, const W: usize, const L: usize = W> {
@@ -161,6 +162,7 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
             own: UnsafeCell::new(OwnRoot {
                 wake_tail: [std::ptr::null(); W],
                 lens: [0; L],
+                len: 0,
             }),
             wakers: std::array::from_fn(|_| AtomicWaker::new()),
             wake_head: std::array::from_fn(|_| {
@@ -304,7 +306,7 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
         }
     }
 
-    unsafe fn remove(n: *const Node<S, W, L>) -> S {
+    unsafe fn remove(root: *const Self, n: *const Node<S, W, L>) -> S {
         assert!(unsafe { (*n).has_value.load(Ordering::Acquire) });
         unsafe {
             (*n).state.iter().for_each(|state| {
@@ -335,6 +337,7 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
         let stream = unsafe { (*(*n).own.get()).stream.assume_init_read() };
         unsafe { (*n).has_value.store(false, Ordering::Relaxed) };
         unsafe { Node::drop_self(n) };
+        unsafe { (*(*root).own.get()).len -= 1 };
         stream
     }
 
@@ -363,6 +366,7 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
         unsafe { (*n).own.get_mut().up = n };
         unsafe { (*(*stub_ptr).own.get()).own_prev = n };
         unsafe { (*(*tail_ptr).own.get()).own_next = n };
+        unsafe { (*(*root).own.get()).len += 1 };
         n
     }
 
@@ -488,8 +492,9 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
     }
 
     pub fn remove(&mut self, r: &Ref<S, W, L>) -> Option<S> {
+        assert_eq!(self.root, r.get().root);
         if r.get().has_value.load(Ordering::Acquire) {
-            Some(unsafe { Root::remove(r.0) })
+            Some(unsafe { Root::remove(self.root, r.0) })
         } else {
             None
         }
@@ -616,6 +621,10 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
     pub fn is_empty(&self) -> bool {
         unsafe { (*self.root).is_empty() }
     }
+
+    pub fn len(&self) -> usize {
+        unsafe { (*(*self.root).own.get()).len }
+    }
 }
 
 impl<S, const W: usize, const L: usize> Drop for Queue<S, W, L> {
@@ -624,7 +633,7 @@ impl<S, const W: usize, const L: usize> Drop for Queue<S, W, L> {
             while let head_ptr = unsafe { (*(*self.root).stub.own.get()).own_next }
                 && head_ptr != unsafe { &raw const (*self.root).stub }
             {
-                unsafe { Root::remove(head_ptr) };
+                unsafe { Root::remove(self.root, head_ptr) };
             }
         }
         unsafe { Root::drop_self(self.root) };
