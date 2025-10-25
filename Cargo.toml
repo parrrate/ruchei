@@ -87,6 +87,7 @@ ruchei-itertools = { workspace = true, optional = true }
 
 futures-util = { workspace = true, features = ["sink"] }
 linked_hash_set = { workspace = true, optional = true }
+option-entry.workspace = true
 pin-project.workspace = true
 
 [dev-dependencies]

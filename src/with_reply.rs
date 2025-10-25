@@ -5,6 +5,7 @@ use std::{
 };
 
 use futures_util::{Sink, Stream, TryStream, ready, task::AtomicWaker};
+use option_entry::{Entry, OptionEntry};
 use pin_project::pin_project;
 
 pub type Filtered<F, Item> = Option<(
@@ -64,11 +65,9 @@ impl<S: Sink<T>, T, F> WithReply<S, T, F> {
         let mut this = self.project();
         let waker = this.wakers.clone().into();
         let mut cx = Context::from_waker(&waker);
-        if this.reply.is_some() {
+        if let Entry::Occupied(entry) = this.reply.entry() {
             ready!(this.stream.as_mut().poll_ready(&mut cx))?;
-        }
-        if let Some(item) = this.reply.take() {
-            this.stream.start_send(item)?;
+            this.stream.start_send(entry.remove())?;
             this.wakers.wake_by_ref();
         }
         Poll::Ready(Ok(()))
@@ -78,11 +77,9 @@ impl<S: Sink<T>, T, F> WithReply<S, T, F> {
         let mut this = self.project();
         let waker = this.wakers.clone().into();
         let mut cx = Context::from_waker(&waker);
-        if this.start.is_some() {
+        if let Entry::Occupied(entry) = this.start.entry() {
             ready!(this.stream.as_mut().poll_ready(&mut cx))?;
-        }
-        if let Some(item) = this.start.take() {
-            this.stream.start_send(item)?;
+            this.stream.start_send(entry.remove())?;
             this.wakers.wake_by_ref();
         }
         Poll::Ready(Ok(()))
