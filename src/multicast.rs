@@ -8,3 +8,5 @@ pub mod bufferless;
 pub mod replay;
 #[cfg(feature = "unstable")]
 pub mod trie;
+#[cfg(feature = "unstable")]
+pub mod wakelist;

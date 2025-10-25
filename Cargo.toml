@@ -59,6 +59,7 @@ ruchei-extra = { path = "ruchei-extra", version = "0.1.4" }
 ruchei-itertools = { path = "ruchei-itertools", version = "=0.0.0-a.3" }
 ruchei-route = { path = "ruchei-route", version = "0.1.9", default-features = false }
 ruchei-sample.path = "internal/ruchei-sample"
+ruchei-wakelist = { path = "ruchei-wakelist", version = "=0.0.0-a.0" }
 
 atomic-waker = "1.1.2"
 crossbeam-utils = "0.8.21"
@@ -87,6 +88,7 @@ ruchei-extra = { workspace = true, optional = true, features = [
     "futures-core",
 ] }
 ruchei-itertools = { workspace = true, optional = true }
+ruchei-wakelist = { workspace = true, optional = true }
 
 futures-util = { workspace = true, features = ["sink"] }
 linked_hash_set = { workspace = true, optional = true }
@@ -121,7 +123,7 @@ sink = [
     "ruchei-extra?/futures-sink",
 ]
 std = ["futures-util/std", "ruchei-extend/std"]
-unstable = ["extra", "dep:ruchei-callback", "ruchei-extend?/unstable"]
+unstable = ["extra", "dep:ruchei-callback", "dep:ruchei-wakelist", "ruchei-extend?/unstable"]
 
 [package.metadata.docs.rs]
 all-features = true
