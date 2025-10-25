@@ -633,6 +633,11 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
         }
     }
 
+    pub fn context<const X: usize>(&mut self, r: &Ref<S, W, L>) -> (Pin<&mut S>, Waker) {
+        let waker = r.get().waker::<X>();
+        (self.index_pin_mut(r), waker)
+    }
+
     pub fn wake_push<const X: usize>(&mut self, r: &Ref<S, W, L>) -> bool {
         if self.link_push_back::<X>(r) {
             self.wake::<X>();
