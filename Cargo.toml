@@ -11,6 +11,7 @@ members = [
     "ruchei-itertools",
     "ruchei-route",
     "ruchei-test",
+    "ruchei-wakelist",
     "xtask",
 ]
 
@@ -59,6 +60,8 @@ ruchei-itertools = { path = "ruchei-itertools", version = "=0.0.0-a.3" }
 ruchei-route = { path = "ruchei-route", version = "0.1.9", default-features = false }
 ruchei-sample.path = "internal/ruchei-sample"
 
+atomic-waker = "1.1.2"
+crossbeam-utils = "0.8.21"
 futures-channel = "0.3.31"
 futures-core = { version = "0.3.31", default-features = false }
 futures-executor = "0.3.31"
