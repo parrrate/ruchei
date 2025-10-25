@@ -599,6 +599,15 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
             )
         }
     }
+
+    pub fn wake_push<const X: usize>(&mut self, r: &Ref<S, W, L>) -> bool {
+        if self.link_push_back::<X>(r) {
+            self.wake::<X>();
+            true
+        } else {
+            false
+        }
+    }
 }
 
 impl<S, const W: usize, const L: usize> Drop for Queue<S, W, L> {
