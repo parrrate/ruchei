@@ -374,6 +374,10 @@ impl<S, const W: usize> Queue<S, W> {
     pub fn register<const X: usize>(&self, waker: &Waker) {
         unsafe { (*self.root).wakers[X].register(waker) };
     }
+
+    pub fn wake<const X: usize>(&self) {
+        unsafe { (*self.root).wake::<X>() };
+    }
 }
 
 impl<S, const W: usize> Drop for Queue<S, W> {
