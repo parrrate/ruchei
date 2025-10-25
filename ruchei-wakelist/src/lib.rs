@@ -11,7 +11,7 @@ use std::{
     mem::MaybeUninit,
     ops::{Index, IndexMut},
     sync::atomic::{AtomicBool, AtomicPtr, AtomicU8, AtomicUsize, Ordering},
-    task::{RawWaker, RawWakerVTable, Waker},
+    task::{Context, RawWaker, RawWakerVTable, Waker},
 };
 
 use atomic_waker::AtomicWaker;
@@ -576,6 +576,17 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
                 Some(Ref::from_own(Root::link_pop_back::<X>(self.root)))
             }
         }
+    }
+
+    pub fn queue_pull<const X: usize>(&mut self) {
+        while let Some(r) = self.queue_pop_front::<X>() {
+            self.link_push_back::<X>(&r);
+        }
+    }
+
+    pub fn queue_poll<const X: usize>(&mut self, cx: &mut Context<'_>) {
+        self.register::<X>(cx.waker());
+        self.queue_pull::<X>();
     }
 }
 
