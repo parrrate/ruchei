@@ -371,6 +371,11 @@ impl<S, const W: usize> Queue<S, W> {
         if n.is_null() { None } else { Some(Ref(n)) }
     }
 
+    pub fn queue_push_back<const X: usize>(&self, r: &Ref<S, W>) {
+        assert_eq!(r.get().root, self.root);
+        unsafe { (*self.root).outer_push::<X>(r.get()) };
+    }
+
     pub fn register<const X: usize>(&self, waker: &Waker) {
         unsafe { (*self.root).wakers[X].register(waker) };
     }
@@ -549,4 +554,13 @@ fn can_get() {
     let mut queue = Queue::<i32, 1>::new();
     let r = queue.insert(0);
     assert_eq!((&queue[r.clone()], &queue[r]), (&0, &0));
+}
+
+#[test]
+fn can_push_back() {
+    let mut queue = Queue::<i32, 1>::new();
+    let r = queue.insert(0);
+    queue.queue_push_back::<0>(&r);
+    assert_eq!(queue.queue_pop_front::<0>(), Some(r));
+    assert_eq!(queue.queue_pop_front::<0>(), None);
 }
