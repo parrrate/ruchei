@@ -513,6 +513,10 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
         unsafe { (*self.root).wake::<X>() };
     }
 
+    pub fn link_contains<const X: usize>(&self, r: &Ref<S, W, L>) -> bool {
+        unsafe { Root::link_contains::<X>(r.own()) }
+    }
+
     pub fn link_len<const X: usize>(&self) -> usize {
         unsafe { Root::link_len::<X>(self.root) }
     }
