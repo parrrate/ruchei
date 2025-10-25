@@ -473,6 +473,15 @@ pub struct Queue<S, const W: usize, const L: usize = W> {
     phantom: PhantomData<Root<S, W, L>>,
 }
 
+impl<S, const W: usize, const L: usize> std::fmt::Debug for Queue<S, W, L> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Queue")
+            .field("root", &self.root)
+            .field("phantom", &self.phantom)
+            .finish()
+    }
+}
+
 impl<S, const W: usize, const L: usize> Default for Queue<S, W, L> {
     fn default() -> Self {
         Self::new()
