@@ -103,7 +103,7 @@ impl<S, const W: usize> Node<S, W> {
 
     fn wake<const X: usize>(&self) {
         if unsafe { (*self.root).outer_push::<X>(self) } {
-            unsafe { (*self.root).wakers[X].wake() };
+            unsafe { (*self.root).wake::<X>() };
         }
     }
 
@@ -213,6 +213,10 @@ impl<S, const W: usize> Root<S, W> {
         let n = std::ptr::from_ref(n);
         let prev = self.wake_head[X].swap(n, Ordering::AcqRel);
         unsafe { (*prev).wake_next[X].store(n, Ordering::Release) };
+    }
+
+    fn wake<const X: usize>(&self) {
+        self.wakers[X].wake();
     }
 
     unsafe fn pop_raw<const X: usize>(&self) -> *const Node<S, W> {
