@@ -33,6 +33,7 @@ use futures_util::{
     stream::{Fuse, FusedStream},
     task::AtomicWaker,
 };
+use option_entry::{Entry, OptionEntry};
 use pin_project::pin_project;
 
 #[derive(Debug, Default)]
@@ -103,20 +104,15 @@ impl<In, Out, E, S: TryStream<Ok = In, Error = E> + Sink<Out, Error = E>, R: Str
     }
 
     fn poll_buffer(self: Pin<&mut Self>) -> Poll<Result<(), E>> {
-        let mut this = self.project();
+        let this = self.project();
         let waker = this.w.clone().into();
         let cx = &mut Context::from_waker(&waker);
-        if this.buffer.is_some() {
-            if let Some(current) = this.current.as_mut().as_pin_mut() {
-                ready!(current.poll_ready(cx))?;
-            } else {
+        if let Entry::Occupied(entry) = this.buffer.entry() {
+            let Some(mut current) = this.current.as_pin_mut() else {
                 return Poll::Pending;
-            }
-        }
-        if let Some(item) = this.buffer.take()
-            && let Some(current) = this.current.as_mut().as_pin_mut()
-        {
-            current.start_send(item)?;
+            };
+            ready!(current.as_mut().poll_ready(cx))?;
+            current.start_send(entry.remove())?;
         }
         Poll::Ready(Ok(()))
     }
