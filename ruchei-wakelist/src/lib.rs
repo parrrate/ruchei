@@ -306,6 +306,7 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
         unsafe { (*(*prev).own.get()).own_next = next };
         unsafe { (*(*next).own.get()).own_prev = prev };
         let stream = unsafe { (*(*n).own.get()).stream.assume_init_read() };
+        unsafe { (*n).has_value.store(false, Ordering::Relaxed) };
         unsafe { Node::drop_self(n) };
         stream
     }
