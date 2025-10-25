@@ -55,7 +55,10 @@ impl<T, E, S: TryStream<Ok = T, Error = E> + Sink<T, Error = E>> Future for Echo
                     },
                 }
             }
-            if *this.started && this.stream.as_mut().poll_flush(cx)?.is_ready() {
+            if *this.started
+                && this.item.is_none()
+                && this.stream.as_mut().poll_flush(cx)?.is_ready()
+            {
                 *this.started = false;
             } else {
                 break Poll::Pending;
