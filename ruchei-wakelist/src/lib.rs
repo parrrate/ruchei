@@ -608,6 +608,10 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
             false
         }
     }
+
+    pub fn is_empty(&self) -> bool {
+        unsafe { (*self.root).is_empty() }
+    }
 }
 
 impl<S, const W: usize, const L: usize> Drop for Queue<S, W, L> {
