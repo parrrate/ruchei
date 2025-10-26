@@ -210,7 +210,7 @@ pub type MulticastExtending<R> = Extending<Multicast<<R as Stream>::Item>, R>;
 
 pub trait MulticastWakeList: Sized + Stream<Item: TryStream> {
     #[must_use]
-    fn multicast_wakelist(self) -> MulticastExtending<Self> {
+    fn multicast_bufferless_wakelist(self) -> MulticastExtending<Self> {
         self.extending_default()
     }
 }

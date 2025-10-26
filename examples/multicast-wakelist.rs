@@ -4,7 +4,7 @@ use async_net::TcpListener;
 use futures_util::StreamExt;
 use ruchei::{
     concurrent::ConcurrentExt, connection_item::ConnectionItemExt,
-    echo::bufferless::EchoBufferless, multicast::wakelist::MulticastWakeList,
+    echo::bufferless::EchoBufferless, multicast::bufferless_wakelist::MulticastWakeList,
     poll_on_wake::PollOnWakeExt,
 };
 
@@ -19,7 +19,7 @@ async fn main() {
         .map(async_tungstenite::accept_async)
         .concurrent()
         .filter_map(|r| async { r.ok() })
-        .multicast_wakelist()
+        .multicast_bufferless_wakelist()
         .connection_item_ignore()
         .echo_bufferless()
         .await
