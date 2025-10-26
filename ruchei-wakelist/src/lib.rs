@@ -475,6 +475,14 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
         n
     }
 
+    unsafe fn link_of<const X: usize>(
+        n: *mut OwnNode<S, W, L>,
+    ) -> (*mut OwnNode<S, W, L>, *mut OwnNode<S, W, L>) {
+        let prev = unsafe { (*n).link_prev[X] };
+        let next = unsafe { (*n).link_next[X] };
+        (prev, next)
+    }
+
     fn own_node(root: *const Self, node: &Node<S, W, L>) -> *mut OwnNode<S, W, L> {
         assert_eq!(root, node.root);
         assert!(unsafe { (*node.own.get()).has_value });
@@ -624,6 +632,18 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
                 false
             }
         }
+    }
+
+    pub fn link_of<const X: usize>(
+        &self,
+        r: Option<&Ref<S, W, L>>,
+    ) -> (Option<Ref<S, W, L>>, Option<Ref<S, W, L>>) {
+        let stub = unsafe { Root::link_stub(self.root) };
+        let n = r.map(|r| r.own()).unwrap_or_else(|| stub);
+        let (prev, next) = unsafe { Root::link_of::<X>(n) };
+        let prev = (stub == prev).then(|| unsafe { Ref::from_own(prev) });
+        let next = (stub == next).then(|| unsafe { Ref::from_own(next) });
+        (prev, next)
     }
 
     pub fn queue_pull<const X: usize>(&mut self) {
