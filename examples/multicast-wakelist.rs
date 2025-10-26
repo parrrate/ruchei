@@ -4,7 +4,7 @@ use async_net::TcpListener;
 use futures_util::StreamExt;
 use ruchei::{
     concurrent::ConcurrentExt, connection_item::ConnectionItemExt,
-    echo::bufferless::EchoBufferless, multicast::bufferless_wakelist::MulticastWakeList,
+    echo::bufferless::EchoBufferless, multicast::bufferless_wakelist::MulticastBufferlessWl,
     poll_on_wake::PollOnWakeExt,
 };
 

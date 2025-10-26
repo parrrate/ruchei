@@ -208,11 +208,11 @@ impl<S, E> ExtendPinned<S> for Multicast<S, E> {
 
 pub type MulticastExtending<R> = Extending<Multicast<<R as Stream>::Item>, R>;
 
-pub trait MulticastWakeList: Sized + Stream<Item: TryStream> {
+pub trait MulticastBufferlessWl: Sized + Stream<Item: TryStream> {
     #[must_use]
     fn multicast_bufferless_wakelist(self) -> MulticastExtending<Self> {
         self.extending_default()
     }
 }
 
-impl<S: Unpin + TryStream, R: Stream<Item = S>> MulticastWakeList for R {}
+impl<S: Unpin + TryStream, R: Stream<Item = S>> MulticastBufferlessWl for R {}
