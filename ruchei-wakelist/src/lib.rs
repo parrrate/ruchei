@@ -641,8 +641,8 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
         let stub = unsafe { Root::link_stub(self.root) };
         let n = r.map(|r| r.own()).unwrap_or_else(|| stub);
         let (prev, next) = unsafe { Root::link_of::<X>(n) };
-        let prev = (stub == prev).then(|| unsafe { Ref::from_own(prev) });
-        let next = (stub == next).then(|| unsafe { Ref::from_own(next) });
+        let prev = (stub != prev).then(|| unsafe { Ref::from_own(prev) });
+        let next = (stub != next).then(|| unsafe { Ref::from_own(next) });
         (prev, next)
     }
 
