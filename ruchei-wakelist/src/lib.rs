@@ -646,6 +646,22 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
         (prev, next)
     }
 
+    pub fn link_insert<const X: usize>(
+        &mut self,
+        prev: Option<&Ref<S, W, L>>,
+        r: &Ref<S, W, L>,
+        next: Option<&Ref<S, W, L>>,
+    ) {
+        let stub = unsafe { Root::link_stub(self.root) };
+        let prev = prev.map(|r| r.own()).unwrap_or_else(|| stub);
+        let next = next.map(|r| r.own()).unwrap_or_else(|| stub);
+        let n = r.own();
+        assert!(!unsafe { Root::link_contains::<X>(n) });
+        assert_eq!(unsafe { (*prev).link_next[X] }, next);
+        assert_eq!(unsafe { (*next).link_prev[X] }, prev);
+        unsafe { Root::link::<X>(self.root, n, prev, next) };
+    }
+
     pub fn queue_pull<const X: usize>(&mut self) {
         while let Some(r) = self.queue_pop_front::<X>() {
             self.link_push_back::<X>(&r);
