@@ -488,6 +488,20 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
         assert!(unsafe { (*node.own.get()).has_value });
         node.own.get()
     }
+
+    unsafe fn queue_pull<const X: usize>(root: *const Self) {
+        loop {
+            let n = unsafe { (*root).pop::<X>() };
+            if n.is_null() {
+                break;
+            }
+            let n = unsafe { (*n).own.get() };
+            if unsafe { Self::link_contains::<X>(n) } {
+                continue;
+            }
+            unsafe { Self::link_push_back::<X>(root, n) };
+        }
+    }
 }
 
 pub struct Queue<S, const W: usize, const L: usize = W> {
@@ -663,9 +677,7 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
     }
 
     pub fn queue_pull<const X: usize>(&mut self) {
-        while let Some(r) = self.queue_pop_front::<X>() {
-            self.link_push_back::<X>(&r);
-        }
+        unsafe { Root::queue_pull::<X>(self.root) };
     }
 
     pub fn queue_poll<const X: usize>(&mut self, cx: &mut Context<'_>) {
