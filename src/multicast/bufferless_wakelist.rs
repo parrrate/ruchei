@@ -25,7 +25,7 @@ const OP_COUNT: usize = 7;
 #[derive(Debug)]
 pub struct Multicast<S, E = <S as TryStream>::Error> {
     connections: Queue<S, OP_WAKE, OP_COUNT>,
-    closed: VecDeque<(S, Option<E>)>,
+    closed: VecDeque<Option<E>>,
 }
 
 impl<S, E> Default for Multicast<S, E> {
@@ -43,8 +43,8 @@ type Key<S> = Ref<S, OP_WAKE, OP_COUNT>;
 
 impl<S, E> Multicast<S, E> {
     fn remove(&mut self, key: Key<S>, error: Option<E>) {
-        let connection = self.connections.remove(&key).expect("unknown connection");
-        self.closed.push_back((connection, error));
+        assert!(self.connections.remove(&key));
+        self.closed.push_back(error);
         self.connections.wake::<OP_WAKE_NEXT>();
         self.connections.wake::<OP_WAKE_READY>();
         self.connections.wake::<OP_WAKE_FLUSH>();
@@ -60,12 +60,12 @@ impl<S, E> Multicast<S, E> {
 }
 
 impl<In, E, S: TryStream<Ok = In, Error = E>> Stream for Multicast<S, E> {
-    type Item = ConnectionItem<S>;
+    type Item = ConnectionItem<(), S::Ok, E>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
-        if let Some((stream, error)) = this.closed.pop_front() {
-            return Poll::Ready(Some(ConnectionItem::Closed(stream, error)));
+        if let Some(error) = this.closed.pop_front() {
+            return Poll::Ready(Some(ConnectionItem::Closed((), error)));
         }
         this.connections.queue_poll::<OP_WAKE_NEXT>(cx);
         while let Some(key) = this.connections.link_pop_front::<OP_WAKE_NEXT>() {

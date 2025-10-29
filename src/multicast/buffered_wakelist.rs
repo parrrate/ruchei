@@ -101,7 +101,7 @@ pub struct Multicast<S, T, E = <S as TryStream>::Error> {
     first_sent_all: Option<Key<S>>,
     flush_target: usize,
     next_flush: Arc<NextFlush>,
-    closed: VecDeque<(S, Option<E>)>,
+    closed: VecDeque<Option<E>>,
 }
 
 impl<S, T, E> Unpin for Multicast<S, T, E> {}
@@ -259,8 +259,8 @@ impl<S: Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
             let sent = self.connections[key].sent;
             let _ = self.uncount_first(key, sent);
         }
-        let connection = self.connections.remove(key).expect("unknown connection");
-        self.closed.push_back((connection.stream, error));
+        assert!(self.connections.remove(key));
+        self.closed.push_back(error);
         self.connections.wake::<OP_WAKE_NEXT>();
         self.connections.wake::<OP_WAKE_READY>();
         self.connections.wake::<OP_WAKE_FLUSH>();
@@ -407,14 +407,14 @@ impl<S: Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
 }
 
 impl<S: TryStream<Error = E> + Sink<T, Error = E>, T: Clone, E> Stream for Multicast<S, T, E> {
-    type Item = ConnectionItem<S>;
+    type Item = ConnectionItem<(), S::Ok, E>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
         this.next_flush.next.register(cx.waker());
         let _ = this.poll_send_flush();
-        if let Some((stream, error)) = this.closed.pop_front() {
-            return Poll::Ready(Some(ConnectionItem::Closed(stream, error)));
+        if let Some(error) = this.closed.pop_front() {
+            return Poll::Ready(Some(ConnectionItem::Closed((), error)));
         }
         this.connections.queue_poll::<OP_WAKE_NEXT>(cx);
         while let Some(key) = this.connections.link_pop_front::<OP_WAKE_NEXT>() {
