@@ -1,7 +1,7 @@
 //! [`ruchei::multicast::bufferless`] with [`ruchei::echo::buffered`]
 
 use async_net::TcpListener;
-use futures_util::StreamExt;
+use futures_util::{StreamExt, TryStreamExt, future::ready};
 use ruchei::{
     concurrent::ConcurrentExt, connection_item::ConnectionItemExt,
     echo::bufferless::EchoBufferless, multicast::bufferless_wakelist::MulticastBufferlessWl,
@@ -21,6 +21,7 @@ async fn main() {
         .filter_map(|r| async { r.ok() })
         .multicast_bufferless_wakelist()
         .connection_item_ignore()
+        .try_filter(|m| ready(!m.is_close()))
         .echo_bufferless()
         .await
         .unwrap();
