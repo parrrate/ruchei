@@ -11,17 +11,15 @@ async fn main() {
     for _ in 0..16 {
         let started_s = started_s.clone();
         tasks.push(task::spawn(async move {
-            let mut stream = pin!(
-                async_tungstenite::client_async(
-                    "ws://127.0.0.1:8080/",
-                    async_net::TcpStream::connect("127.0.0.1:8080")
-                        .await
-                        .unwrap()
-                )
-                .await
-                .unwrap()
-                .0
-            );
+            let mut stream = async_tungstenite::client_async(
+                "ws://127.0.0.1:8080/",
+                async_net::TcpStream::connect("127.0.0.1:8080")
+                    .await
+                    .unwrap(),
+            )
+            .await
+            .unwrap()
+            .0;
             stream.next().await.unwrap().unwrap();
             let start = Instant::now();
             let _ = started_s.send(start).await;
