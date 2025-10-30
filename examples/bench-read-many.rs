@@ -23,8 +23,17 @@ async fn main() {
             stream.next().await.unwrap().unwrap();
             let start = Instant::now();
             let _ = started_s.send(start).await;
-            for _ in 1..1_000_000 {
-                stream.next().await.unwrap().unwrap();
+            for i in 1..1_000_000 {
+                let n: i32 = stream
+                    .next()
+                    .await
+                    .unwrap()
+                    .unwrap()
+                    .into_text()
+                    .unwrap()
+                    .parse()
+                    .unwrap();
+                assert_eq!(i, n);
             }
             println!("{:?}", start.elapsed());
         }));
