@@ -11,7 +11,7 @@ use std::{
     mem::MaybeUninit,
     ops::Index,
     pin::Pin,
-    sync::atomic::{AtomicPtr, AtomicU8, AtomicUsize, Ordering, fence},
+    sync::atomic::{AtomicBool, AtomicPtr, AtomicU8, AtomicUsize, Ordering, fence},
     task::{Context, RawWaker, RawWakerVTable, Waker},
 };
 
@@ -50,7 +50,8 @@ struct OwnRoot<S, const W: usize, const L: usize = W> {
 
 struct Root<S, const W: usize, const L: usize = W> {
     own: UnsafeCell<OwnRoot<S, W, L>>,
-    wakers: [AtomicWaker; W],
+    wakers: [CachePadded<AtomicWaker>; W],
+    wakeable: [CachePadded<AtomicBool>; W],
     wake_head: [CachePadded<AtomicConst<Node<S, W, L>>>; W],
     stub: Node<S, W, L>,
 }
@@ -165,7 +166,8 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
                 lens: [0; L],
                 len: 0,
             }),
-            wakers: std::array::from_fn(|_| AtomicWaker::new()),
+            wakers: std::array::from_fn(|_| CachePadded::new(AtomicWaker::new())),
+            wakeable: std::array::from_fn(|_| CachePadded::new(AtomicBool::new(false))),
             wake_head: std::array::from_fn(|_| {
                 CachePadded::new(AtomicConst::new(std::ptr::null()))
             }),
@@ -246,7 +248,9 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
     }
 
     fn wake<const X: usize>(&self) {
-        self.wakers[X].wake();
+        if self.wakeable[X].swap(false, Ordering::AcqRel) {
+            self.wakers[X].wake();
+        }
     }
 
     unsafe fn pop_raw(&self, x: usize) -> *const Node<S, W, L> {
@@ -552,6 +556,7 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
 
     pub fn register<const X: usize>(&self, waker: &Waker) {
         unsafe { (*self.root).wakers[X].register(waker) };
+        unsafe { (*self.root).wakeable[X].store(true, Ordering::Release) };
     }
 
     pub fn wake<const X: usize>(&self) {
