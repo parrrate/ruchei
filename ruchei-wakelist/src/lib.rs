@@ -9,7 +9,7 @@ use std::{
     cell::UnsafeCell,
     marker::PhantomData,
     mem::MaybeUninit,
-    ops::Index,
+    ops::{Index, IndexMut},
     pin::Pin,
     sync::atomic::{AtomicBool, AtomicPtr, AtomicU8, AtomicUsize, Ordering, fence},
     task::{Context, RawWaker, RawWakerVTable, Waker},
@@ -686,13 +686,7 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
     }
 
     pub fn index_pin_mut(&mut self, r: &Ref<S, W, L>) -> Pin<&mut S> {
-        unsafe {
-            Pin::new_unchecked(
-                (*Root::own_node(self.root, r.get()))
-                    .stream
-                    .assume_init_mut(),
-            )
-        }
+        self[r].as_mut()
     }
 
     pub fn context<const X: usize>(&mut self, r: &Ref<S, W, L>) -> (Pin<&mut S>, Waker) {
@@ -731,13 +725,23 @@ impl<S, const W: usize, const L: usize> Drop for Queue<S, W, L> {
 }
 
 impl<'a, S, const W: usize, const L: usize> Index<&'a Ref<S, W, L>> for Queue<S, W, L> {
-    type Output = S;
+    type Output = Pin<Box<S>>;
 
     fn index(&self, r: &'a Ref<S, W, L>) -> &Self::Output {
         unsafe {
-            (*Root::own_node(self.root, r.get()).cast_const())
-                .stream
-                .assume_init_ref()
+            std::mem::transmute(
+                &(*Root::own_node(self.root, r.get()).cast_const())
+                    .stream
+                    .as_ptr(),
+            )
+        }
+    }
+}
+
+impl<'a, S, const W: usize, const L: usize> IndexMut<&'a Ref<S, W, L>> for Queue<S, W, L> {
+    fn index_mut(&mut self, r: &'a Ref<S, W, L>) -> &mut Self::Output {
+        unsafe {
+            std::mem::transmute(&mut (*Root::own_node(self.root, r.get())).stream.as_mut_ptr())
         }
     }
 }
@@ -897,7 +901,7 @@ fn can_get_mut() {
 fn can_get() {
     let mut queue = Queue::<i32, 1>::new();
     let r = queue.insert(0);
-    assert_eq!((&queue[&r], &queue[&r]), (&0, &0));
+    assert_eq!((&*queue[&r], &*queue[&r]), (&0, &0));
 }
 
 #[test]
