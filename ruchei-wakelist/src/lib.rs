@@ -89,6 +89,7 @@ impl<S, const W: usize, const L: usize> Node<S, W, L> {
 
     fn increase_ctr(&self) {
         let old_count = self.ctr.fetch_add(1, Ordering::Relaxed);
+        assert!(old_count > 0);
         if old_count > MAX_REFCOUNT {
             std::process::abort();
         }
@@ -96,6 +97,10 @@ impl<S, const W: usize, const L: usize> Node<S, W, L> {
 
     fn decrease_ctr(&self) -> bool {
         let old_count = self.ctr.fetch_sub(1, Ordering::Release);
+        assert!(old_count > 0);
+        if old_count > MAX_REFCOUNT {
+            std::process::abort();
+        }
         old_count == 1
     }
 
@@ -113,14 +118,14 @@ impl<S, const W: usize, const L: usize> Node<S, W, L> {
         }
     }
 
-    fn wake<const X: usize>(&self) {
-        if unsafe { (*self.root).outer_push::<X>(self) } {
-            unsafe { (*self.root).wake::<X>() };
+    unsafe fn wake<const X: usize>(node: *const Self) {
+        if unsafe { (*(*node).root).outer_push::<X>(node) } {
+            unsafe { (*(*node).root).wake::<X>() };
         }
     }
 
     unsafe fn wake_drop<const X: usize>(node: *const Self) {
-        unsafe { (*node).wake::<X>() };
+        unsafe { Self::wake::<X>(node) };
         unsafe { Self::drop_self(node) };
     }
 
@@ -130,20 +135,20 @@ impl<S, const W: usize, const L: usize> Node<S, W, L> {
 
     const fn vtable<const X: usize>() -> &'static RawWakerVTable {
         &RawWakerVTable::new(
-            |p| unsafe { (*Self::from_void(p)).raw_waker::<X>() },
+            |p| unsafe { Self::raw_waker::<X>(Self::from_void(p)) },
             |p| unsafe { Self::wake_drop::<X>(Self::from_void(p)) },
-            |p| unsafe { (*Self::from_void(p)).wake::<X>() },
+            |p| unsafe { Self::wake::<X>(Self::from_void(p)) },
             |p| unsafe { Self::drop_self(Self::from_void(p)) },
         )
     }
 
-    fn raw_waker<const X: usize>(&self) -> RawWaker {
-        self.increase_ctr();
-        RawWaker::new(std::ptr::from_ref(self).cast(), Self::vtable::<X>())
+    unsafe fn raw_waker<const X: usize>(node: *const Self) -> RawWaker {
+        unsafe { (*node).increase_ctr() };
+        RawWaker::new(node.cast(), Self::vtable::<X>())
     }
 
-    fn waker<const X: usize>(&self) -> Waker {
-        unsafe { Waker::from_raw(self.raw_waker::<X>()) }
+    unsafe fn waker<const X: usize>(node: *const Self) -> Waker {
+        unsafe { Waker::from_raw(Self::raw_waker::<X>(node)) }
     }
 }
 
@@ -220,29 +225,30 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
         x
     }
 
-    fn outer_push<const X: usize>(&self, n: &Node<S, W, L>) -> bool {
-        let is_queueing = n.state[X]
-            .compare_exchange(
-                STATE_CAN_WAKE,
-                STATE_QUEUEING,
-                Ordering::Acquire,
-                Ordering::Acquire,
-            )
-            .is_ok();
+    unsafe fn outer_push<const X: usize>(&self, n: *const Node<S, W, L>) -> bool {
+        let is_queueing = unsafe {
+            (*n).state[X]
+                .compare_exchange(
+                    STATE_CAN_WAKE,
+                    STATE_QUEUEING,
+                    Ordering::Acquire,
+                    Ordering::Acquire,
+                )
+                .is_ok()
+        };
         if !is_queueing {
             return false;
         }
-        n.increase_ctr();
-        self.inner_push(n, X);
-        n.state[X].store(STATE_IN_QUEUE, Ordering::Release);
+        unsafe { (*n).increase_ctr() };
+        unsafe { self.inner_push(n, X) };
+        unsafe { (*n).state[X].store(STATE_IN_QUEUE, Ordering::Release) };
         true
     }
 
-    fn inner_push(&self, n: &Node<S, W, L>, x: usize) {
+    unsafe fn inner_push(&self, n: *const Node<S, W, L>, x: usize) {
         let root_ptr = std::ptr::from_ref(self);
-        assert_eq!(n.root, root_ptr);
-        n.wake_next[x].store(std::ptr::null(), Ordering::Release);
-        let n = std::ptr::from_ref(n);
+        unsafe { assert_eq!((*n).root, root_ptr) };
+        unsafe { (*n).wake_next[x].store(std::ptr::null(), Ordering::Release) };
         let prev = self.wake_head[x].swap(n, Ordering::AcqRel);
         unsafe { (*prev).wake_next[x].store(n, Ordering::Release) };
     }
@@ -273,7 +279,7 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
         if tail != head {
             return std::ptr::null();
         }
-        self.inner_push(&self.stub, x);
+        unsafe { self.inner_push(&raw const self.stub, x) };
         next = unsafe { (*tail).wake_next[x].load(Ordering::Acquire) };
         if !next.is_null() {
             own.wake_tail[x] = next;
@@ -297,10 +303,7 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
                     };
                     match r {
                         Ok(_) => break 'inner,
-                        Err(STATE_DISOWNED) => {
-                            unsafe { Node::drop_self(n) };
-                            continue 'outer;
-                        }
+                        Err(STATE_DISOWNED) => continue 'outer,
                         Err(STATE_QUEUEING) => {}
                         Err(_) => unreachable!("{r:?}"),
                     }
@@ -325,7 +328,9 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
                         Ok(_) => break,
                         Err(STATE_IN_QUEUE) => {
                             state.store(STATE_DISOWNED, Ordering::Release);
-                            (*n).decrease_ctr();
+                            if (*n).decrease_ctr() {
+                                panic!("didn't expect to drop a Node here");
+                            }
                             break;
                         }
                         Err(STATE_QUEUEING) => {}
@@ -686,7 +691,9 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
     }
 
     pub fn index_pin_mut(&mut self, r: &Ref<S, W, L>) -> Pin<&mut S> {
-        self[r].as_mut()
+        unsafe {
+            Pin::new_unchecked(&mut *(*Root::own_node(self.root, r.get())).stream.as_mut_ptr())
+        }
     }
 
     pub fn context<const X: usize>(&mut self, r: &Ref<S, W, L>) -> (Pin<&mut S>, Waker) {
@@ -772,7 +779,7 @@ impl<S, const W: usize, const L: usize> Ref<S, W, L> {
     }
 
     pub fn waker<const X: usize>(&self) -> Waker {
-        self.get().waker::<X>()
+        unsafe { Node::waker::<X>(self.0) }
     }
 }
 
