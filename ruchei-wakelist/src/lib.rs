@@ -513,7 +513,7 @@ pub struct Queue<S, const W: usize, const L: usize = W> {
 }
 
 unsafe impl<S: Send, const W: usize, const L: usize> Send for Queue<S, W, L> {}
-unsafe impl<S: Send + Sync, const W: usize, const L: usize> Sync for Queue<S, W, L> {}
+unsafe impl<S: Sync, const W: usize, const L: usize> Sync for Queue<S, W, L> {}
 
 impl<S, const W: usize, const L: usize> std::fmt::Debug for Queue<S, W, L> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
