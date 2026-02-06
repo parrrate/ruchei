@@ -61,7 +61,7 @@ async fn main() {
                 .unwrap();
             println!("{:?}", start.elapsed());
             task.await;
-            writer.close().await.unwrap();
+            writer.close(None).await.unwrap();
         }));
     }
     let start = started_r.recv().await.unwrap();

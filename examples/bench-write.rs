@@ -44,5 +44,5 @@ async fn main() {
         .unwrap();
     println!("w {:?}", start.elapsed());
     task.await;
-    writer.close().await.unwrap();
+    writer.close(None).await.unwrap();
 }
