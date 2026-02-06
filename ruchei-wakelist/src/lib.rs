@@ -288,7 +288,7 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
         std::ptr::null()
     }
 
-    unsafe fn pop(&self, x: usize) -> *const Node<S, W, L> {
+    unsafe fn pop<const DISOWNABLE: bool>(&self, x: usize) -> *const Node<S, W, L> {
         'outer: loop {
             let n = unsafe { self.pop_raw(x) };
             if !n.is_null() {
@@ -303,7 +303,7 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
                     };
                     match r {
                         Ok(_) => break 'inner,
-                        Err(STATE_DISOWNED) => continue 'outer,
+                        Err(STATE_DISOWNED) if DISOWNABLE => continue 'outer,
                         Err(STATE_QUEUEING) => {}
                         Err(_) => unreachable!("{r:?}"),
                     }
@@ -337,7 +337,7 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
                         Err(_) => unreachable!(),
                     }
                 }
-                Self::queue_pull(root, x);
+                Self::queue_pull::<true>(root, x);
             })
         };
         (0..L).for_each(|x| unsafe {
@@ -492,9 +492,9 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
         node.own.get()
     }
 
-    unsafe fn queue_pull(root: *const Self, x: usize) {
+    unsafe fn queue_pull<const DISOWNABLE: bool>(root: *const Self, x: usize) {
         loop {
-            let n = unsafe { (*root).pop(x) };
+            let n = unsafe { (*root).pop::<DISOWNABLE>(x) };
             if n.is_null() {
                 break;
             }
@@ -550,7 +550,7 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
     }
 
     pub fn queue_pop_front<const X: usize>(&mut self) -> Option<Ref<S, W, L>> {
-        let n = unsafe { (*self.root).pop(X) };
+        let n = unsafe { (*self.root).pop::<false>(X) };
         if n.is_null() { None } else { Some(Ref(n)) }
     }
 
@@ -682,7 +682,7 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
     }
 
     pub fn queue_pull<const X: usize>(&mut self) {
-        unsafe { Root::queue_pull(self.root, X) };
+        unsafe { Root::queue_pull::<false>(self.root, X) };
     }
 
     pub fn queue_poll<const X: usize>(&mut self, cx: &mut Context<'_>) {
