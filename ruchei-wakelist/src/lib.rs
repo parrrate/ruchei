@@ -719,17 +719,19 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
     pub fn len(&self) -> usize {
         unsafe { (*(*self.root).own.get()).len }
     }
+
+    pub fn clear(&mut self) {
+        while let head_ptr = unsafe { (*(*self.root).stub.own.get()).own_next }
+            && head_ptr != unsafe { &raw const (*self.root).stub }
+        {
+            unsafe { Root::remove(self.root, head_ptr) };
+        }
+    }
 }
 
 impl<S, const W: usize, const L: usize> Drop for Queue<S, W, L> {
     fn drop(&mut self) {
-        {
-            while let head_ptr = unsafe { (*(*self.root).stub.own.get()).own_next }
-                && head_ptr != unsafe { &raw const (*self.root).stub }
-            {
-                unsafe { Root::remove(self.root, head_ptr) };
-            }
-        }
+        self.clear();
         unsafe { Root::drop_self(self.root) };
     }
 }
