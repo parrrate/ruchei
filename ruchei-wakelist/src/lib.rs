@@ -748,6 +748,9 @@ impl<'a, S, const W: usize, const L: usize> Index<&'a Ref<S, W, L>> for Queue<S,
 
 pub struct Ref<S, const W: usize, const L: usize = W>(*const Node<S, W, L>);
 
+unsafe impl<S, const W: usize, const L: usize> Send for Ref<S, W, L> {}
+unsafe impl<S, const W: usize, const L: usize> Sync for Ref<S, W, L> {}
+
 impl<S, const W: usize, const L: usize> PartialEq for Ref<S, W, L> {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
