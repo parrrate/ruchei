@@ -9,7 +9,6 @@ members = [
     "ruchei-extend",
     "ruchei-extra",
     "ruchei-itertools",
-    "ruchei-route",
     "ruchei-test",
     "ruchei-wakelist",
     "xtask",
@@ -57,7 +56,6 @@ ruchei-connection = { path = "ruchei-connection", version = "=0.0.0-a.3" }
 ruchei-extend = { path = "ruchei-extend", version = "0.1.2" }
 ruchei-extra = { path = "ruchei-extra", version = "0.1.4" }
 ruchei-itertools = { path = "ruchei-itertools", version = "=0.0.0-a.3" }
-ruchei-route = { path = "ruchei-route", version = "0.1.9", default-features = false }
 ruchei-sample.path = "internal/ruchei-sample"
 ruchei-wakelist = { path = "ruchei-wakelist", version = "=0.0.0-a.0" }
 
