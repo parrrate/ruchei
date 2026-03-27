@@ -933,3 +933,11 @@ fn can_link() {
     assert_eq!(queue.link_pop_front::<0>(), Some(c));
     assert_eq!(queue.link_pop_front::<0>(), None);
 }
+
+#[test]
+fn wake_after_drop() {
+    let mut queue = Queue::<i32, 1>::new();
+    let waker = queue.insert(0).waker::<0>();
+    drop(queue);
+    waker.wake();
+}
