@@ -43,7 +43,7 @@ type Key<S> = Ref<S, OP_WAKE, OP_COUNT>;
 
 impl<S, E> Multicast<S, E> {
     fn remove(&mut self, key: Key<S>, error: Option<E>) {
-        assert!(self.connections.remove(&key));
+        assert!(self.connections.remove_pinned(&key));
         self.closed.push_back(error);
         self.connections.wake::<OP_WAKE_NEXT>();
         self.connections.wake::<OP_WAKE_READY>();

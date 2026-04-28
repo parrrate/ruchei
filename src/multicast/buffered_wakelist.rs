@@ -259,7 +259,7 @@ impl<S: Sink<T, Error = E>, T: Clone, E> Multicast<S, T, E> {
             let sent = self.connections[key].sent;
             let _ = self.uncount_first(key, sent);
         }
-        assert!(self.connections.remove(key));
+        assert!(self.connections.remove_pinned(key));
         self.closed.push_back(error);
         self.connections.wake::<OP_WAKE_NEXT>();
         self.connections.wake::<OP_WAKE_READY>();

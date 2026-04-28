@@ -547,7 +547,7 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
         Ref::new(unsafe { Root::insert(self.root, stream) })
     }
 
-    pub fn remove(&mut self, r: &Ref<S, W, L>) -> bool {
+    pub fn remove_pinned(&mut self, r: &Ref<S, W, L>) -> bool {
         assert_eq!(self.root, r.get().root);
         if unsafe { (*r.own()).has_value } {
             unsafe { Root::remove(self.root, r.0, |stream| stream.assume_init_drop()) };
@@ -838,7 +838,7 @@ fn can_insert_3() {
 fn can_remove() {
     let mut queue = Queue::<i32, 1>::new();
     let r = queue.insert(0);
-    assert!(queue.remove(&r));
+    assert!(queue.remove_pinned(&r));
 }
 
 #[test]
@@ -847,7 +847,7 @@ fn can_remove_middle() {
     queue.insert(0);
     let r = queue.insert(1);
     queue.insert(2);
-    assert!(queue.remove(&r));
+    assert!(queue.remove_pinned(&r));
 }
 
 #[test]
