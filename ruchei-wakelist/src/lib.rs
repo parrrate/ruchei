@@ -557,6 +557,18 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
         }
     }
 
+    pub fn remove(&mut self, r: &Ref<S, W, L>) -> Option<S>
+    where
+        S: Unpin,
+    {
+        assert_eq!(self.root, r.get().root);
+        if unsafe { (*r.own()).has_value } {
+            Some(unsafe { Root::remove(self.root, r.0, |stream| stream.assume_init_read()) })
+        } else {
+            None
+        }
+    }
+
     pub fn queue_pop_front<const X: usize>(&mut self) -> Option<Ref<S, W, L>> {
         let n = unsafe { (*self.root).pop::<false>(X) };
         if n.is_null() { None } else { Some(Ref(n)) }
@@ -838,7 +850,7 @@ fn can_insert_3() {
 fn can_remove() {
     let mut queue = Queue::<i32, 1>::new();
     let r = queue.insert(0);
-    assert!(queue.remove_pinned(&r));
+    assert_eq!(queue.remove(&r), Some(0));
 }
 
 #[test]
@@ -847,7 +859,7 @@ fn can_remove_middle() {
     queue.insert(0);
     let r = queue.insert(1);
     queue.insert(2);
-    assert!(queue.remove_pinned(&r));
+    assert_eq!(queue.remove(&r), Some(1));
 }
 
 #[test]
