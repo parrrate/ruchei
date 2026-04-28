@@ -11,6 +11,3 @@ rust-version.workspace = true
 [dependencies]
 atomic-waker.workspace = true
 crossbeam-utils.workspace = true
-
-[package.metadata.tagit]
-skip = true

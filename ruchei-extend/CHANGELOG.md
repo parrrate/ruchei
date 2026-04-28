@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.1.4] — 2026-04-28
+
+### Changed
+
+- dropped `FusedStream` requirement for `ExtendingKeyedExt`
+
 ## [0.1.3] — 2025-10-23
 
 ### Changed
@@ -23,7 +29,8 @@
 
 (baseline)
 
-[unreleased]: https://github.com/parrrate/ruchei/compare/ruchei-extend/0.1.3...HEAD
+[unreleased]: https://github.com/parrrate/ruchei/compare/ruchei-extend/0.1.4...HEAD
+[0.1.4]: https://github.com/parrrate/ruchei/compare/ruchei-extend/0.1.3...ruchei-extend/0.1.4
 [0.1.3]: https://github.com/parrrate/ruchei/compare/ruchei-extend/0.1.2...ruchei-extend/0.1.3
 [0.1.2]: https://github.com/parrrate/ruchei/compare/ruchei-extend/0.1.1...ruchei-extend/0.1.2
 [0.1.1]: https://github.com/parrrate/ruchei/releases/tag/ruchei-extend/0.1.1

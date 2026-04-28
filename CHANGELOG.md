@@ -5,6 +5,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `wakelist` implementations
+
+  - `multicast_bufferless_wakelist`
+
+  - `multicast_buffered_wakelist`
+
+### Fixed
+
+- `echo_bufferless` now waits before all available items are sent before flushing
+
+- fix `buffered_multicast` internal opcode overlap
+
 ## [0.1.2] — 2025-10-23
 
 ### Added

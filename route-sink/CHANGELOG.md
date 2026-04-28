@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.1.4] — 2026-04-28
+
+### Fixed
+
+- `docsrs` annotations
+
 ## [0.1.3] — 2025-09-20
 
 ### Changed
@@ -24,7 +30,8 @@
 
 (baseline)
 
-[unreleased]: https://github.com/parrrate/ruchei/compare/route-sink/0.1.3...HEAD
+[unreleased]: https://github.com/parrrate/ruchei/compare/route-sink/0.1.4...HEAD
+[0.1.4]: https://github.com/parrrate/ruchei/compare/route-sink/0.1.3...route-sink/0.1.4
 [0.1.3]: https://github.com/parrrate/ruchei/compare/route-sink/0.1.2...route-sink/0.1.3
 [0.1.2]: https://github.com/parrrate/ruchei/compare/route-sink/0.1.1...route-sink/0.1.2
 [0.1.1]: https://github.com/parrrate/ruchei/compare/route-sink/0.1.0...route-sink/0.1.1
