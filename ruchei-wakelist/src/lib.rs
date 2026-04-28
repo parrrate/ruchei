@@ -313,7 +313,11 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
         }
     }
 
-    unsafe fn remove(root: *const Self, n: *const Node<S, W, L>) {
+    unsafe fn remove<T>(
+        root: *const Self,
+        n: *const Node<S, W, L>,
+        extract: unsafe fn(&mut MaybeUninit<S>) -> T,
+    ) -> T {
         assert!(unsafe { (*(*n).own.get()).has_value });
         unsafe {
             (*n).state.iter().enumerate().for_each(|(x, state)| {
@@ -350,10 +354,11 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
         let next = unsafe { (*(*n).own.get()).own_next };
         unsafe { (*(*prev).own.get()).own_next = next };
         unsafe { (*(*next).own.get()).own_prev = prev };
-        unsafe { (*(*n).own.get()).stream.assume_init_drop() };
+        let result = unsafe { extract(&mut (*(*n).own.get()).stream) };
         unsafe { (*(*n).own.get()).has_value = false };
         unsafe { Node::drop_self(n) };
         unsafe { (*(*root).own.get()).len -= 1 };
+        result
     }
 
     unsafe fn insert(root: *const Self, stream: S) -> *const Node<S, W, L> {
@@ -545,7 +550,7 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
     pub fn remove(&mut self, r: &Ref<S, W, L>) -> bool {
         assert_eq!(self.root, r.get().root);
         if unsafe { (*r.own()).has_value } {
-            unsafe { Root::remove(self.root, r.0) };
+            unsafe { Root::remove(self.root, r.0, |stream| stream.assume_init_drop()) };
             true
         } else {
             false
@@ -724,7 +729,7 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
         while let head_ptr = unsafe { (*(*self.root).stub.own.get()).own_next }
             && head_ptr != unsafe { &raw const (*self.root).stub }
         {
-            unsafe { Root::remove(self.root, head_ptr) };
+            unsafe { Root::remove(self.root, head_ptr, |stream| stream.assume_init_drop()) };
         }
     }
 }
