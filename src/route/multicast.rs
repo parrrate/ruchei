@@ -170,14 +170,7 @@ impl<S, E> Router<S, E> {
                     .close
                     .poll(cx, |cx| connection.stream.poll_close_unpin(cx))
             {
-                match r {
-                    Ok(()) => {
-                        self.as_mut().remove(key, None);
-                    }
-                    Err(e) => {
-                        self.as_mut().remove(key, Some(e));
-                    }
-                }
+                self.as_mut().remove(key, r.err());
             }
             this = self.as_mut().project();
         }

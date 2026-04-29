@@ -174,14 +174,7 @@ impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>> Sink<Out> for Multicast<S, 
         while let Some(key) = this.connections.link_pop_front::<OP_WAKE_CLOSE>() {
             let (connection, waker) = this.connections.context::<OP_WAKE_CLOSE>(&key);
             if let Poll::Ready(r) = connection.poll_close(&mut Context::from_waker(&waker)) {
-                match r {
-                    Ok(()) => {
-                        this.remove(key, None);
-                    }
-                    Err(e) => {
-                        this.remove(key, Some(e));
-                    }
-                }
+                this.remove(key, r.err());
             }
         }
         if this.connections.is_empty() {

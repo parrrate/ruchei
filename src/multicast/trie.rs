@@ -257,14 +257,7 @@ impl<K: Clone + AsRef<[u8]>, O: Clone, E, S: Unpin + Sink<(K, O), Error = E>> Si
                     .close
                     .poll(cx, |cx| connection.stream.poll_close_unpin(cx))
             {
-                match r {
-                    Ok(()) => {
-                        self.as_mut().remove(key, None);
-                    }
-                    Err(e) => {
-                        self.as_mut().remove(key, Some(e));
-                    }
-                }
+                self.as_mut().remove(key, r.err());
             }
             this = self.as_mut().project();
         }

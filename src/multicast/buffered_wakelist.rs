@@ -492,14 +492,7 @@ impl<S: Unpin + Sink<T, Error = E>, T: Clone, E> Sink<T> for Multicast<S, T, E> 
                 .stream
                 .poll_close(&mut Context::from_waker(&waker))
             {
-                match r {
-                    Ok(()) => {
-                        this.remove(&key, None);
-                    }
-                    Err(e) => {
-                        this.remove(&key, Some(e));
-                    }
-                }
+                this.remove(&key, r.err());
             }
         }
         if this.connections.is_empty() {
