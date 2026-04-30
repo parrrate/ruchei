@@ -498,6 +498,9 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
     }
 }
 
+/// Doubly-linked set containing items of type `S` with:
+/// - `W` singly-linked intrusive MPSC queues
+/// - `L` doubly-linked insertion-ordered subsets (with an option to control ordering more manually)
 pub struct Queue<S, const W: usize, const L: usize = W> {
     root: *const Root<S, W, L>,
     phantom: PhantomData<Root<S, W, L>>,
