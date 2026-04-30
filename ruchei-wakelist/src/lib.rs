@@ -575,6 +575,7 @@ impl<S, const W: usize, const L: usize> Default for Queue<S, W, L> {
 }
 
 impl<S, const W: usize, const L: usize> Queue<S, W, L> {
+    /// Create an empty [`Queue`]. Non-`const` because needs to allocate.
     pub fn new() -> Self {
         Self {
             root: Root::new(),
