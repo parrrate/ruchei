@@ -197,11 +197,7 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
         let stub_ptr = unsafe { &raw mut (*x).stub };
         let stub_own_ptr = unsafe { (*stub_ptr).own.get() };
         unsafe {
-            (*x).own
-                .get_mut()
-                .wake_tail
-                .iter_mut()
-                .for_each(|p| *p = stub_ptr);
+            (*x).own.get_mut().wake_tail.fill(stub_ptr);
             (*x).wake_head
                 .iter_mut()
                 .for_each(|p| *p.get_mut() = stub_ptr);
@@ -209,18 +205,8 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
             (*x).stub.own.get_mut().up = stub_ptr;
             (*x).stub.own.get_mut().own_next = stub_ptr;
             (*x).stub.own.get_mut().own_prev = stub_ptr;
-            (*x).stub
-                .own
-                .get_mut()
-                .link_next
-                .iter_mut()
-                .for_each(|p| *p = stub_own_ptr);
-            (*x).stub
-                .own
-                .get_mut()
-                .link_prev
-                .iter_mut()
-                .for_each(|p| *p = stub_own_ptr);
+            (*x).stub.own.get_mut().link_next.fill(stub_own_ptr);
+            (*x).stub.own.get_mut().link_prev.fill(stub_own_ptr);
         }
         x
     }
