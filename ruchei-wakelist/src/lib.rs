@@ -834,9 +834,9 @@ impl<'a, S, const W: usize, const L: usize> Index<&'a Ref<S, W, L>> for Queue<S,
 
     fn index(&self, r: &'a Ref<S, W, L>) -> &Self::Output {
         unsafe {
-            (*Root::own_node(self.root.as_ptr(), r.get()).cast_const())
-                .stream
-                .assume_init_ref()
+            let own = Root::own_node(self.root.as_ptr(), r.get()).cast_const();
+            assert!((*own).has_value);
+            (*own).stream.assume_init_ref()
         }
     }
 }
