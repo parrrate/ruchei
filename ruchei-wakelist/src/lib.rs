@@ -499,9 +499,29 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
     }
 }
 
-pub struct Values<'a, S, const W: usize, const L: usize = W> {
+struct Nodes<S, const W: usize, const L: usize = W> {
     stub: *const Node<S, W, L>,
     node: *const Node<S, W, L>,
+}
+
+impl<S, const W: usize, const L: usize> Iterator for Nodes<S, W, L> {
+    type Item = *const Node<S, W, L>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.node == self.stub {
+            None
+        } else {
+            Some(unsafe {
+                let own = (*self.node).own.get();
+                assert!((*own).has_value);
+                std::mem::replace(&mut self.node, (*own).own_next)
+            })
+        }
+    }
+}
+
+pub struct Values<'a, S, const W: usize, const L: usize = W> {
+    nodes: Nodes<S, W, L>,
     _phantom: PhantomData<&'a S>,
 }
 
@@ -509,23 +529,14 @@ impl<'a, S, const W: usize, const L: usize> Iterator for Values<'a, S, W, L> {
     type Item = &'a S;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.node == self.stub {
-            None
-        } else {
-            Some(unsafe {
-                let own = (*self.node).own.get();
-                assert!((*own).has_value);
-                let result = (*own).stream.as_ptr().as_ref_unchecked();
-                self.node = (*own).own_next;
-                result
-            })
-        }
+        self.nodes
+            .next()
+            .map(|node| unsafe { (*(*node).own.get()).stream.as_ptr().as_ref_unchecked() })
     }
 }
 
 pub struct ValuesMut<'a, S, const W: usize, const L: usize = W> {
-    stub: *const Node<S, W, L>,
-    node: *const Node<S, W, L>,
+    nodes: Nodes<S, W, L>,
     _phantom: PhantomData<&'a mut S>,
 }
 
@@ -533,17 +544,9 @@ impl<'a, S, const W: usize, const L: usize> Iterator for ValuesMut<'a, S, W, L> 
     type Item = Pin<&'a mut S>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.node == self.stub {
-            None
-        } else {
-            Some(unsafe {
-                let own = (*self.node).own.get();
-                assert!((*own).has_value);
-                let result = (*own).stream.as_mut_ptr().as_mut_unchecked();
-                self.node = (*own).own_next;
-                Pin::new_unchecked(result)
-            })
-        }
+        self.nodes.next().map(|node| unsafe {
+            Pin::new_unchecked((*(*node).own.get()).stream.as_mut_ptr().as_mut_unchecked())
+        })
     }
 }
 
@@ -584,27 +587,25 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
         }
     }
 
-    pub fn values(&self) -> Values<'_, S, W, L> {
+    fn nodes(&self) -> Nodes<S, W, L> {
         unsafe {
             let stub = &raw const (*self.root.as_ptr()).stub;
             let node = (*(*stub).own.get()).own_next;
-            Values {
-                stub,
-                node,
-                _phantom: PhantomData,
-            }
+            Nodes { stub, node }
+        }
+    }
+
+    pub fn values(&self) -> Values<'_, S, W, L> {
+        Values {
+            nodes: self.nodes(),
+            _phantom: PhantomData,
         }
     }
 
     pub fn values_mut(&mut self) -> ValuesMut<'_, S, W, L> {
-        unsafe {
-            let stub = &raw const (*self.root.as_ptr()).stub;
-            let node = (*(*stub).own.get()).own_next;
-            ValuesMut {
-                stub,
-                node,
-                _phantom: PhantomData,
-            }
+        ValuesMut {
+            nodes: self.nodes(),
+            _phantom: PhantomData,
         }
     }
 
