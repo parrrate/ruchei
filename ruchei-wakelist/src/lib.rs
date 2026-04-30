@@ -498,13 +498,13 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
     }
 }
 
-pub struct Iter<'a, S, const W: usize, const L: usize = W> {
+pub struct Values<'a, S, const W: usize, const L: usize = W> {
     stub: *const Node<S, W, L>,
     node: *const Node<S, W, L>,
     _phantom: PhantomData<&'a S>,
 }
 
-impl<'a, S, const W: usize, const L: usize> Iterator for Iter<'a, S, W, L> {
+impl<'a, S, const W: usize, const L: usize> Iterator for Values<'a, S, W, L> {
     type Item = &'a S;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -522,13 +522,13 @@ impl<'a, S, const W: usize, const L: usize> Iterator for Iter<'a, S, W, L> {
     }
 }
 
-pub struct IterMut<'a, S, const W: usize, const L: usize = W> {
+pub struct ValuesMut<'a, S, const W: usize, const L: usize = W> {
     stub: *const Node<S, W, L>,
     node: *const Node<S, W, L>,
     _phantom: PhantomData<&'a mut S>,
 }
 
-impl<'a, S, const W: usize, const L: usize> Iterator for IterMut<'a, S, W, L> {
+impl<'a, S, const W: usize, const L: usize> Iterator for ValuesMut<'a, S, W, L> {
     type Item = Pin<&'a mut S>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -582,11 +582,11 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
         }
     }
 
-    pub fn iter(&self) -> Iter<'_, S, W, L> {
+    pub fn values(&self) -> Values<'_, S, W, L> {
         unsafe {
             let stub = &raw const (*self.root).stub;
             let node = (*(*stub).own.get()).own_next;
-            Iter {
+            Values {
                 stub,
                 node,
                 _phantom: PhantomData,
@@ -594,11 +594,11 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
         }
     }
 
-    pub fn iter_mut(&mut self) -> IterMut<'_, S, W, L> {
+    pub fn values_mut(&mut self) -> ValuesMut<'_, S, W, L> {
         unsafe {
             let stub = &raw const (*self.root).stub;
             let node = (*(*stub).own.get()).own_next;
-            IterMut {
+            ValuesMut {
                 stub,
                 node,
                 _phantom: PhantomData,
@@ -1023,23 +1023,23 @@ fn wake_after_drop() {
 }
 
 #[test]
-fn iter_yields_in_insertion_order() {
+fn values_yields_in_insertion_order() {
     let mut queue = Queue::<i32, 1>::new();
-    assert_eq!(queue.iter().copied().collect::<Vec<_>>(), []);
+    assert_eq!(queue.values().copied().collect::<Vec<_>>(), []);
     queue.insert(1);
     let r = queue.insert(2);
     queue.insert(3);
-    assert_eq!(queue.iter().copied().collect::<Vec<_>>(), [1, 2, 3]);
+    assert_eq!(queue.values().copied().collect::<Vec<_>>(), [1, 2, 3]);
     queue.remove(&r);
-    assert_eq!(queue.iter().copied().collect::<Vec<_>>(), [1, 3]);
+    assert_eq!(queue.values().copied().collect::<Vec<_>>(), [1, 3]);
 }
 
 #[test]
-fn iter_mut_edits() {
+fn values_mut_edits_values() {
     let mut queue = Queue::<i32, 1>::new();
     queue.insert(1);
     queue.insert(2);
     queue.insert(3);
-    queue.iter_mut().for_each(|mut x| *x *= *x);
-    assert_eq!(queue.iter().copied().collect::<Vec<_>>(), [1, 4, 9]);
+    queue.values_mut().for_each(|mut x| *x *= *x);
+    assert_eq!(queue.values().copied().collect::<Vec<_>>(), [1, 4, 9]);
 }
