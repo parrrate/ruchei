@@ -522,6 +522,30 @@ impl<'a, S, const W: usize, const L: usize> Iterator for Iter<'a, S, W, L> {
     }
 }
 
+pub struct IterMut<'a, S, const W: usize, const L: usize = W> {
+    stub: *const Node<S, W, L>,
+    node: *const Node<S, W, L>,
+    _phantom: PhantomData<&'a mut S>,
+}
+
+impl<'a, S, const W: usize, const L: usize> Iterator for IterMut<'a, S, W, L> {
+    type Item = Pin<&'a mut S>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.node == self.stub {
+            None
+        } else {
+            Some(unsafe {
+                let own = (*self.node).own.get();
+                assert!((*own).has_value);
+                let result = (*own).stream.as_mut_ptr().as_mut_unchecked();
+                self.node = (*own).own_next;
+                Pin::new_unchecked(result)
+            })
+        }
+    }
+}
+
 /// Doubly-linked set containing items of type `S` with:
 /// - `W` singly-linked intrusive MPSC queues
 /// - `L` doubly-linked insertion-ordered subsets (with an option to control ordering more manually)
@@ -563,6 +587,18 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
             let stub = &raw const (*self.root).stub;
             let node = (*(*stub).own.get()).own_next;
             Iter {
+                stub,
+                node,
+                _phantom: PhantomData,
+            }
+        }
+    }
+
+    pub fn iter_mut(&mut self) -> IterMut<'_, S, W, L> {
+        unsafe {
+            let stub = &raw const (*self.root).stub;
+            let node = (*(*stub).own.get()).own_next;
+            IterMut {
                 stub,
                 node,
                 _phantom: PhantomData,
@@ -996,4 +1032,14 @@ fn iter_yields_in_insertion_order() {
     assert_eq!(queue.iter().copied().collect::<Vec<_>>(), [1, 2, 3]);
     queue.remove(&r);
     assert_eq!(queue.iter().copied().collect::<Vec<_>>(), [1, 3]);
+}
+
+#[test]
+fn iter_mut_edits() {
+    let mut queue = Queue::<i32, 1>::new();
+    queue.insert(1);
+    queue.insert(2);
+    queue.insert(3);
+    queue.iter_mut().for_each(|mut x| *x *= *x);
+    assert_eq!(queue.iter().copied().collect::<Vec<_>>(), [1, 4, 9]);
 }
