@@ -11,6 +11,7 @@ use std::{
     mem::MaybeUninit,
     ops::Index,
     pin::Pin,
+    ptr::NonNull,
     sync::atomic::{AtomicBool, AtomicPtr, AtomicU8, AtomicUsize, Ordering, fence},
     task::{Context, RawWaker, RawWakerVTable, Waker},
 };
@@ -550,7 +551,7 @@ impl<'a, S, const W: usize, const L: usize> Iterator for ValuesMut<'a, S, W, L> 
 /// - `W` singly-linked intrusive MPSC queues
 /// - `L` doubly-linked insertion-ordered subsets (with an option to control ordering more manually)
 pub struct Queue<S, const W: usize, const L: usize = W> {
-    root: *const Root<S, W, L>,
+    root: NonNull<Root<S, W, L>>,
     phantom: PhantomData<Root<S, W, L>>,
 }
 
@@ -578,14 +579,14 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
     /// Create an empty [`Queue`]. Non-`const` because needs to allocate.
     pub fn new() -> Self {
         Self {
-            root: Root::new(),
+            root: unsafe { NonNull::new_unchecked(Root::new().cast_mut()) },
             phantom: PhantomData,
         }
     }
 
     pub fn values(&self) -> Values<'_, S, W, L> {
         unsafe {
-            let stub = &raw const (*self.root).stub;
+            let stub = &raw const (*self.root.as_ptr()).stub;
             let node = (*(*stub).own.get()).own_next;
             Values {
                 stub,
@@ -597,7 +598,7 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
 
     pub fn values_mut(&mut self) -> ValuesMut<'_, S, W, L> {
         unsafe {
-            let stub = &raw const (*self.root).stub;
+            let stub = &raw const (*self.root.as_ptr()).stub;
             let node = (*(*stub).own.get()).own_next;
             ValuesMut {
                 stub,
@@ -608,13 +609,13 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
     }
 
     pub fn insert(&mut self, stream: S) -> Ref<S, W, L> {
-        Ref::new(unsafe { Root::insert(self.root, stream) })
+        Ref::new(unsafe { Root::insert(self.root.as_ptr(), stream) })
     }
 
     pub fn remove_pinned(&mut self, r: &Ref<S, W, L>) -> bool {
-        assert_eq!(self.root, r.get().root);
+        assert_eq!(self.root.as_ptr().cast_const(), r.get().root);
         if unsafe { (*r.own()).has_value } {
-            unsafe { Root::remove(self.root, r.0, |stream| stream.assume_init_drop()) };
+            unsafe { Root::remove(self.root.as_ptr(), r.0, |stream| stream.assume_init_drop()) };
             true
         } else {
             false
@@ -625,31 +626,33 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
     where
         S: Unpin,
     {
-        assert_eq!(self.root, r.get().root);
+        assert_eq!(self.root.as_ptr().cast_const(), r.get().root);
         if unsafe { (*r.own()).has_value } {
-            Some(unsafe { Root::remove(self.root, r.0, |stream| stream.assume_init_read()) })
+            Some(unsafe {
+                Root::remove(self.root.as_ptr(), r.0, |stream| stream.assume_init_read())
+            })
         } else {
             None
         }
     }
 
     pub fn queue_pop_front<const X: usize>(&mut self) -> Option<Ref<S, W, L>> {
-        let n = unsafe { (*self.root).pop::<false>(X) };
+        let n = unsafe { (*self.root.as_ptr()).pop::<false>(X) };
         if n.is_null() { None } else { Some(Ref(n)) }
     }
 
     pub fn queue_push_back<const X: usize>(&self, r: &Ref<S, W, L>) {
-        assert_eq!(r.get().root, self.root);
-        unsafe { (*self.root).outer_push::<X>(r.get()) };
+        assert_eq!(self.root.as_ptr().cast_const(), r.get().root);
+        unsafe { (*self.root.as_ptr()).outer_push::<X>(r.get()) };
     }
 
     pub fn register<const X: usize>(&self, waker: &Waker) {
-        unsafe { (*self.root).wakers[X].register(waker) };
-        unsafe { (*self.root).wakeable[X].store(true, Ordering::Release) };
+        unsafe { (*self.root.as_ptr()).wakers[X].register(waker) };
+        unsafe { (*self.root.as_ptr()).wakeable[X].store(true, Ordering::Release) };
     }
 
     pub fn wake<const X: usize>(&self) {
-        unsafe { (*self.root).wake::<X>() };
+        unsafe { (*self.root.as_ptr()).wake::<X>() };
     }
 
     pub fn link_contains<const X: usize>(&self, r: &Ref<S, W, L>) -> bool {
@@ -657,29 +660,29 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
     }
 
     pub fn link_empty<const X: usize>(&self) -> bool {
-        unsafe { Root::link_empty(self.root, X) }
+        unsafe { Root::link_empty(self.root.as_ptr(), X) }
     }
 
     pub fn link_len<const X: usize>(&self) -> usize {
-        unsafe { Root::link_len(self.root, X) }
+        unsafe { Root::link_len(self.root.as_ptr(), X) }
     }
 
     pub fn link_front<const X: usize>(&self) -> Option<Ref<S, W, L>> {
         unsafe {
-            if Root::link_empty(self.root, X) {
+            if Root::link_empty(self.root.as_ptr(), X) {
                 None
             } else {
-                Some(Ref::from_own(Root::link_front(self.root, X)))
+                Some(Ref::from_own(Root::link_front(self.root.as_ptr(), X)))
             }
         }
     }
 
     pub fn link_back<const X: usize>(&self) -> Option<Ref<S, W, L>> {
         unsafe {
-            if Root::link_empty(self.root, X) {
+            if Root::link_empty(self.root.as_ptr(), X) {
                 None
             } else {
-                Some(Ref::from_own(Root::link_back(self.root, X)))
+                Some(Ref::from_own(Root::link_back(self.root.as_ptr(), X)))
             }
         }
     }
@@ -689,7 +692,7 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
             if Root::link_contains(r.own(), X) {
                 false
             } else {
-                Root::link_push_front(self.root, r.own(), X);
+                Root::link_push_front(self.root.as_ptr(), r.own(), X);
                 true
             }
         }
@@ -700,7 +703,7 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
             if Root::link_contains(r.own(), X) {
                 false
             } else {
-                Root::link_push_back(self.root, r.own(), X);
+                Root::link_push_back(self.root.as_ptr(), r.own(), X);
                 true
             }
         }
@@ -708,20 +711,20 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
 
     pub fn link_pop_front<const X: usize>(&mut self) -> Option<Ref<S, W, L>> {
         unsafe {
-            if Root::link_empty(self.root, X) {
+            if Root::link_empty(self.root.as_ptr(), X) {
                 None
             } else {
-                Some(Ref::from_own(Root::link_pop_front(self.root, X)))
+                Some(Ref::from_own(Root::link_pop_front(self.root.as_ptr(), X)))
             }
         }
     }
 
     pub fn link_pop_back<const X: usize>(&mut self) -> Option<Ref<S, W, L>> {
         unsafe {
-            if Root::link_empty(self.root, X) {
+            if Root::link_empty(self.root.as_ptr(), X) {
                 None
             } else {
-                Some(Ref::from_own(Root::link_pop_back(self.root, X)))
+                Some(Ref::from_own(Root::link_pop_back(self.root.as_ptr(), X)))
             }
         }
     }
@@ -729,7 +732,7 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
     pub fn link_pop_at<const X: usize>(&mut self, r: &Ref<S, W, L>) -> bool {
         unsafe {
             if Root::link_contains(r.own(), X) {
-                Root::link_remove(self.root, r.own(), X);
+                Root::link_remove(self.root.as_ptr(), r.own(), X);
                 true
             } else {
                 false
@@ -741,7 +744,7 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
         &self,
         r: Option<&Ref<S, W, L>>,
     ) -> (Option<Ref<S, W, L>>, Option<Ref<S, W, L>>) {
-        let stub = unsafe { Root::link_stub(self.root) };
+        let stub = unsafe { Root::link_stub(self.root.as_ptr()) };
         let n = r.map(|r| r.own()).unwrap_or_else(|| stub);
         let (prev, next) = unsafe { Root::link_of(n, X) };
         let prev = (stub != prev).then(|| unsafe { Ref::from_own(prev) });
@@ -755,18 +758,18 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
         r: &Ref<S, W, L>,
         next: Option<&Ref<S, W, L>>,
     ) {
-        let stub = unsafe { Root::link_stub(self.root) };
+        let stub = unsafe { Root::link_stub(self.root.as_ptr()) };
         let prev = prev.map(|r| r.own()).unwrap_or_else(|| stub);
         let next = next.map(|r| r.own()).unwrap_or_else(|| stub);
         let n = r.own();
         assert!(!unsafe { Root::link_contains(n, X) });
         assert_eq!(unsafe { (*prev).link_next[X] }, next);
         assert_eq!(unsafe { (*next).link_prev[X] }, prev);
-        unsafe { Root::link(self.root, n, prev, next, X) };
+        unsafe { Root::link(self.root.as_ptr(), n, prev, next, X) };
     }
 
     pub fn queue_pull<const X: usize>(&mut self) {
-        unsafe { Root::queue_pull::<false>(self.root, X) };
+        unsafe { Root::queue_pull::<false>(self.root.as_ptr(), X) };
     }
 
     pub fn queue_poll<const X: usize>(&mut self, cx: &mut Context<'_>) {
@@ -776,7 +779,11 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
 
     pub fn index_pin_mut(&mut self, r: &Ref<S, W, L>) -> Pin<&mut S> {
         unsafe {
-            Pin::new_unchecked(&mut *(*Root::own_node(self.root, r.get())).stream.as_mut_ptr())
+            Pin::new_unchecked(
+                &mut *(*Root::own_node(self.root.as_ptr(), r.get()))
+                    .stream
+                    .as_mut_ptr(),
+            )
         }
     }
 
@@ -794,18 +801,22 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
     }
 
     pub fn is_empty(&self) -> bool {
-        unsafe { (*self.root).is_empty() }
+        unsafe { (*self.root.as_ptr()).is_empty() }
     }
 
     pub fn len(&self) -> usize {
-        unsafe { (*(*self.root).own.get()).len }
+        unsafe { (*(*self.root.as_ptr()).own.get()).len }
     }
 
     pub fn clear(&mut self) {
-        while let head_ptr = unsafe { (*(*self.root).stub.own.get()).own_next }
-            && head_ptr != unsafe { &raw const (*self.root).stub }
+        while let head_ptr = unsafe { (*(*self.root.as_ptr()).stub.own.get()).own_next }
+            && head_ptr != unsafe { &raw const (*self.root.as_ptr()).stub }
         {
-            unsafe { Root::remove(self.root, head_ptr, |stream| stream.assume_init_drop()) };
+            unsafe {
+                Root::remove(self.root.as_ptr(), head_ptr, |stream| {
+                    stream.assume_init_drop()
+                })
+            };
         }
     }
 }
@@ -813,7 +824,7 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
 impl<S, const W: usize, const L: usize> Drop for Queue<S, W, L> {
     fn drop(&mut self) {
         self.clear();
-        unsafe { Root::drop_self(self.root) };
+        unsafe { Root::drop_self(self.root.as_ptr()) };
     }
 }
 
@@ -822,7 +833,7 @@ impl<'a, S, const W: usize, const L: usize> Index<&'a Ref<S, W, L>> for Queue<S,
 
     fn index(&self, r: &'a Ref<S, W, L>) -> &Self::Output {
         unsafe {
-            (*Root::own_node(self.root, r.get()).cast_const())
+            (*Root::own_node(self.root.as_ptr(), r.get()).cast_const())
                 .stream
                 .assume_init_ref()
         }
