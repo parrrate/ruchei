@@ -20,7 +20,7 @@ publish = true
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/parrrate/ruchei"
 authors = ["Alisa Feistel <alisafeistel@gmail.com>"]
-rust-version = "1.88"
+rust-version = "1.95"
 
 [package]
 name = "ruchei"

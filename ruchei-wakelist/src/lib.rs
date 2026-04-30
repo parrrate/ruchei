@@ -498,6 +498,30 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
     }
 }
 
+pub struct Iter<'a, S, const W: usize, const L: usize = W> {
+    stub: *const Node<S, W, L>,
+    node: *const Node<S, W, L>,
+    _phantom: PhantomData<&'a S>,
+}
+
+impl<'a, S, const W: usize, const L: usize> Iterator for Iter<'a, S, W, L> {
+    type Item = &'a S;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.node == self.stub {
+            None
+        } else {
+            Some(unsafe {
+                let own = (*self.node).own.get();
+                assert!((*own).has_value);
+                let result = (*own).stream.as_ptr().as_ref_unchecked();
+                self.node = (*own).own_next;
+                result
+            })
+        }
+    }
+}
+
 /// Doubly-linked set containing items of type `S` with:
 /// - `W` singly-linked intrusive MPSC queues
 /// - `L` doubly-linked insertion-ordered subsets (with an option to control ordering more manually)
@@ -531,6 +555,18 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
         Self {
             root: Root::new(),
             phantom: PhantomData,
+        }
+    }
+
+    pub fn iter(&self) -> Iter<'_, S, W, L> {
+        unsafe {
+            let stub = &raw const (*self.root).stub;
+            let node = (*(*stub).own.get()).own_next;
+            Iter {
+                stub,
+                node,
+                _phantom: PhantomData,
+            }
         }
     }
 
@@ -777,7 +813,7 @@ impl<S, const W: usize, const L: usize> std::fmt::Debug for Ref<S, W, L> {
 
 impl<S, const W: usize, const L: usize> Ref<S, W, L> {
     fn get(&self) -> &Node<S, W, L> {
-        unsafe { &*self.0 }
+        unsafe { self.0.as_ref_unchecked() }
     }
 
     fn new(n: *const Node<S, W, L>) -> Self {
@@ -948,4 +984,16 @@ fn wake_after_drop() {
     let waker = queue.insert(0).waker::<0>();
     drop(queue);
     waker.wake();
+}
+
+#[test]
+fn iter_yields_in_insertion_order() {
+    let mut queue = Queue::<i32, 1>::new();
+    assert_eq!(queue.iter().copied().collect::<Vec<_>>(), []);
+    queue.insert(1);
+    let r = queue.insert(2);
+    queue.insert(3);
+    assert_eq!(queue.iter().copied().collect::<Vec<_>>(), [1, 2, 3]);
+    queue.remove(&r);
+    assert_eq!(queue.iter().copied().collect::<Vec<_>>(), [1, 3]);
 }
