@@ -551,8 +551,12 @@ impl<'a, S, const W: usize, const L: usize> Iterator for ValuesMut<'a, S, W, L> 
 }
 
 /// Doubly-linked set containing items of type `S` with:
+///
 /// - `W` singly-linked intrusive MPSC queues
 /// - `L` doubly-linked insertion-ordered subsets (with an option to control ordering more manually)
+///
+/// Effectively, this is a `2+W+2L`-ly linked list. First `W` of `L` subsets directly correspond to
+/// `W` queues if any of methods linking them are used (e.g. [`Queue::queue_pull`]).
 pub struct Queue<S, const W: usize, const L: usize = W> {
     root: NonNull<Root<S, W, L>>,
     phantom: PhantomData<Root<S, W, L>>,
