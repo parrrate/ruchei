@@ -614,13 +614,17 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
     }
 
     pub fn insert(&mut self, stream: S) -> Ref<S, W, L> {
-        Ref::new(unsafe { Root::insert(self.root.as_ptr(), stream) })
+        unsafe { Ref::from_borrowed(Root::insert(self.root.as_ptr(), stream)) }
     }
 
     pub fn remove_pinned(&mut self, r: &Ref<S, W, L>) -> bool {
         assert_eq!(self.root.as_ptr().cast_const(), r.get().root);
         if unsafe { (*r.own()).has_value } {
-            unsafe { Root::remove(self.root.as_ptr(), r.0, |stream| stream.assume_init_drop()) };
+            unsafe {
+                Root::remove(self.root.as_ptr(), r.ptr(), |stream| {
+                    stream.assume_init_drop()
+                })
+            };
             true
         } else {
             false
@@ -634,7 +638,9 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
         assert_eq!(self.root.as_ptr().cast_const(), r.get().root);
         if unsafe { (*r.own()).has_value } {
             Some(unsafe {
-                Root::remove(self.root.as_ptr(), r.0, |stream| stream.assume_init_read())
+                Root::remove(self.root.as_ptr(), r.ptr(), |stream| {
+                    stream.assume_init_read()
+                })
             })
         } else {
             None
@@ -643,7 +649,11 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
 
     pub fn queue_pop_front<const X: usize>(&mut self) -> Option<Ref<S, W, L>> {
         let n = unsafe { (*self.root.as_ptr()).pop::<false>(X) };
-        if n.is_null() { None } else { Some(Ref(n)) }
+        if n.is_null() {
+            None
+        } else {
+            Some(unsafe { Ref::from_owned(n) })
+        }
     }
 
     pub fn queue_push_back<const X: usize>(&self, r: &Ref<S, W, L>) {
@@ -845,7 +855,7 @@ impl<'a, S, const W: usize, const L: usize> Index<&'a Ref<S, W, L>> for Queue<S,
     }
 }
 
-pub struct Ref<S, const W: usize, const L: usize = W>(*const Node<S, W, L>);
+pub struct Ref<S, const W: usize, const L: usize = W>(NonNull<Node<S, W, L>>);
 
 unsafe impl<S, const W: usize, const L: usize> Send for Ref<S, W, L> {}
 unsafe impl<S, const W: usize, const L: usize> Sync for Ref<S, W, L> {}
@@ -866,16 +876,24 @@ impl<S, const W: usize, const L: usize> std::fmt::Debug for Ref<S, W, L> {
 
 impl<S, const W: usize, const L: usize> Ref<S, W, L> {
     fn get(&self) -> &Node<S, W, L> {
-        unsafe { self.0.as_ref_unchecked() }
+        unsafe { self.0.as_ref() }
     }
 
-    fn new(n: *const Node<S, W, L>) -> Self {
+    unsafe fn from_borrowed(n: *const Node<S, W, L>) -> Self {
         unsafe { (*n).increase_ctr() };
-        Self(n)
+        unsafe { Self::from_owned(n) }
+    }
+
+    unsafe fn from_owned(n: *const Node<S, W, L>) -> Self {
+        Self(unsafe { NonNull::new_unchecked(n.cast_mut()) })
+    }
+
+    fn ptr(&self) -> *const Node<S, W, L> {
+        self.0.as_ptr()
     }
 
     unsafe fn from_own(n: *mut OwnNode<S, W, L>) -> Self {
-        Self::new(unsafe { Node::from_own(n) })
+        unsafe { Self::from_borrowed(Node::from_own(n)) }
     }
 
     fn own(&self) -> *mut OwnNode<S, W, L> {
@@ -884,13 +902,13 @@ impl<S, const W: usize, const L: usize> Ref<S, W, L> {
     }
 
     pub fn waker<const X: usize>(&self) -> Waker {
-        unsafe { Node::waker::<X>(self.0) }
+        unsafe { Node::waker::<X>(self.ptr()) }
     }
 }
 
 impl<S, const W: usize, const L: usize> Drop for Ref<S, W, L> {
     fn drop(&mut self) {
-        unsafe { Node::drop_self(self.0) }
+        unsafe { Node::drop_self(self.ptr()) }
     }
 }
 
