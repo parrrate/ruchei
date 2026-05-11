@@ -485,16 +485,13 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
     }
 
     unsafe fn queue_pull<const DISOWNABLE: bool>(root: *const Self, x: usize) {
-        loop {
-            let n = unsafe { (*root).pop::<DISOWNABLE>(x) };
-            if n.is_null() {
-                break;
-            }
+        while let n = unsafe { (*root).pop::<DISOWNABLE>(x) }
+            && !n.is_null()
+        {
             let n = unsafe { (*n).own.get() };
-            if unsafe { Self::link_contains(n, x) } {
-                continue;
+            if !unsafe { Self::link_contains(n, x) } {
+                unsafe { Self::link_push_back(root, n, x) };
             }
-            unsafe { Self::link_push_back(root, n, x) };
         }
     }
 }
