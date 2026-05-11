@@ -235,7 +235,7 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
     unsafe fn inner_push(&self, n: *const Node<S, W, L>, x: usize) {
         let root_ptr = std::ptr::from_ref(self);
         unsafe { assert_eq!((*n).root, root_ptr) };
-        unsafe { (*n).wake_next[x].store(std::ptr::null(), Ordering::Release) };
+        unsafe { (*n).wake_next[x].store(std::ptr::null(), Ordering::Relaxed) };
         let prev = self.wake_head[x].swap(n, Ordering::AcqRel);
         unsafe { (*prev).wake_next[x].store(n, Ordering::Release) };
     }
