@@ -143,10 +143,16 @@ impl<K: Key, T, E, S: TryStream<Ok = (K, T), Error = E> + ReadyRoute<K, T, Error
             };
         }
         check!();
+        let mut n = 0usize;
         while let Poll::Ready(o) = this.router.as_mut().try_poll_next(cx)? {
             if let Some((key, msg)) = o {
                 self.as_mut().push(key, msg);
                 this = self.as_mut().project();
+                n += 1;
+                if n >= 1000 {
+                    cx.waker().wake_by_ref();
+                    break;
+                }
             } else {
                 return Poll::Ready(Ok(()));
             }
