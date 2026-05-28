@@ -615,8 +615,7 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
     }
 
     pub fn remove_pinned(&mut self, r: &Ref<S, W, L>) -> bool {
-        assert_eq!(self.root.as_ptr().cast_const(), r.get().root);
-        if unsafe { (*r.own()).has_value } {
+        if unsafe { (*r.own(self.root)).has_value } {
             unsafe {
                 Root::remove(self.root.as_ptr(), r.ptr(), |stream| {
                     stream.assume_init_drop()
@@ -632,8 +631,7 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
     where
         S: Unpin,
     {
-        assert_eq!(self.root.as_ptr().cast_const(), r.get().root);
-        if unsafe { (*r.own()).has_value } {
+        if unsafe { (*r.own(self.root)).has_value } {
             Some(unsafe {
                 Root::remove(self.root.as_ptr(), r.ptr(), |stream| {
                     stream.assume_init_read()
@@ -668,7 +666,7 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
     }
 
     pub fn link_contains<const X: usize>(&self, r: &Ref<S, W, L>) -> bool {
-        unsafe { Root::link_contains(r.own(), X) }
+        unsafe { Root::link_contains(r.own(self.root), X) }
     }
 
     pub fn link_empty<const X: usize>(&self) -> bool {
@@ -701,10 +699,10 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
 
     pub fn link_push_front<const X: usize>(&mut self, r: &Ref<S, W, L>) -> bool {
         unsafe {
-            if Root::link_contains(r.own(), X) {
+            if Root::link_contains(r.own(self.root), X) {
                 false
             } else {
-                Root::link_push_front(self.root.as_ptr(), r.own(), X);
+                Root::link_push_front(self.root.as_ptr(), r.own(self.root), X);
                 true
             }
         }
@@ -712,10 +710,10 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
 
     pub fn link_push_back<const X: usize>(&mut self, r: &Ref<S, W, L>) -> bool {
         unsafe {
-            if Root::link_contains(r.own(), X) {
+            if Root::link_contains(r.own(self.root), X) {
                 false
             } else {
-                Root::link_push_back(self.root.as_ptr(), r.own(), X);
+                Root::link_push_back(self.root.as_ptr(), r.own(self.root), X);
                 true
             }
         }
@@ -743,8 +741,8 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
 
     pub fn link_pop_at<const X: usize>(&mut self, r: &Ref<S, W, L>) -> bool {
         unsafe {
-            if Root::link_contains(r.own(), X) {
-                Root::link_remove(self.root.as_ptr(), r.own(), X);
+            if Root::link_contains(r.own(self.root), X) {
+                Root::link_remove(self.root.as_ptr(), r.own(self.root), X);
                 true
             } else {
                 false
@@ -757,7 +755,7 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
         r: Option<&Ref<S, W, L>>,
     ) -> (Option<Ref<S, W, L>>, Option<Ref<S, W, L>>) {
         let stub = unsafe { Root::link_stub(self.root.as_ptr()) };
-        let n = r.map(|r| r.own()).unwrap_or_else(|| stub);
+        let n = r.map(|r| r.own(self.root)).unwrap_or_else(|| stub);
         let (prev, next) = unsafe { Root::link_of(n, X) };
         let prev = (stub != prev).then(|| unsafe { Ref::from_own(prev) });
         let next = (stub != next).then(|| unsafe { Ref::from_own(next) });
@@ -771,9 +769,9 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
         next: Option<&Ref<S, W, L>>,
     ) {
         let stub = unsafe { Root::link_stub(self.root.as_ptr()) };
-        let prev = prev.map(|r| r.own()).unwrap_or_else(|| stub);
-        let next = next.map(|r| r.own()).unwrap_or_else(|| stub);
-        let n = r.own();
+        let prev = prev.map(|r| r.own(self.root)).unwrap_or_else(|| stub);
+        let next = next.map(|r| r.own(self.root)).unwrap_or_else(|| stub);
+        let n = r.own(self.root);
         assert!(!unsafe { Root::link_contains(n, X) });
         assert_eq!(unsafe { (*prev).link_next[X] }, next);
         assert_eq!(unsafe { (*next).link_prev[X] }, prev);
@@ -790,13 +788,7 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
     }
 
     pub fn index_pin_mut(&mut self, r: &Ref<S, W, L>) -> Pin<&mut S> {
-        unsafe {
-            Pin::new_unchecked(
-                &mut *(*Root::own_node(self.root.as_ptr(), r.get()))
-                    .stream
-                    .as_mut_ptr(),
-            )
-        }
+        unsafe { Pin::new_unchecked(&mut *(*r.own(self.root)).stream.as_mut_ptr()) }
     }
 
     pub fn context<const X: usize>(&mut self, r: &Ref<S, W, L>) -> (Pin<&mut S>, Waker) {
@@ -893,9 +885,9 @@ impl<S, const W: usize, const L: usize> Ref<S, W, L> {
         unsafe { Self::from_borrowed(Node::from_own(n)) }
     }
 
-    fn own(&self) -> *mut OwnNode<S, W, L> {
+    fn own(&self, root: NonNull<Root<S, W, L>>) -> *mut OwnNode<S, W, L> {
         let n = self.get();
-        Root::own_node(n.root, n)
+        Root::own_node(root.as_ptr(), n)
     }
 
     pub fn waker<const X: usize>(&self) -> Waker {
