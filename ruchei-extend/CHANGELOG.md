@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Changed
+
+- now shares incoming stream wakers between `next` and `ready`, only works with `std` feature
+- `impl` is now restricted requiring the incoming stream to be a stream
+
 ## [0.1.4] — 2026-04-28
 
 ### Changed

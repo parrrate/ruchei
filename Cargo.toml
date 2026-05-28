@@ -53,7 +53,7 @@ route-sink = { path = "route-sink", version = "0.1.4" }
 ruchei-callback = { path = "ruchei-callback", version = "0.1.2" }
 ruchei-collections = { path = "ruchei-collections", version = "=0.0.0-a.5" }
 ruchei-connection = { path = "ruchei-connection", version = "=0.0.0-a.3" }
-ruchei-extend = { path = "ruchei-extend", version = "0.1.4" }
+ruchei-extend = { path = "ruchei-extend", version = "0.1.5" }
 ruchei-extra = { path = "ruchei-extra", version = "0.1.5" }
 ruchei-itertools = { path = "ruchei-itertools", version = "=0.0.0-a.3" }
 ruchei-sample.path = "internal/ruchei-sample"

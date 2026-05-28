@@ -5,7 +5,6 @@
 //!
 //! [`ruchei`]: https://docs.rs/ruchei
 
-#![no_std]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(docsrs, doc(cfg_hide(doc)))]
 
@@ -13,10 +12,17 @@ use core::{
     pin::Pin,
     task::{Context, Poll},
 };
+#[cfg(feature = "std")]
+use std::{
+    sync::Arc,
+    task::{Wake, Waker},
+};
 
 pub use extend_pinned::ExtendPinned;
 #[cfg(feature = "sink")]
 use futures_sink::Sink;
+#[cfg(feature = "std")]
+use futures_util::task::AtomicWaker;
 use futures_util::{
     Stream, StreamExt,
     stream::{Fuse, FusedStream},
@@ -36,6 +42,25 @@ pub struct Extending<S, R> {
     incoming: Fuse<R>,
     #[pin]
     inner: S,
+    #[cfg(feature = "std")]
+    wakers: Arc<Wakers>,
+    #[cfg(feature = "std")]
+    waker: Waker,
+}
+
+#[derive(Debug, Default)]
+#[cfg(feature = "std")]
+struct Wakers {
+    incoming_waker_next: AtomicWaker,
+    incoming_waker_ready: AtomicWaker,
+}
+
+#[cfg(feature = "std")]
+impl Wake for Wakers {
+    fn wake(self: Arc<Self>) {
+        self.incoming_waker_next.wake();
+        self.incoming_waker_ready.wake();
+    }
 }
 
 impl<S: Default, R: Default + Stream> Default for Extending<S, R> {
@@ -47,9 +72,17 @@ impl<S: Default, R: Default + Stream> Default for Extending<S, R> {
 impl<S, R: Stream> Extending<S, R> {
     #[must_use]
     pub fn new(incoming: R, inner: S) -> Self {
+        #[cfg(feature = "std")]
+        let wakers = Arc::<Wakers>::default();
+        #[cfg(feature = "std")]
+        let waker = wakers.clone().into();
         Self {
             incoming: incoming.fuse(),
             inner,
+            #[cfg(feature = "std")]
+            wakers,
+            #[cfg(feature = "std")]
+            waker,
         }
     }
 
@@ -120,6 +153,12 @@ impl<A, S: Stream + ExtendPinned<A>, R: Stream<Item = A>> Stream for Extending<S
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
         if !this.incoming.is_terminated() {
+            #[cfg(feature = "std")]
+            this.wakers.incoming_waker_next.register(cx.waker());
+            #[cfg(feature = "std")]
+            let waker = this.waker;
+            #[cfg(feature = "std")]
+            let cx = &mut Context::from_waker(waker);
             this.inner.as_mut().extend_pinned(PollIter {
                 cx,
                 incoming: this.incoming.as_mut(),
@@ -139,11 +178,25 @@ impl<A, S: FusedStream + ExtendPinned<A>, R: Stream<Item = A>> FusedStream for E
 }
 
 #[cfg(feature = "sink")]
-impl<Item, S: Sink<Item>, R> Sink<Item> for Extending<S, R> {
+impl<Item, S: Sink<Item> + ExtendPinned<A>, R: Stream<Item = A>, A> Sink<Item> for Extending<S, R> {
     type Error = S::Error;
 
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.project().inner.poll_ready(cx)
+        #[cfg(feature = "std")]
+        let mut this = self.project();
+        #[cfg(not(feature = "std"))]
+        let this = self.project();
+        #[cfg(feature = "std")]
+        if !this.incoming.is_terminated() {
+            this.wakers.incoming_waker_ready.register(cx.waker());
+            let waker = this.waker;
+            let cx = &mut Context::from_waker(waker);
+            this.inner.as_mut().extend_pinned(PollIter {
+                cx,
+                incoming: this.incoming.as_mut(),
+            })
+        }
+        this.inner.poll_ready(cx)
     }
 
     fn start_send(self: Pin<&mut Self>, item: Item) -> Result<(), Self::Error> {
@@ -160,7 +213,9 @@ impl<Item, S: Sink<Item>, R> Sink<Item> for Extending<S, R> {
 }
 
 #[cfg(feature = "route-sink")]
-impl<Route, Msg, S: FlushRoute<Route, Msg>, R> FlushRoute<Route, Msg> for Extending<S, R> {
+impl<Route, Msg, S: FlushRoute<Route, Msg> + ExtendPinned<A>, R: Stream<Item = A>, A>
+    FlushRoute<Route, Msg> for Extending<S, R>
+{
     fn poll_flush_route(
         self: Pin<&mut Self>,
         route: &Route,
@@ -179,7 +234,9 @@ impl<Route, Msg, S: FlushRoute<Route, Msg>, R> FlushRoute<Route, Msg> for Extend
 }
 
 #[cfg(feature = "route-sink")]
-impl<Route, Msg, S: ReadyRoute<Route, Msg>, R> ReadyRoute<Route, Msg> for Extending<S, R> {
+impl<Route, Msg, S: ReadyRoute<Route, Msg> + ExtendPinned<A>, R: Stream<Item = A>, A>
+    ReadyRoute<Route, Msg> for Extending<S, R>
+{
     fn poll_ready_route(
         self: Pin<&mut Self>,
         route: &Route,
@@ -190,12 +247,28 @@ impl<Route, Msg, S: ReadyRoute<Route, Msg>, R> ReadyRoute<Route, Msg> for Extend
 }
 
 #[cfg(feature = "route-sink")]
-impl<Route, Msg, S: ReadySome<Route, Msg>, R> ReadySome<Route, Msg> for Extending<S, R> {
+impl<Route, Msg, S: ReadySome<Route, Msg> + ExtendPinned<A>, R: Stream<Item = A>, A>
+    ReadySome<Route, Msg> for Extending<S, R>
+{
     fn poll_ready_some(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> Poll<Result<Route, Self::Error>> {
-        self.project().inner.poll_ready_some(cx)
+        #[cfg(feature = "std")]
+        let mut this = self.project();
+        #[cfg(not(feature = "std"))]
+        let this = self.project();
+        #[cfg(feature = "std")]
+        if !this.incoming.is_terminated() {
+            this.wakers.incoming_waker_ready.register(cx.waker());
+            let waker = this.waker;
+            let cx = &mut Context::from_waker(waker);
+            this.inner.as_mut().extend_pinned(PollIter {
+                cx,
+                incoming: this.incoming.as_mut(),
+            })
+        }
+        this.inner.poll_ready_some(cx)
     }
 }
 
