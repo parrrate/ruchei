@@ -1069,3 +1069,11 @@ fn values_mut_edits_values() {
     queue.values_mut().for_each(|mut x| *x *= *x);
     assert_eq!(queue.values().copied().collect::<Vec<_>>(), [1, 4, 9]);
 }
+
+#[test]
+fn can_queue_pull_after_wake() {
+    let mut queue = Queue::<u32, 1>::new();
+    let r = queue.insert(0);
+    r.waker::<0>().wake();
+    queue.queue_pull::<0>();
+}
