@@ -490,6 +490,7 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
         {
             let n = unsafe { (*n).own.get() };
             assert!(unsafe { (*(*n).up).ctr.load(Ordering::Acquire) } >= 2);
+            assert!(!unsafe { (*(*n).up).decrease_ctr() });
             if !unsafe { Self::link_contains(n, x) } {
                 unsafe { Self::link_push_back(root, n, x) };
             }
