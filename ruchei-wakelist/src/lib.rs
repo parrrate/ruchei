@@ -1,4 +1,4 @@
-//! <https://www.1024cores.net/home/lock-free-algorithms/queues/intrusive-mpsc-node-based-queue>
+//! <https://sites.google.com/site/1024cores/home/lock-free-algorithms/queues/intrusive-mpsc-node-based-queue>
 
 #![deny(clippy::as_pointer_underscore)]
 #![deny(clippy::borrow_as_ptr)]
