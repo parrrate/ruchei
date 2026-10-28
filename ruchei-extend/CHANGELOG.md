@@ -2,9 +2,12 @@
 
 ## [Unreleased]
 
+## [0.1.5] — 2026-10-28
+
 ### Changed
 
 - now shares incoming stream wakers between `next` and `ready`, only works with `std` feature
+
 - `impl` is now restricted requiring the incoming stream to be a stream
 
 ## [0.1.4] — 2026-04-28
@@ -34,7 +37,8 @@
 
 (baseline)
 
-[unreleased]: https://github.com/parrrate/ruchei/compare/ruchei-extend/0.1.4...HEAD
+[unreleased]: https://github.com/parrrate/ruchei/compare/ruchei-extend/0.1.5...HEAD
+[0.1.5]: https://github.com/parrrate/ruchei/compare/ruchei-extend/0.1.4...ruchei-extend/0.1.5
 [0.1.4]: https://github.com/parrrate/ruchei/compare/ruchei-extend/0.1.3...ruchei-extend/0.1.4
 [0.1.3]: https://github.com/parrrate/ruchei/compare/ruchei-extend/0.1.2...ruchei-extend/0.1.3
 [0.1.2]: https://github.com/parrrate/ruchei/compare/ruchei-extend/0.1.1...ruchei-extend/0.1.2
