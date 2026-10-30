@@ -484,6 +484,11 @@ impl<S, const W: usize, const L: usize> Root<S, W, L> {
         node.own.get()
     }
 
+    fn contains(root: *const Self, node: &Node<S, W, L>) -> bool {
+        assert_eq!(root, node.root);
+        unsafe { (*node.own.get()).has_value }
+    }
+
     unsafe fn queue_pull<const DISOWNABLE: bool>(root: *const Self, x: usize) {
         while let n = unsafe { (*root).pop::<DISOWNABLE>(x) }
             && !n.is_null()
@@ -617,11 +622,11 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
     }
 
     pub fn contains(&self, r: &Ref<S, W, L>) -> bool {
-        unsafe { (*r.own(self.root)).has_value }
+        r.contains(self.root)
     }
 
     pub fn remove_pinned(&mut self, r: &Ref<S, W, L>) -> bool {
-        if unsafe { (*r.own(self.root)).has_value } {
+        if self.contains(r) {
             unsafe {
                 Root::remove(self.root.as_ptr(), r.ptr(), |stream| {
                     stream.assume_init_drop()
@@ -637,7 +642,7 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
     where
         S: Unpin,
     {
-        if unsafe { (*r.own(self.root)).has_value } {
+        if self.contains(r) {
             Some(unsafe {
                 Root::remove(self.root.as_ptr(), r.ptr(), |stream| {
                     stream.assume_init_read()
@@ -894,6 +899,11 @@ impl<S, const W: usize, const L: usize> Ref<S, W, L> {
     fn own(&self, root: NonNull<Root<S, W, L>>) -> *mut OwnNode<S, W, L> {
         let n = self.get();
         Root::own_node(root.as_ptr(), n)
+    }
+
+    fn contains(&self, root: NonNull<Root<S, W, L>>) -> bool {
+        let n = self.get();
+        Root::contains(root.as_ptr(), n)
     }
 
     pub fn waker<const X: usize>(&self) -> Waker {
