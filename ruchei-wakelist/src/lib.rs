@@ -616,6 +616,10 @@ impl<S, const W: usize, const L: usize> Queue<S, W, L> {
         unsafe { Ref::from_borrowed(Root::insert(self.root.as_ptr(), stream)) }
     }
 
+    pub fn contains(&self, r: &Ref<S, W, L>) -> bool {
+        unsafe { (*r.own(self.root)).has_value }
+    }
+
     pub fn remove_pinned(&mut self, r: &Ref<S, W, L>) -> bool {
         if unsafe { (*r.own(self.root)).has_value } {
             unsafe {

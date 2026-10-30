@@ -57,7 +57,7 @@ ruchei-extend = { path = "ruchei-extend", version = "0.1.5" }
 ruchei-extra = { path = "ruchei-extra", version = "0.1.5" }
 ruchei-itertools = { path = "ruchei-itertools", version = "=0.0.0-a.3" }
 ruchei-sample.path = "internal/ruchei-sample"
-ruchei-wakelist = { path = "ruchei-wakelist", version = "=0.0.0-a.1" }
+ruchei-wakelist = { path = "ruchei-wakelist", version = "=0.0.0-a.2" }
 
 atomic-waker = "1.1.2"
 crossbeam-utils = "0.8.21"
