@@ -2,7 +2,6 @@
 
 use std::{
     collections::HashMap,
-    convert::Infallible,
     hash::Hash,
     pin::Pin,
     sync::Arc,
@@ -110,7 +109,7 @@ struct Active<S> {
 struct Error;
 
 impl<S> Stream for Active<S> {
-    type Item = Result<Infallible, Error>;
+    type Item = Result<!, Error>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
