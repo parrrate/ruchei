@@ -56,37 +56,35 @@ impl<L: TryStream<Ok = Lt, Error = E>, R: TryStream<Ok = Rt, Error = E>, Lt, Rt,
 
 #[cfg(test)]
 mod test {
-    use core::convert::Infallible;
-
     use crate::AsyncItertools;
 
     #[test]
     fn left_longer() {
-        let l = futures_util::stream::iter([1, 2, 3].map(Ok::<_, Infallible>));
-        let r = futures_util::stream::iter([1, 2].map(Ok::<_, Infallible>));
+        let l = futures_util::stream::iter([1, 2, 3].map(Ok::<_, !>));
+        let r = futures_util::stream::iter([1, 2].map(Ok::<_, !>));
         assert!(
             futures_executor::block_on_stream(l.try_zip_lazy(r))
-                .eq([(1, 1), (2, 2)].map(Ok::<_, Infallible>)),
+                .eq([(1, 1), (2, 2)].map(Ok::<_, !>)),
         );
     }
 
     #[test]
     fn equal_length() {
-        let l = futures_util::stream::iter([1, 2, 3].map(Ok::<_, Infallible>));
-        let r = futures_util::stream::iter([1, 2, 3].map(Ok::<_, Infallible>));
+        let l = futures_util::stream::iter([1, 2, 3].map(Ok::<_, !>));
+        let r = futures_util::stream::iter([1, 2, 3].map(Ok::<_, !>));
         assert!(
             futures_executor::block_on_stream(l.try_zip_lazy(r))
-                .eq([(1, 1), (2, 2), (3, 3)].map(Ok::<_, Infallible>)),
+                .eq([(1, 1), (2, 2), (3, 3)].map(Ok::<_, !>)),
         );
     }
 
     #[test]
     fn right_longer() {
-        let l = futures_util::stream::iter([1, 2].map(Ok::<_, Infallible>));
-        let r = futures_util::stream::iter([1, 2, 3].map(Ok::<_, Infallible>));
+        let l = futures_util::stream::iter([1, 2].map(Ok::<_, !>));
+        let r = futures_util::stream::iter([1, 2, 3].map(Ok::<_, !>));
         assert!(
             futures_executor::block_on_stream(l.try_zip_lazy(r))
-                .eq([(1, 1), (2, 2)].map(Ok::<_, Infallible>)),
+                .eq([(1, 1), (2, 2)].map(Ok::<_, !>)),
         );
     }
 }
