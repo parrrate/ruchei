@@ -1,5 +1,3 @@
-use std::convert::Infallible;
-
 use futures_util::{
     Stream, StreamExt, TryStream,
     future::{Ready, ready},
@@ -16,7 +14,7 @@ pub enum ConnectionItem<S, T = <S as TryStream>::Ok, E = <S as TryStream>::Error
 pub type MultiRouteItem<K, S, T = <S as TryStream>::Ok, E = <S as TryStream>::Error> =
     ConnectionItem<(K, S), (K, T), E>;
 
-type Fut<R> = Ready<Option<Result<<R as ConnectionItemExt>::T, Infallible>>>;
+type Fut<R> = Ready<Option<Result<<R as ConnectionItemExt>::T, !>>>;
 
 type Mi<R> = ConnectionItem<
     <R as ConnectionItemExt>::S,
