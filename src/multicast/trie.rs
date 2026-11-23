@@ -1,7 +1,6 @@
 use std::{
     borrow::Borrow,
     collections::VecDeque,
-    convert::Infallible,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -160,7 +159,7 @@ impl<K: AsRef<[u8]>, O, E, S: Unpin + TryStream<Ok = SubRequest<K, O>, Error = E
 impl<K: Clone + AsRef<[u8]>, O: Clone, E, S: Unpin + Sink<(K, O), Error = E>> Sink<(K, O)>
     for Multicast<S, E>
 {
-    type Error = Infallible;
+    type Error = !;
 
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let mut this = self.as_mut().project();
