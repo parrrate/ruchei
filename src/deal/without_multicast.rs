@@ -1,6 +1,5 @@
 use std::{
     collections::VecDeque,
-    convert::Infallible,
     pin::Pin,
     sync::Arc,
     task::{Context, Poll, Wake},
@@ -217,7 +216,7 @@ impl<In, Out, E, S: Unpin + TryStream<Ok = In, Error = E> + Sink<Out, Error = E>
 }
 
 impl<Out, E, S: Unpin + Sink<Out, Error = E>> Sink<Out> for Dealer<S, Out, E> {
-    type Error = Infallible;
+    type Error = !;
 
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.wakers.ready.register(cx.waker());
