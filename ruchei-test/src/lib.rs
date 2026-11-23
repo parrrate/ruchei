@@ -1,5 +1,4 @@
 use std::{
-    convert::Infallible,
     pin::{Pin, pin},
     sync::{
         Arc, Mutex,
@@ -67,8 +66,8 @@ impl State {
 struct StateRef(Arc<Mutex<State>>);
 
 struct Event {
-    end: Option<flume::Sender<Infallible>>,
-    wait: flume::Receiver<Infallible>,
+    end: Option<flume::Sender<!>>,
+    wait: flume::Receiver<!>,
     future: bool,
 }
 
@@ -148,8 +147,8 @@ impl EventRef {
 
 pub struct EventFuture {
     event: Option<EventRef>,
-    blocked_by: FuturesUnordered<RecvFut<'static, Infallible>>,
-    caused_by: FuturesUnordered<RecvFut<'static, Infallible>>,
+    blocked_by: FuturesUnordered<RecvFut<'static, !>>,
+    caused_by: FuturesUnordered<RecvFut<'static, !>>,
 }
 
 impl EventFuture {
@@ -195,7 +194,7 @@ impl IntoFuture for EventRef {
             .iter()
             .map(|blocked_by| state.events[*blocked_by].wait.clone().into_recv_async())
             .collect();
-        let caused_by: FuturesUnordered<RecvFut<'static, Infallible>> = state
+        let caused_by: FuturesUnordered<RecvFut<'static, !>> = state
             .caused_by
             .get_vec(&self.id)
             .unwrap_or(&Vec::new())
