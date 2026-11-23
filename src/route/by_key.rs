@@ -1,6 +1,5 @@
 use std::{
     collections::{HashMap, hash_map},
-    convert::Infallible,
     fmt::Debug,
     hash::Hash,
     pin::Pin,
@@ -112,7 +111,7 @@ impl<In, K: Key, E, S: Unpin + TryStream<Ok = In, Error = E>> FusedStream for Ro
 }
 
 impl<Out, K: Key, E, S: Unpin + Sink<Out, Error = E>> Sink<(K, Out)> for Router<K, S, E> {
-    type Error = Infallible;
+    type Error = !;
 
     fn poll_ready(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Pending
