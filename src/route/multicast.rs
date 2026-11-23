@@ -1,6 +1,5 @@
 use std::{
     collections::VecDeque,
-    convert::Infallible,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -230,7 +229,7 @@ impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>> FusedStream for Router<S, 
 }
 
 impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>> Sink<(RouteKey, Out)> for Router<S, E> {
-    type Error = Infallible;
+    type Error = !;
 
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.poll_ready(cx).map(Ok)
@@ -268,7 +267,7 @@ impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>> Sink<(RouteKey, Out)> for R
 }
 
 impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>> Sink<(Out,)> for Router<S, E> {
-    type Error = Infallible;
+    type Error = !;
 
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.poll_ready(cx).map(Ok)
