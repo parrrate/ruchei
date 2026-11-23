@@ -1,6 +1,5 @@
 use std::{
     collections::VecDeque,
-    convert::Infallible,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -135,7 +134,7 @@ impl<In, E, S: Unpin + TryStream<Ok = In, Error = E>> FusedStream for Multicast<
 }
 
 impl<Out: Clone, E, S: Unpin + Sink<Out, Error = E>> Sink<Out> for Multicast<S, E> {
-    type Error = Infallible;
+    type Error = !;
 
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let mut this = self.as_mut().project();
